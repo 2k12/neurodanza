@@ -2,6 +2,10 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.1.1 · 2026-11-18
+
+- El recordatorio de docs solo cuenta cambios de código (`repos[].codigo`) y acepta los docs ya commiteados en la rama: antes avisaba por un `AGENTS.md` o con los docs ya en un commit.
+
 ## [0.1.0] - 2026-11-18
 
 Primera versión pública.
