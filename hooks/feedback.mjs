@@ -102,10 +102,28 @@ export function doneProblems(cfg, changes, ctx) {
   if (tooling.length > 0 && ctx.version && !ctx.evalsApproved(ctx.version)) {
     soft.push(`evals: cambiaste agentes, personas o skills (${tooling.slice(0, 2).join(", ")}${tooling.length > 2 ? "…" : ""}) y no hay evals aprobadas de la versión ${ctx.version}. Corre /neurodanza-evals.`);
   }
-  if (rf.docs && Object.entries(changes).some(([n, f]) => n !== rf.docs && f.length > 0) && (changes[rf.docs] ?? []).length === 0) {
+  // Solo cuenta código (repos[].codigo); un AGENTS.md o un README no exigen docs. Los docs ya
+  // commiteados en la rama (ctx.docsInBranch) también cuentan.
+  const codeChanged = cfg.repos.some(
+    (r) => r.nombre !== rf.docs && (changes[r.nombre] ?? []).some((f) => matchesAny(f, r.codigo ?? []) && !matchesAny(f, r.ignorar ?? [])),
+  );
+  if (rf.docs && codeChanged && (changes[rf.docs] ?? []).length === 0 && !ctx.docsInBranch) {
     soft.push(`docs: hay cambios de código y ninguno en ${rf.docs}. Revisa la definición de terminado.`);
   }
   return { hard, soft };
+}
+
+/** ¿El repo de docs tiene commits en la rama actual que no están en la rama base? */
+function docsCommittedInBranch(cfg) {
+  const docs = cfg.repos.find((r) => r.nombre === cfg.retroalimentacion.docs);
+  if (!docs) return false;
+  const dir = cfg.abs(docs.ruta);
+  const base = cfg.retroalimentacion.version?.ramaBase ?? "main";
+  for (const ref of [`origin/${base}`, base]) {
+    const r = sh(`git rev-list --count ${ref}..HEAD`, dir, 10_000);
+    if (r.ok) return Number(r.out.trim()) > 0;
+  }
+  return false;
 }
 
 function changesOf(cfg) {
@@ -192,6 +210,7 @@ function stop(cfg, event) {
     bitacoraExists: (name) => existsSync(join(cfg.abs(cfg.retroalimentacion.bitacora.ruta), name)),
     panelApproved: (ver) => approvedFor(cfg.abs(cfg.panel.evaluaciones), ver, (e) => e.aprobado === true && Number(e.promedio) > umbral),
     evalsApproved: (ver) => approvedFor(cfg.abs(cfg.evals.informes), ver, (e) => e.informe?.aprobado === true),
+    docsInBranch: docsCommittedInBranch(cfg),
   });
   hard.push(...done.hard);
 

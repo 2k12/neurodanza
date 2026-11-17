@@ -56,3 +56,12 @@ test("definición de terminado: versión, bitácora, migración, panel, guía, e
   const clean = doneProblems(cfg, { frontend: ["features/a.ts", "content/guias/a.md"], docs: ["bitacora/v1.3.md"] }, { ...ok, version: "1.3.0", baseVersion: "1.2.0" });
   assert.deepEqual(clean, { hard: [], soft: [] });
 });
+
+test("recordatorio de docs: solo por código y no si docs ya tiene commits en la rama", () => {
+  const ctx = { version: null, panelApproved: () => true, evalsApproved: () => true };
+  const soloAgents = { frontend: ["AGENTS.md"], backend: [], docs: [] };
+  assert.equal(doneProblems(cfg, soloAgents, ctx).soft.filter((s) => s.startsWith("docs")).length, 0);
+  const codigo = { frontend: ["app/app/pedidos/page.tsx"], backend: [], docs: [] };
+  assert.equal(doneProblems(cfg, codigo, ctx).soft.filter((s) => s.startsWith("docs")).length, 1);
+  assert.equal(doneProblems(cfg, codigo, { ...ctx, docsInBranch: true }).soft.filter((s) => s.startsWith("docs")).length, 0);
+});
