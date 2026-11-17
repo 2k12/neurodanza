@@ -1,0 +1,222 @@
+{
+  "$schema": "../../plantillas/neurodanza.schema.json",
+  "$comment": "Configuración real de un proyecto NestJS + Next con tres repos (backend, frontend, docs) en una carpeta. Va en la raíz del proyecto.",
+  "repos": [
+    {
+      "nombre": "backend",
+      "ruta": "backend",
+      "codigo": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "prisma/**/*.ts"
+      ],
+      "ignorar": [
+        "**/*.generated.ts"
+      ],
+      "lint": "npx eslint --no-error-on-unmatched-pattern {archivos}",
+      "tipos": "pnpm -s typecheck",
+      "relacionadas": "npx jest --bail --findRelatedTests {archivos}"
+    },
+    {
+      "nombre": "frontend",
+      "ruta": "frontend",
+      "codigo": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.mjs"
+      ],
+      "ignorar": [
+        "**/*.generated.ts",
+        ".claude/**"
+      ],
+      "lint": "npx eslint --no-error-on-unmatched-pattern {archivos}",
+      "tipos": "pnpm -s typecheck",
+      "relacionadas": "npx vitest related --run {archivos}"
+    },
+    {
+      "nombre": "docs",
+      "ruta": "docs"
+    }
+  ],
+  "barreras": {
+    "rutasProtegidas": [
+      {
+        "glob": "backend/src/modules/einvoice/legacy-*",
+        "motivo": "Módulo congelado: no se tocan sus archivos."
+      }
+    ],
+    "migracionesInmutables": "backend/prisma/migrations/*/migration.sql",
+    "comandosProhibidos": [
+      {
+        "patron": "prisma\\s+migrate\\s+reset",
+        "motivo": "`prisma migrate reset` borra la base de datos. Pídeselo al usuario si de verdad hace falta."
+      },
+      {
+        "patron": "--accept-data-loss",
+        "motivo": "`--accept-data-loss` puede borrar datos. Crea una migración en su lugar."
+      },
+      {
+        "patron": "Docker Desktop\\.exe|start-process\\s+\\S*docker|open\\s+-a\\s+docker",
+        "motivo": "No arranques Docker Desktop: pídele al usuario que lo abra.",
+        "alcance": "raw"
+      }
+    ],
+    "exentos": [
+      "**/guardrails*.{mjs,ts}",
+      "**/no-junk-comments*"
+    ]
+  },
+  "retroalimentacion": {
+    "version": {
+      "repo": "frontend",
+      "archivo": "package.json",
+      "ramaBase": "main",
+      "cambios": [
+        "frontend:app/**",
+        "frontend:features/**",
+        "frontend:components/**",
+        "frontend:lib/**",
+        "frontend:hooks/**",
+        "frontend:content/**"
+      ]
+    },
+    "bitacora": {
+      "ruta": "docs/bitacora",
+      "archivo": "v{minor}.md"
+    },
+    "migraciones": {
+      "repo": "backend",
+      "schema": "prisma/schema.prisma",
+      "nuevas": "prisma/migrations/*/migration.sql"
+    },
+    "pantallas": [
+      "frontend:app/**/page.tsx",
+      "frontend:features/**/*.tsx"
+    ],
+    "guias": "frontend:content/guias/**",
+    "docs": "docs",
+    "regenerar": [
+      {
+        "nombre": "guías de usuario",
+        "cuando": [
+          "frontend:content/guias/**"
+        ],
+        "comando": "node scripts/build-guides.mjs",
+        "en": "frontend"
+      },
+      {
+        "nombre": "mapas de roles",
+        "cuando": [
+          "backend:src/auth/permissions.ts",
+          "frontend:components/app/nav.ts",
+          "docs:vistas/**"
+        ],
+        "comando": "node docs/roles/build-roles.mjs"
+      },
+      {
+        "nombre": "índice de vistas",
+        "cuando": [
+          "docs:**",
+          "frontend:content/guias/**"
+        ],
+        "comando": "node docs/vistas/build-index.mjs",
+        "error": true
+      },
+      {
+        "nombre": "visor",
+        "cuando": [
+          "docs:**",
+          "frontend:content/guias/**"
+        ],
+        "comando": "node docs/visor/build.mjs"
+      }
+    ]
+  },
+  "reglas": {
+    "coherencia": [
+      "Límites y validaciones iguales en pantalla y servidor (maxLength ↔ @MaxLength).",
+      "Toda consulta Prisma filtrada por tenantId (multiempresa).",
+      "Códigos de error del servidor (RECEPTION_CLOSED, PLAN_MODULE_DISABLED…) mostrados en español."
+    ],
+    "permisos": [
+      "Fuente: backend/src/auth/permissions.ts (ROLE_PERMISSIONS), @RequirePermissions en controladores, módulos del plan (PLAN_MODULE_DISABLED), frontend/components/app/nav.ts.",
+      "VIEWER nunca ve acciones de escritura."
+    ],
+    "ui": [
+      "Solo iconos de @phosphor-icons/react.",
+      "UI densa (12–13.5 px, controles h-8).",
+      "Tema claro y oscuro con tokens (bg-muted, text-muted-foreground…), sin colores fijos.",
+      "Todo en español de Ecuador."
+    ],
+    "docs": [
+      "Definición de terminado: docs/AGENTES.md §4.",
+      "Guía en frontend/content/guias y node scripts/build-guides.mjs.",
+      "Ficha docs/vistas, secuencias, flujos, roles y bitácora docs/bitacora/vX.Y.md.",
+      "Versión del frontend subida (feat → minor, fix → patch)."
+    ]
+  },
+  "app": {
+    "urls": [
+      "http://localhost:3010",
+      "http://localhost:3000"
+    ],
+    "levantar": "docker compose up -d --build api web",
+    "login": {
+      "ruta": "/login?empresa=demo",
+      "usuario": "Correo",
+      "clave": "Contraseña",
+      "boton": "ingresar|entrar|iniciar",
+      "espera": "/app"
+    }
+  },
+  "roles": {
+    "adaptador": "markdown",
+    "fuente": "docs/roles/{rolDoc}.md"
+  },
+  "panel": {
+    "ventana": "windows",
+    "ignorarRutas": [
+      "/app"
+    ],
+    "elenco": "frontend/.claude/personas/personas.json",
+    "fotos": "frontend/.claude/personas/fotos",
+    "evaluaciones": "docs/evaluaciones",
+    "usuarios": {
+      "login": {
+        "url": "/api/v1/auth/login",
+        "cuerpo": {
+          "email": "${ND_ADMIN_EMAIL}",
+          "password": "${ND_ADMIN_PASSWORD}",
+          "tenantSlug": "${ND_EMPRESA:-demo}"
+        },
+        "token": "accessToken"
+      },
+      "crear": {
+        "url": "/api/v1/tenant/users",
+        "cuerpo": {
+          "email": "{email}",
+          "fullName": "{nombre}",
+          "password": "{clave}",
+          "role": "{rol}"
+        }
+      },
+      "email": "persona.{id}@${ND_DOMINIO:-ejemplo.com}",
+      "clave": "${ND_PERSONA_PASSWORD}",
+      "propietario": {
+        "rol": "OWNER",
+        "email": "${ND_ADMIN_EMAIL}",
+        "clave": "${ND_ADMIN_PASSWORD}"
+      }
+    }
+  },
+  "evals": {
+    "casos": "frontend/.claude/evals/casos.json",
+    "informes": "docs/evaluaciones/evals",
+    "vigilar": [
+      "frontend:.claude/agents/**",
+      "frontend:.claude/personas/**",
+      "frontend:.claude/skills/**",
+      "frontend:.claude/evals/**"
+    ]
+  }
+}

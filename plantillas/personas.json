@@ -1,0 +1,16 @@
+{
+  "$comment": "Elenco del panel de personas: una persona por rol. Cada una se llama como su foto (fotos/<foto>.png, locales y fuera de git); las extra reutilizan una foto con número (Ana2). Sin foto se usa el avatar dibujado (avatars/<id>.png).",
+  "personas": [
+    {
+      "id": "ana",
+      "nombre": "Ana",
+      "foto": "ana",
+      "rol": "ADMIN",
+      "rolDoc": "administrador",
+      "cargo": "Administradora del sistema",
+      "perfil": "Configura usuarios y datos maestros. Detallista: busca inconsistencias, mensajes de error poco claros y permisos mal puestos.",
+      "valora": ["consistencia", "mensajes de error claros", "control de permisos"],
+      "color": "#0ea5e9"
+    }
+  ]
+}

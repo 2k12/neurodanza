@@ -1,0 +1,6 @@
+{
+  "$comment": "Adaptador \"json\": por rol, las rutas que ve y si puede modificarlas (true) o solo verlas (false).",
+  "ADMIN": { "/usuarios": true, "/configuracion": true, "/pedidos": true },
+  "VENTAS": { "/pedidos": true, "/clientes": true },
+  "LECTURA": { "/pedidos": false, "/clientes": false }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "neurodanza",
+  "owner": { "name": "2k12" },
+  "plugins": [
+    {
+      "name": "neurodanza",
+      "source": "./",
+      "description": "Ciclo automático de calidad para proyectos JS/TS: barreras, retroalimentación, revisores, panel de personas y evals."
+    }
+  ]
+}

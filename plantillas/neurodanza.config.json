@@ -1,0 +1,64 @@
+{
+  "$schema": "./neurodanza.schema.json",
+  "repos": [
+    {
+      "nombre": "app",
+      "ruta": ".",
+      "codigo": ["src/**/*.ts", "src/**/*.tsx"],
+      "ignorar": ["**/*.generated.ts"],
+      "lint": "npx eslint --no-error-on-unmatched-pattern {archivos}",
+      "tipos": "npx tsc --noEmit",
+      "relacionadas": "npx vitest related --run {archivos}"
+    }
+  ],
+  "barreras": {
+    "rutasProtegidas": [],
+    "migracionesInmutables": null,
+    "comandosProhibidos": [],
+    "exentos": ["**/guardrails*.{mjs,ts}", "**/no-junk-comments*"]
+  },
+  "retroalimentacion": {
+    "version": { "repo": "app", "archivo": "package.json", "ramaBase": "main", "cambios": ["app:src/**"] },
+    "bitacora": { "ruta": "docs/bitacora", "archivo": "v{minor}.md" },
+    "migraciones": null,
+    "pantallas": ["app:src/app/**/page.tsx"],
+    "guias": null,
+    "docs": null,
+    "regenerar": []
+  },
+  "reglas": {
+    "coherencia": [],
+    "permisos": [],
+    "ui": ["Textos en el idioma del producto, sin términos técnicos."],
+    "docs": ["Bitácora de la versión con: qué se agregó, cambios técnicos, decisiones, pantallas afectadas, despliegue."]
+  },
+  "app": {
+    "urls": ["http://localhost:3000"],
+    "levantar": "pnpm dev",
+    "login": { "ruta": "/login", "usuario": "Correo", "clave": "Contraseña", "boton": "ingresar|entrar|iniciar|login", "espera": "/" }
+  },
+  "roles": { "adaptador": "json", "fuente": ".claude/personas/roles.json" },
+  "panel": {
+    "min": 3,
+    "max": 5,
+    "umbral": 8.99,
+    "maxRondas": 3,
+    "ventana": "windows",
+    "ignorarRutas": [],
+    "elenco": ".claude/personas/personas.json",
+    "fotos": ".claude/personas/fotos",
+    "evaluaciones": "docs/evaluaciones",
+    "usuarios": {
+      "login": { "url": "/api/auth/login", "cuerpo": { "email": "${ND_ADMIN_EMAIL:-admin@ejemplo.com}", "password": "${ND_ADMIN_PASSWORD}" }, "token": "accessToken" },
+      "crear": { "url": "/api/users", "cuerpo": { "email": "{email}", "name": "{nombre}", "password": "{clave}", "role": "{rol}" } },
+      "email": "persona.{id}@ejemplo.com",
+      "clave": "${ND_PERSONA_PASSWORD:-Cambiar#2026}",
+      "propietario": null
+    }
+  },
+  "evals": {
+    "casos": ".claude/evals/casos.json",
+    "informes": "docs/evaluaciones/evals",
+    "vigilar": ["app:.claude/personas/**", "app:.claude/evals/**"]
+  }
+}

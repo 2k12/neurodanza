@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "neurodanza.config.json",
+  "type": "object",
+  "required": ["repos"],
+  "properties": {
+    "repos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nombre", "ruta"],
+        "properties": {
+          "nombre": { "type": "string" },
+          "ruta": { "type": "string" },
+          "codigo": { "type": "array", "items": { "type": "string" } },
+          "ignorar": { "type": "array", "items": { "type": "string" } },
+          "lintGlobs": { "type": "array", "items": { "type": "string" } },
+          "lint": { "type": "string", "description": "Usa {archivos} para la lista de archivos." },
+          "tipos": { "type": "string" },
+          "relacionadas": { "type": "string", "description": "Usa {archivos}." },
+          "sinPruebas": { "type": "string" }
+        }
+      }
+    },
+    "barreras": { "type": "object" },
+    "retroalimentacion": { "type": "object" },
+    "reglas": {
+      "type": "object",
+      "properties": {
+        "coherencia": { "type": "array", "items": { "type": "string" } },
+        "permisos": { "type": "array", "items": { "type": "string" } },
+        "ui": { "type": "array", "items": { "type": "string" } },
+        "docs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "app": { "type": "object" },
+    "roles": {
+      "type": "object",
+      "properties": { "adaptador": { "enum": ["json", "markdown"] }, "fuente": { "type": "string" } }
+    },
+    "panel": {
+      "type": "object",
+      "properties": {
+        "min": { "type": "integer", "minimum": 1 },
+        "max": { "type": "integer", "minimum": 1 },
+        "umbral": { "type": "number" },
+        "maxRondas": { "type": "integer" },
+        "ventana": { "enum": ["windows", "ninguna"] }
+      }
+    },
+    "evals": { "type": "object" }
+  }
+}

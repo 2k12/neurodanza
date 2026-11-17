@@ -1,0 +1,22 @@
+{
+  "description": "neurodanza: barreras antes de cada herramienta, lint al editar y ciclo de retroalimentación al terminar. Solo actúa en proyectos con neurodanza.config.json.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guardrails.mjs\"", "timeout": 10 }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" post", "timeout": 90 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" stop", "timeout": 600 }]
+      }
+    ]
+  }
+}

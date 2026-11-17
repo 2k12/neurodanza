@@ -1,0 +1,4 @@
+{
+  "$comment": "Recorte (rostro y cuello) de las fotos de las personas: [x, y, lado] en píxeles de la imagen original. Las fotos no van a git; se generan con panel/recortar-fotos.mjs --origen <carpeta>.",
+  "recortes": {}
+}

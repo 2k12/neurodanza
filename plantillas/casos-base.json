@@ -1,0 +1,139 @@
+{
+  "$comment": "Casos base de evals de neurodanza: diffs con errores sembrados (uno o más por revisor), un control limpio y calibración del panel. /neurodanza-init los adapta a las rutas del proyecto y elige las personas. Nunca se ajustan para que pasen.",
+  "umbrales": {
+    "deteccion": 0.85,
+    "falsosPositivos": 0
+  },
+  "revisores": [
+    {
+      "id": "coherencia-limite",
+      "revisor": "revisor-coherencia",
+      "esperado": "reprobar",
+      "claves": [
+        "160",
+        "200"
+      ],
+      "descripcion": "La pantalla acepta 200 caracteres en la razón social y el servidor solo 160.",
+      "diff": "--- a/frontend/features/customers/components/customer-form.tsx\n+++ b/frontend/features/customers/components/customer-form.tsx\n@@ -88,7 +88,7 @@ export function CustomerForm({ customer }: Props) {\n         <Field label=\"Razón social\">\n-          <Input {...register(\"name\")} maxLength={160} aria-label=\"Razón social\" />\n+          <Input {...register(\"name\")} maxLength={200} aria-label=\"Razón social\" />\n         </Field>\n--- a/backend/src/modules/customers/dto/customer.dto.ts\n+++ b/backend/src/modules/customers/dto/customer.dto.ts\n@@ -20,6 +20,6 @@ export class CreateCustomerDto {\n   @IsString()\n   @MaxLength(160, { message: 'La razón social admite hasta 160 caracteres' })\n   name: string;\n"
+    },
+    {
+      "id": "coherencia-tenant",
+      "revisor": "revisor-coherencia",
+      "esperado": "reprobar",
+      "claves": [
+        "tenantId",
+        "tenant"
+      ],
+      "descripcion": "Consulta de reclamos sin filtrar por empresa.",
+      "diff": "--- a/backend/src/modules/claims/claims.service.ts\n+++ b/backend/src/modules/claims/claims.service.ts\n@@ -40,9 +40,8 @@ export class ClaimsService {\n   async list(ctx: TenantContext, q: ListClaimsQuery) {\n     return this.prisma.claim.findMany({\n-      where: { tenantId: ctx.tenantId, status: q.status ?? undefined },\n+      where: { status: q.status ?? undefined },\n       orderBy: { createdAt: 'desc' },\n     });\n   }\n"
+    },
+    {
+      "id": "permisos-endpoint",
+      "revisor": "revisor-permisos",
+      "esperado": "reprobar",
+      "claves": [
+        "RequirePermissions",
+        "permiso"
+      ],
+      "descripcion": "Endpoint nuevo para borrar precios sin @RequirePermissions.",
+      "diff": "--- a/backend/src/modules/prices/prices.controller.ts\n+++ b/backend/src/modules/prices/prices.controller.ts\n@@ -95,6 +95,13 @@ export class PricesController {\n+  @Delete('lists/:id/items')\n+  @HttpCode(HttpStatus.NO_CONTENT)\n+  @ApiOperation({ summary: 'Vaciar una lista de precios' })\n+  clearItems(@CurrentTenant() ctx: TenantContext, @Param('id', ParseUUIDPipe) id: string) {\n+    return this.prices.clearItems(ctx, id);\n+  }\n"
+    },
+    {
+      "id": "permisos-boton-viewer",
+      "revisor": "revisor-permisos",
+      "esperado": "reprobar",
+      "claves": [
+        "write",
+        "VIEWER",
+        "permiso"
+      ],
+      "descripcion": "Botón «Anular factura» visible para cualquiera que lea facturas.",
+      "diff": "--- a/frontend/features/invoices/components/invoice-actions.tsx\n+++ b/frontend/features/invoices/components/invoice-actions.tsx\n@@ -30,9 +30,7 @@ export function InvoiceActions({ invoice }: Props) {\n-  const canWrite = useCan(\"invoices.write\");\n   return (\n     <div className=\"flex gap-2\">\n-      {canWrite ? <Button variant=\"destructive\" onClick={onVoid}>Anular factura</Button> : null}\n+      <Button variant=\"destructive\" onClick={onVoid}>Anular factura</Button>\n     </div>\n   );\n"
+    },
+    {
+      "id": "ui-iconos-colores",
+      "revisor": "revisor-ui",
+      "esperado": "reprobar",
+      "claves": [
+        "lucide",
+        "Phosphor",
+        "bg-white",
+        "token"
+      ],
+      "descripcion": "Icono de lucide y colores fijos que rompen el tema oscuro.",
+      "diff": "--- a/frontend/features/inventory/components/lot-badge.tsx\n+++ b/frontend/features/inventory/components/lot-badge.tsx\n@@ -1,12 +1,12 @@\n-import { PackageIcon } from \"@phosphor-icons/react\";\n+import { Package } from \"lucide-react\";\n export function LotBadge({ code }: { code: string }) {\n   return (\n-    <span className=\"inline-flex items-center gap-1 rounded-md bg-muted px-1.5 text-[12px] text-muted-foreground\">\n-      <PackageIcon className=\"size-3.5\" aria-hidden />\n+    <span className=\"inline-flex items-center gap-1 rounded-md bg-white px-1.5 text-[12px] text-black\">\n+      <Package className=\"size-3.5\" />\n       {code}\n     </span>\n   );\n"
+    },
+    {
+      "id": "ui-ingles-accesibilidad",
+      "revisor": "revisor-ui",
+      "esperado": "reprobar",
+      "claves": [
+        "inglés",
+        "español",
+        "aria-label",
+        "Save"
+      ],
+      "descripcion": "Textos en inglés y botón de solo icono sin aria-label.",
+      "diff": "--- a/frontend/features/crop/components/bed-row.tsx\n+++ b/frontend/features/crop/components/bed-row.tsx\n@@ -40,8 +40,8 @@ export function BedRow({ bed }: Props) {\n-      <Button size=\"sm\" onClick={save}>Guardar cama</Button>\n-      <Button size=\"icon-sm\" variant=\"ghost\" aria-label=\"Eliminar cama\" onClick={remove}><TrashIcon /></Button>\n+      <Button size=\"sm\" onClick={save}>Save changes</Button>\n+      <Button size=\"icon-sm\" variant=\"ghost\" onClick={remove}><TrashIcon /></Button>\n+      {error ? <p className=\"text-destructive\">Something went wrong</p> : null}\n"
+    },
+    {
+      "id": "docs-sin-guia",
+      "revisor": "revisor-docs",
+      "esperado": "reprobar",
+      "claves": [
+        "guía",
+        "content/guias",
+        "versión",
+        "bitácora"
+      ],
+      "descripcion": "Pantalla con un botón nuevo, sin guía, sin versión ni bitácora.",
+      "diff": "--- a/frontend/app/app/despacho/embarques/[id]/page.tsx\n+++ b/frontend/app/app/despacho/embarques/[id]/page.tsx\n@@ -60,6 +60,9 @@ export default function ShipmentPage() {\n       <PageHeader title={shipment.code} actions={<ShipmentActions shipment={shipment} />} />\n+      <Button variant=\"outline\" onClick={() => duplicate.mutate(shipment.id)}>\n+        Duplicar embarque\n+      </Button>\n       <ShipmentDetail shipment={shipment} />\n(no hay cambios en frontend/content/guias, frontend/package.json ni en docs/)\n"
+    },
+    {
+      "id": "control-limpio",
+      "revisor": "todos",
+      "esperado": "aprobar",
+      "claves": [],
+      "descripcion": "Corrección de un texto en español con su guía actualizada; no debe reprobarse.",
+      "diff": "--- a/frontend/features/orders/components/order-status-badge.tsx\n+++ b/frontend/features/orders/components/order-status-badge.tsx\n@@ -12,7 +12,7 @@ const LABELS: Record<OrderStatus, string> = {\n   DRAFT: \"Borrador\",\n-  CONFIRMED: \"Confirmdo\",\n+  CONFIRMED: \"Confirmado\",\n   IN_PREPARATION: \"En preparación\",\n--- a/frontend/content/guias/pedidos.md\n+++ b/frontend/content/guias/pedidos.md\n@@ -30,7 +30,7 @@\n-- **Confirmdo**: el pedido reservó su inventario.\n+- **Confirmado**: el pedido reservó su inventario.\n--- a/frontend/features/help/guides.generated.ts\n+++ b/frontend/features/help/guides.generated.ts\n@@ -812,7 +812,7 @@ (regenerado con node scripts/build-guides.mjs)\n-    body: \"…- **Confirmdo**: el pedido reservó su inventario.…\",\n+    body: \"…- **Confirmado**: el pedido reservó su inventario.…\",\n--- a/frontend/package.json\n+++ b/frontend/package.json\n-  \"version\": \"0.24.0\",\n+  \"version\": \"0.24.1\",\n--- a/docs/bitacora/v0.24.md\n+++ b/docs/bitacora/v0.24.md\n+## v0.24.1\n+- Corrección: el estado «Confirmado» estaba mal escrito en la lista de pedidos y en su guía.\n+- Pantallas afectadas: Pedidos. Despliegue: solo frontend.\n--- a/docs/bitacora/README.md\n+++ b/docs/bitacora/README.md\n+| v0.24.1 | 2026-11-18 | Corrección del estado «Confirmado» en pedidos. | [v0.24](v0.24.md) |\n",
+      "nota": "v0.24: la primera corrida mostró que el control no estaba limpio (cambiaba la guía sin regenerar guides.generated.ts); se completó el diff."
+    }
+  ],
+  "personas": [
+    {
+      "id": "persona-buena",
+      "persona": "<id de una persona que usa a diario la pantalla>",
+      "rutas": [
+        "/app/pedidos"
+      ],
+      "cambio": "Revisa la lista de pedidos: filtros, columnas y estados.",
+      "esperado": {
+        "notaMin": 8
+      }
+    },
+    {
+      "id": "persona-rota",
+      "persona": "<id de una persona cuyo rol NO puede hacer la tarea>",
+      "rutas": [
+        "/app/facturacion/cobros"
+      ],
+      "cambio": "Registra el cobro de 500 dólares que hizo el cliente Cliente Uno hoy.",
+      "esperado": {
+        "notaMax": 5
+      },
+      "nota": "v0.24: la primera versión usaba un pedido inexistente, pero la app lo maneja bien (aviso en español y botón para volver) y la persona puso 7 con razón. Se cambió por una tarea que el rol no puede completar: mide que la persona no infle la nota cuando no logra lo pedido."
+    },
+    {
+      "id": "persona-consistencia",
+      "persona": "<id de una persona que usa a diario la pantalla>",
+      "rutas": [
+        "/app/pedidos"
+      ],
+      "cambio": "Revisa la lista de pedidos: filtros, columnas y estados.",
+      "repiteDe": "persona-buena",
+      "esperado": {
+        "diferenciaMax": 1.5
+      }
+    }
+  ]
+}

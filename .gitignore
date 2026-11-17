@@ -1,0 +1,4 @@
+node_modules/
+# Fotos de personas: siempre locales
+**/.claude/personas/fotos/
+*.log
