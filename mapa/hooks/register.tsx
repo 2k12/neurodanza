@@ -53,6 +53,7 @@ export function faseDe(e: Llamada, actual: number): number | null {
     const tipo = str(e.subagent_type)
     if (/revisor-/.test(tipo)) return 3
     if (/persona-evaluadora/.test(tipo)) return 4
+    if (/implementador/.test(tipo)) return actual >= 2 && actual !== 5 ? 1 : actual < 1 ? 1 : null
     return null
   }
   if (t === 'Edit' || t === 'Write' || t === 'MultiEdit' || t === 'NotebookEdit') {
@@ -87,10 +88,10 @@ export function huella(e: Llamada): string {
   return JSON.stringify([tool, command, file_path, pattern, path, url, query, skill])
 }
 
-export type Presupuesto = { revisor: number; persona: number; otro: number }
-export const PRESUPUESTO: Presupuesto = { revisor: 25, persona: 40, otro: 40 }
+export type Presupuesto = { revisor: number; persona: number; implementador: number; otro: number }
+export const PRESUPUESTO: Presupuesto = { revisor: 25, persona: 40, implementador: 60, otro: 40 }
 
-export const maxPasos = (tipo: string, p: Presupuesto) => (/revisor-/.test(tipo) ? p.revisor : /persona-evaluadora/.test(tipo) ? p.persona : p.otro)
+export const maxPasos = (tipo: string, p: Presupuesto) => (/revisor-/.test(tipo) ? p.revisor : /persona-evaluadora/.test(tipo) ? p.persona : /implementador/.test(tipo) ? p.implementador : p.otro)
 
 /** Aviso que toca mandarle a un subagente tras un paso, o null. Cada aviso se manda una vez. */
 export function avisoPara(a: Agente): { clave: string; texto: string } | null {
@@ -134,7 +135,7 @@ let raiz = ''
 let planRel = '.neurodanza/plan.md'
 let presupuesto: Presupuesto = PRESUPUESTO
 let tick: { cancel: () => void } | undefined
-const archivos: { plan: string; estado: Estado | null; leido: number } = { plan: '', estado: null, leido: 0 }
+const archivos: { plan: string; estado: Estado | null; director: boolean; leido: number } = { plan: '', estado: null, director: false, leido: 0 }
 
 const ahora = () => Date.now()
 
@@ -171,6 +172,11 @@ async function leerArchivos($: Dollar) {
     archivos.estado = JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/estado.json`)))
   } catch {
     archivos.estado = null
+  }
+  try {
+    archivos.director = JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/director/modo.json`)))?.activo === true
+  } catch {
+    archivos.director = false
   }
 }
 
@@ -242,7 +248,7 @@ export const register: Register = (on) => {
     await update($, ciclo, (c) => {
       if (!c.activo && !/^neurodanza:/.test(e.subagentType)) return c
       const tipo = e.subagentType.replace(/^neurodanza:/, '')
-      const fase = /revisor-/.test(tipo) ? 3 : /persona-evaluadora/.test(tipo) ? 4 : Math.max(c.fase, 0)
+      const fase = /revisor-/.test(tipo) ? 3 : /persona-evaluadora/.test(tipo) ? 4 : /implementador/.test(tipo) ? 1 : Math.max(c.fase, 0)
       const base = c.activo ? c : nuevoCiclo('ciclo de neurodanza', ahora())
       const agente: Agente = {
         id,
@@ -260,7 +266,7 @@ export const register: Register = (on) => {
         repetidas: 0,
         avisos: [],
       }
-      const conFase = fase > base.fase ? irAFase(base, fase, ahora()) : base
+      const conFase = fase > base.fase || (fase === 1 && base.fase >= 2 && base.fase !== 5) ? irAFase(base, fase, ahora()) : base
       return { ...conFase, agentes: [...conFase.agentes, agente].slice(-60) }
     })
     arrancarReloj($)
@@ -370,6 +376,7 @@ export const register: Register = (on) => {
         <Text bold wrap="truncate-end">
           {corto(c.titulo, ancho - 10)} <Text dimColor>⏱ {reloj(t - c.inicio)}</Text>
         </Text>
+        {archivos.director && <Text color="claude">◆ modo director: el agente principal dirige; los implementadores trabajan en worktrees</Text>}
         {c.esperando && <Text color="warning">⏸ esperando tu respuesta</Text>}
         <Text dimColor> </Text>
         {c.fases.map((f) => {
@@ -395,7 +402,7 @@ export const register: Register = (on) => {
                 <Button key={`nd-agente-${a.id}`} plain dimColor={a.estado !== 'corriendo'} onPress={() => void $.ui.view({ agentId: a.id })}>
                   <Text color={colorAgente(a)}>
                     {'   '}
-                    {i === agentes.length - 1 ? '└─' : '├─'} {iconoAgente(a)} {corto(a.tipo.replace(/^revisor-/, ''), 18)}
+                    {i === agentes.length - 1 ? '└─' : '├─'} {iconoAgente(a)} {a.tipo === 'implementador' ? corto(a.desc || 'implementador', 22) : corto(a.tipo.replace(/^revisor-/, ''), 18)}
                   </Text>
                   <Text dimColor>
                     {' '}

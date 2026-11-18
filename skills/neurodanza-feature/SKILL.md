@@ -19,13 +19,26 @@ Trabajas en dos papeles: **planificas** (paso 0) y **ejecutas** el plan paso por
 ```
 - De 3 a 8 pasos, cada uno pequeño y con su condición de terminado. Márcalo `[x]` apenas se cumpla (no al final).
 - Si el plan cambia (un revisor encontró algo), agrega o edita pasos en el archivo; no improvises fuera de él.
-- Delega solo tareas acotadas. Cada subagente tiene un presupuesto de pasos (`<ciclo> presupuesto`; revisores 25, personas 40) y el mapa le avisa al 80 % y al llegar al tope. Díselo en el mensaje: «Presupuesto: N pasos; si llegas, entrega lo que tengas».
+- Delega solo tareas acotadas. Cada subagente tiene un presupuesto de pasos (`<ciclo> presupuesto`; revisores 25, personas 40, implementadores 60) y el mapa le avisa al 80 % y al llegar al tope. Díselo en el mensaje: «Presupuesto: N pasos; si llegas, entrega lo que tengas».
 
 ## 0. Entender y planificar (obligatorio)
 Resume en pocas líneas qué entendiste (qué cambia, pantallas y roles afectados), escribe el plan en el archivo y **espera el visto bueno del usuario** antes de tocar código. Pregunta solo lo que cambia el resultado.
 Si el contexto de inicio trae **errores conocidos** del proyecto, tenlos presentes en el plan.
 
 ## 1. Implementar
+**¿Directo o dirigiendo?** Usa el **modo director** si el cambio toca 2 áreas o repos, más de ~8 archivos o tiene partes que se pueden hacer a la vez, o si el usuario lo pide. Para un cambio chico, implementa directo (es más rápido y no pierde contexto en traspasos).
+
+### Modo director (`<director>` = `node "<carpeta de este skill>/../../lib/director.mjs"`)
+Tú diriges: planificas, delegas, integras y verificas. **No editas código** (la barrera lo impide mientras el modo está activo).
+1. `<director> activar`.
+2. Divide el plan en **tareas con dueños de archivos que no se pisan** (globs por repo). Las que dependen de otra van después de integrar esa. Anota en el plan qué tarea es cada paso.
+3. Por tarea: `<director> preparar --tarea <id> --repos <repos> --archivos "<repo:glob,…>" --objetivo "<una línea>" --terminado "<comprobación>"`. Responde las rutas de sus worktrees y el **contrato** listo para pegar.
+4. Lanza en **un solo mensaje** un `implementador` por tarea independiente, con el contrato y solo el contexto que necesita (reglas que aplican, errores conocidos relevantes, archivos de referencia). No le pases tu razonamiento completo.
+5. Al volver cada uno, lee su JSON. Si `terminado` es `true`: `<director> integrar --tarea <id>`. Si responde `fuera del contrato`, decide si el archivo era necesario (`--forzar`) o si va en otra tarea; si responde `conflicto al aplicar`, crea una tarea de corrección sobre el estado actual. Si `terminado` es `false`, relánzalo con lo pendiente o divide la tarea.
+6. Integradas todas, sigue con el paso 2 (verificar) como siempre. Para corregir hallazgos de revisores o personas, crea tareas nuevas.
+7. Al cerrar el ciclo: `<director> desactivar` (y `<director> tareas` debe quedar vacío; descarta lo que sobre con `<director> descartar --tarea <id>`).
+
+### Directo
 - Rama de trabajo en cada repo tocado (no trabajes directo en la rama principal).
 - Código + pruebas + documentación según la definición de terminado (`reglas.docs` y `retroalimentacion` de la configuración).
 - Las barreras y el ciclo de retroalimentación (hooks del plugin) corren solos; corrige lo que marquen.

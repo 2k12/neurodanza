@@ -258,8 +258,17 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | Clave | Por defecto | Qué hace |
 |---|---|---|
 | `plan` | `".neurodanza/plan.md"` | Archivo del plan del ciclo (local, fuera de git). El mapa lo muestra. |
-| `maxPasos` | `{ "revisor": 25, "persona": 40, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
+| `maxPasos` | `{ "revisor": 25, "persona": 40, "implementador": 60, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
 | `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
+
+## `director`
+
+Modo director: el agente principal dirige y los implementadores trabajan en worktrees. Ver [13-director.md](13-director.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `worktrees` | `"../.neurodanza-wt/{proyecto}"` | Dónde se crean los worktrees de las tareas, relativo a la raíz (`{proyecto}` = nombre de la carpeta del proyecto). Fuera del proyecto, para que el lint y las pruebas del repo real no los encuentren. |
+| `enlazar` | `["node_modules"]` | Qué se enlaza del repo real en cada worktree (las dependencias, para no instalarlas). `[]` no enlaza nada. |
 
 ## Validación
 

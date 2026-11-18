@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
+import { enWorktree, leerTareas } from "../lib/director.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
 
 const norm = (p) => String(p ?? "").replace(/\\/g, "/");
@@ -320,7 +321,13 @@ async function stop(cfg, event) {
 function post(cfg, event) {
   if (!cfg.retroalimentacion.lintAlEditar) return;
   const file = norm(event?.tool_input?.file_path ?? event?.tool_input?.notebook_path ?? "");
-  const at = file ? repoOf(cfg, file) : null;
+  let at = file ? repoOf(cfg, file) : null;
+  if (!at && file) {
+    // Archivo en el worktree de una tarea del modo director: lint con la configuración de su repo, ahí mismo.
+    const w = enWorktree(leerTareas(cfg), file);
+    const repo = w && cfg.repos.find((r) => r.nombre === w.repo.nombre);
+    if (repo) at = { repo, dir: w.repo.ruta, rel: w.rel };
+  }
   if (!at || !at.repo.lint) return;
   const { repo, rel } = at;
   if (!matchesAny(rel, repo.codigo ?? []) || matchesAny(rel, repo.ignorar ?? [])) return;

@@ -9,6 +9,7 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Barreras | `hooks/guardrails.mjs` | Decide si una herramienta se permite. |
 | Retroalimentación | `hooks/feedback.mjs` | Errores conocidos al iniciar, lint al editar y revisión completa al terminar (en paralelo y con caché). |
 | Errores conocidos | `lib/errores.mjs` | Catálogo del proyecto: firma, contador y solución de cada problema que marcan los hooks. |
+| Director | `lib/director.mjs` y `agents/implementador.md` | Modo director: worktrees por tarea, contratos e integración del diff. |
 | Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
 | Agentes | `agents/*.md` | 4 revisores y la `persona-evaluadora`. |

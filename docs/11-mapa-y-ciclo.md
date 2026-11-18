@@ -54,6 +54,7 @@ Agente principal
 | `Skill neurodanza-feature` | 0 Entender (empieza un ciclo nuevo) |
 | Edita código (no `.neurodanza/`) | 1 Implementar; si venía de 3 o 4, suma una **vuelta** |
 | Corre lint, tipos o pruebas | 2 Verificar |
+| Lanza un `implementador` (modo director) | 1 Implementar; si venía de 2 a 4, suma una **vuelta** |
 | `lib/ciclo.mjs revisores` o lanza un `revisor-*` | 3 Revisores |
 | `panel.mjs` o lanza una `persona-evaluadora` | 4 Panel de personas |
 | `git commit` o `gh pr create` | 5 Cerrar |
@@ -81,6 +82,7 @@ Si la conversación se compacta o el agente se pierde, vuelve a leer el plan y s
 |---|---|
 | `revisor-*` | 25 |
 | `persona-evaluadora` | 40 |
+| `implementador` | 60 |
 | otros | 40 |
 
 El mapa cuenta cada herramienta que usa cada subagente y le escribe directamente:

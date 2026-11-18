@@ -1,6 +1,6 @@
 {
   "name": "neurodanza-mapa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mapa en vivo del ciclo de neurodanza: fases, subagentes, pasos y presupuesto, en un panel con scroll al lado del chat.",
   "author": { "name": "2k12" },
   "license": "MIT",

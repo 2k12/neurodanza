@@ -3,9 +3,10 @@
 // sale con código 2 y el motivo en stderr (Claude Code la bloquea y le muestra el motivo al agente).
 // Sin `neurodanza.config.json` en el proyecto no hace nada. Ver docs/04-barreras.md.
 import { existsSync, readFileSync } from "node:fs";
-import { basename, isAbsolute, relative } from "node:path";
+import { basename, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadConfig, matchesAny } from "../lib/config.mjs";
+import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
+import { enWorktree, fueraDeContrato, leerModo, leerTareas } from "../lib/director.mjs";
 
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
@@ -46,19 +47,75 @@ function baseShellRules(b) {
   return rules;
 }
 
+/** Comandos que modifican archivos o el repo (el director no los usa: delega). */
+const MUTA = [
+  /\bsed\s+(-[a-z]*\s+)*-[a-z]*i/i,
+  /\bperl\s+-[a-z]*i/i,
+  /\btee\b/i,
+  /(^|[^\d&>])>{1,2}\s*(?!\/dev\/null\b|&|\$null\b|nul\b)[^\s|;&]/i,
+  /\b(rm|mv|cp|del|rmdir|mkdir|touch|Remove-Item|Move-Item|Copy-Item|Set-Content|Add-Content|Out-File|New-Item)\b/i,
+  /\bgit\s+(apply|am|checkout|switch|restore|reset|merge|rebase|cherry-pick|stash|clean|revert)\b/i,
+  /\b(npm|pnpm|yarn|bun)\s+(add|install|i|remove|rm|uninstall|up|update|upgrade)\b/i,
+  /\b(prettier|biome)\b.*--write\b|\beslint\b.*--fix\b/i,
+];
+
+/** ¿El comando modifica archivos? (sobre el comando sin comillas ni heredocs) */
+export const modifica = (cmd) => MUTA.some((re) => re.test(withoutQuotes(withoutHeredocs(cmd))));
+
+/**
+ * Reglas del modo director (`lib/director.mjs`). El agente principal no edita ni corre comandos que
+ * modifiquen archivos: delega. Un subagente edita solo en el worktree de su tarea y dentro de los
+ * archivos de su contrato.
+ */
+function directorCheck(event, cfg, ctx, file, wt) {
+  const tool = event?.tool_name ?? "";
+  const principal = !event?.agent_id;
+  const plan = (p) => norm(isAbsolute(p) ? relative(cfg.root, p) : p).startsWith(".neurodanza/");
+  if (ctx.modo?.activo && principal) {
+    if (EDIT_TOOLS.has(tool) && file && !plan(file))
+      return "Modo director: el agente principal no edita código. Delega: `director.mjs preparar --tarea …` y lanza un `implementador` con el contrato (solo el plan en .neurodanza/ se edita aquí). Si el usuario pide editar a mano: `director.mjs desactivar`.";
+    if (SHELL_TOOLS.has(tool)) {
+      const cmd = String(event?.tool_input?.command ?? "");
+      if (!/director\.mjs|ciclo\.mjs|errores\.mjs|panel\.mjs/.test(cmd) && modifica(cmd))
+        return "Modo director: ese comando modifica archivos y el agente principal solo dirige. Delega la tarea en un `implementador` (o corre `director.mjs integrar` para traer su trabajo). Lint, tipos, pruebas, git status/diff/log/add/commit sí se permiten.";
+    }
+  }
+  if (!EDIT_TOOLS.has(tool) || !file) return null;
+  if (wt) {
+    const fuera = fueraDeContrato(wt.repo.nombre, [wt.rel], wt.tarea.archivos ?? {});
+    if (fuera.length) {
+      const suyos = Object.entries(wt.tarea.archivos ?? {}).map(([r, g]) => `${r}: ${g.join(", ")}`).join(" · ");
+      return `Fuera del contrato de la tarea ${wt.tarea.id}: ${wt.repo.nombre}/${wt.rel}. Tus archivos: ${suyos}. Si de verdad hace falta tocarlo, no lo hagas: dilo en «pendiente» de tu respuesta y el director decide.`;
+    }
+    return null;
+  }
+  if (ctx.modo?.activo && !principal && repoOf(cfg, file) && ctx.tareas.length)
+    return "Modo director: los subagentes no editan el repo real. Trabaja en el worktree de tu tarea (la ruta está en tu contrato).";
+  return null;
+}
+
 /**
  * Decide si una llamada de herramienta se permite.
- * @param {object} event evento de Claude Code ({ tool_name, tool_input })
+ * @param {object} event evento de Claude Code ({ tool_name, tool_input, agent_id? })
  * @param {object} cfg configuración cargada (loadConfig)
  * @param {(p: string) => boolean} [exists]
+ * @param {{ modo: { activo: boolean }, tareas: object[] }} [ctx] estado del modo director (por defecto, se lee del proyecto)
  * @returns {string | null} motivo del bloqueo, o null si se permite
  */
-export function check(event, cfg, exists = existsSync) {
+export function check(event, cfg, exists = existsSync, ctx = null) {
   const b = cfg.barreras;
   const tool = event?.tool_name ?? "";
   const input = event?.tool_input ?? {};
+  ctx ??= { modo: leerModo(cfg), tareas: leerTareas(cfg) };
   const file = input.file_path ?? input.notebook_path ?? input.path;
-  const rel = file ? norm(isAbsolute(file) ? relative(cfg.root, file) : file) : "";
+  // Un archivo en el worktree de una tarea se juzga como su par en el repo real.
+  const wt = file && ctx.tareas.length ? enWorktree(ctx.tareas, file) : null;
+  const realRepo = wt ? cfg.repos.find((r) => r.nombre === wt.repo.nombre) : null;
+  const real = wt && realRepo ? join(cfg.abs(realRepo.ruta), wt.rel) : file;
+  const rel = real ? norm(isAbsolute(real) ? relative(cfg.root, real) : real) : "";
+
+  const director = directorCheck(event, cfg, ctx, file, wt);
+  if (director) return director;
   const isSecret = (p) => /^\.env(\..+)?$/.test(basename(norm(p))) && !b.secretosPermitidos.includes(basename(norm(p)));
   const exempt = (p) => matchesAny(norm(p), b.exentos ?? []);
 
