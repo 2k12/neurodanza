@@ -22,6 +22,7 @@ Trabajas en dos papeles: **planificas** (paso 0) y **ejecutas** el plan paso por
 - Delega solo tareas acotadas. Cada subagente tiene un presupuesto de pasos (`<ciclo> presupuesto`; revisores 25, personas 40, implementadores 60) y el mapa le avisa al 80 % y al llegar al tope. Díselo en el mensaje: «Presupuesto: N pasos; si llegas, entrega lo que tengas».
 
 ## 0. Entender y planificar (obligatorio)
+Si el contexto de inicio dice que la sesión está **dentro de un componente** (p. ej. `frontend/`), pídele al usuario `/add-dir` de la raíz antes de seguir (no lo hagas tú).
 Resume en pocas líneas qué entendiste (qué cambia, pantallas y roles afectados), escribe el plan en el archivo y **espera el visto bueno del usuario** antes de tocar código. Pregunta solo lo que cambia el resultado.
 Si el contexto de inicio trae **errores conocidos** del proyecto, tenlos presentes en el plan.
 
@@ -79,7 +80,7 @@ Corre lint, tipos y pruebas de cada repo tocado (los comandos están en `repos[]
   - Un problema por cada hallazgo **alto o medio** de un revisor, cada queja de una persona que bajó su nota y cada error que se repitió (`<errores> listar`). Anótalo al constructo que lo **causó** (el implementador de esa área, o tú como `implementador` si trabajaste directo); si un revisor dejó pasar algo que encontró otro juez, anótale el problema también al revisor.
   - `etiqueta` = `area:tema` en minúsculas, **estable**: reutiliza la misma para el mismo problema (`<constructos> estado` muestra las que existen). `leccion` = una regla accionable, no un relato.
   - Si no hubo problemas, regístralo igual con `"problemas": []`: los ciclos limpios también cuentan para medir.
-  - La respuesta dice qué lecciones pasaron a prueba, se aprobaron o se descartaron. Inclúyelo en el informe. Si alguna lección de un revisor está a prueba, recomienda correr `/neurodanza-evals`.
+  - La respuesta dice qué lecciones pasaron a prueba, se aprobaron o se descartaron. Inclúyelo en el informe. Una aprobada aparece como línea nueva en `<repo>/.neurodanza/aprendido/<constructo>.md` (lo versionado): inclúyela en el commit si el usuario pidió commit. Si alguna lección de un revisor está a prueba, recomienda correr `/neurodanza-evals`.
 - Agrega a la bitácora de la versión la sección «Panel de personas» (personas, notas, promedio, rondas, pendientes).
 - Errores del ciclo: si resolviste algo que un hook marcó como `se repite`, verifica que quedó anotado (`<errores> listar`). El catálogo (`errores.archivo`) se versiona con el proyecto.
 - Marca el plan completo y bórralo (o déjalo, si el usuario quiere conservarlo); `.neurodanza/plan.md` y `.neurodanza/estado.json` no van a git.

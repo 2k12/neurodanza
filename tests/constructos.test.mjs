@@ -93,3 +93,26 @@ test("constructos: la CLI registra la reflexión y escribe playbook y CHANGELOG"
   assert.match(readFileSync(join(dir, "CHANGELOG.md"), "utf8"), /ui:aria-label-icono` → \*\*a prueba\*\*/);
   assert.match(run("playbook", "--constructo", FE), /aria-label/);
 });
+
+test("aprendido: lo aprobado se comparte en un archivo versionado que manda", async () => {
+  const { sincronizar, leerAprendido, compartidoDe, parseAprendido } = await import("../lib/constructos.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "nd-apr-"));
+  const d = { constructos: { [FE]: { lecciones: [{ etiqueta: "ui:aria-label-icono", texto: "Todo botón de solo icono lleva aria-label.", estado: "aprobada", evidencias: [] }, { etiqueta: "ui:foco", texto: "Foco visible.", estado: "a prueba", evidencias: [] }], cambios: [] } }, ciclos: [] };
+  assert.deepEqual(sincronizar(dir, d), [FE]);
+  assert.deepEqual(leerAprendido(dir, FE), [{ texto: "Todo botón de solo icono lleva aria-label.", etiqueta: "ui:aria-label-icono" }], "solo las aprobadas");
+  assert.deepEqual(sincronizar(dir, d), [], "sin cambios no reescribe");
+  // El equipo borra la línea en un PR: el agente deja de usarla aunque localmente siga aprobada.
+  writeFileSync(join(dir, `${FE}.md`), "# Aprendido\n");
+  assert.doesNotMatch(playbookTexto(d, FE, leerAprendido(dir, FE)), /aria-label/);
+  assert.match(playbookTexto(d, FE, leerAprendido(dir, FE)), /Foco visible\. \(a prueba\)/);
+  // Una aprobada que se descarta sale del archivo.
+  writeFileSync(join(dir, `${FE}.md`), "- Todo botón de solo icono lleva aria-label. `ui:aria-label-icono`\n");
+  d.constructos[FE].lecciones[0].estado = "descartada";
+  sincronizar(dir, d);
+  assert.deepEqual(parseAprendido(readFileSync(join(dir, `${FE}.md`), "utf8")), []);
+  // Dónde: raíz repo → raíz; si no, el repo de docs; si no hay, local.
+  const base = { root: "/p", abs: (p) => join("/p", p), repos: [{ nombre: "docs", ruta: "docs" }], retroalimentacion: { docs: "docs" } };
+  assert.equal(compartidoDe(base), join("/p", "docs", ".neurodanza", "aprendido"));
+  assert.equal(compartidoDe({ ...base, retroalimentacion: {} }), null);
+  assert.equal(compartidoDe({ ...base, constructos: { compartido: "local" } }), null);
+});

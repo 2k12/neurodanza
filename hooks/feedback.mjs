@@ -355,9 +355,9 @@ export function contextoErrores(list) {
   return ["neurodanza · errores conocidos de este proyecto (si aparece uno, aplica su solución antes de investigar de cero):", ...lines].join("\n");
 }
 
-function inicio(cfg) {
+function inicio(cfg, event) {
   // Deja el proyecto listo (.gitignore, aviso de permisos) y carga los errores conocidos.
-  const auto = autoconfigurar(cfg);
+  const auto = autoconfigurar(cfg, event?.cwd ?? process.cwd());
   const errores = cfg.errores?.activo === false ? "" : contextoErrores(top(loadErrores(archivoDe(cfg)), cfg.errores?.alIniciar ?? 5));
   const contexto = [auto.contexto, errores].filter(Boolean).join("\n\n");
   const out = {};
@@ -383,5 +383,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   if (!cfg) process.exit(0);
   if (process.argv[2] === "post") post(cfg, event);
   else if (process.argv[2] === "stop") await stop(cfg, event);
-  else if (process.argv[2] === "inicio") inicio(cfg);
+  else if (process.argv[2] === "inicio") inicio(cfg, event);
 }

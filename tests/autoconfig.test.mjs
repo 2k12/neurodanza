@@ -17,7 +17,7 @@ const proyecto = (esRepo) => {
 
 test("autoconfig: bloque del .gitignore idempotente", () => {
   const una = conBloque("node_modules/\n");
-  assert.match(una, /^node_modules\/\n\n# neurodanza.*\n\.neurodanza\/\*\n!\.neurodanza\/errores\.json\n!\.neurodanza\/constructos\/\n$/);
+  assert.match(una, /^node_modules\/\n\n# neurodanza.*\n\.neurodanza\/\*\n!\.neurodanza\/errores\.json\n!\.neurodanza\/aprendido\/\n$/);
   assert.equal(conBloque(una), una, "no lo duplica");
   assert.equal(conBloque(".neurodanza/\n"), ".neurodanza/\n", "respeta uno que ya existía");
   assert.match(conBloque(""), /^# neurodanza/);
@@ -36,7 +36,7 @@ test("autoconfig: raíz que es repo: .gitignore una vez y aviso de permisos hast
   const a = autoconfigurar(cfg);
   assert.match(a.mensaje, /agregué al \.gitignore/);
   assert.match(a.contexto, /additionalDirectories/);
-  assert.match(readFileSync(join(root, ".gitignore"), "utf8"), /!\.neurodanza\/constructos\//);
+  assert.match(readFileSync(join(root, ".gitignore"), "utf8"), /!\.neurodanza\/aprendido\//);
   assert.equal(autoconfigurar(cfg).mensaje, "", "la segunda vez no cambia nada");
   mkdirSync(join(root, ".claude"));
   writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ permissions: { additionalDirectories: ["../.neurodanza-wt"] } }));

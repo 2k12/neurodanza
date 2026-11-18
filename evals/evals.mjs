@@ -11,7 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
-import { cargar as cargarConstructos, playbookTexto } from "../lib/constructos.mjs";
+import { cargar as cargarConstructos, playbookDe } from "../lib/constructos.mjs";
 
 /** Casos del proyecto (o vacíos si no hay configuración: así el módulo se puede importar en pruebas). */
 function loadCases() {
@@ -103,7 +103,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       // Con sus lecciones del proyecto (constructo): así las evals miden al revisor tal como trabaja hoy
       // y deciden si una lección a prueba se aprueba o se descarta.
       const cfg = loadConfig(process.cwd());
-      const lecciones = cfg ? playbookTexto(cargarConstructos(cfg), a.revisor) : "";
+      const lecciones = cfg ? playbookDe(cfg, cargarConstructos(cfg), a.revisor) : "";
       console.log([promptRevisor(a.revisor), lecciones].filter(Boolean).join("\n\n"));
     }
   } else if (cmd === "personas") console.log(JSON.stringify(CASOS.personas, null, 2));
