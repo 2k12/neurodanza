@@ -1,129 +1,266 @@
-﻿# neurodanza · ventana EN VIVO del panel de personas (Windows).
-# Se abre al empezar la ronda, siempre encima: de 3 a 5 avatares arriba con su estado, y abajo la
-# conversación (cada persona cuenta lo que prueba y lo que encuentra). Lee el archivo de la ronda
-# (JSONL que escriben `panel.mjs decir` y `panel.mjs cerrar`) y, al llegar el fin de la ronda,
-# muestra notas y promedio y se cierra sola.
+﻿# neurodanza · ventana EN VIVO del panel de personas (Windows): «Role Agents».
+# A la izquierda, la lista de personas (foto, nombre, cargo, estado y nota; con scroll); a la derecha, el
+# chat vertical de la ronda. Lee el
+# archivo de la ronda (JSONL que escriben `panel.mjs decir` y `panel.mjs cerrar`); al llegar el fin,
+# ordena la lista por nota, muestra el veredicto y se cierra sola.
 param([Parameter(Mandatory = $true)][string]$State, [int]$CloseAfter = 12)
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
 function New-Brush([string]$hex) { return [System.Windows.Media.BrushConverter]::new().ConvertFromString($hex) }
 
+# Paleta: casi negro, un solo acento rojo, texto en dos grises.
+$C = @{
+  fondo = '#0b0b0e'; panel = '#121217'; fila = '#16161c'; filaActiva = '#262630'; linea = '#24242c'
+  texto = '#f4f4f5'; tenue = '#8b8b95'; rojo = '#e10600'; verde = '#22c55e'; amarillo = '#facc15'; morado = '#a855f7'
+}
+$TITULAR = New-Object System.Windows.Media.FontFamily 'Bahnschrift, Segoe UI'
+$CUERPO = New-Object System.Windows.Media.FontFamily 'Segoe UI'
+
+function New-Text([string]$t, [double]$size, [string]$color, [string]$weight = 'Normal', $family = $CUERPO) {
+  $tb = New-Object System.Windows.Controls.TextBlock
+  $tb.Text = $t; $tb.FontSize = $size; $tb.Foreground = New-Brush $color; $tb.FontWeight = $weight; $tb.FontFamily = $family
+  $tb.VerticalAlignment = 'Center'
+  return $tb
+}
+
+# Color del estado: verde bien, amarillo duda, rojo problema.
+function Get-EstadoColor([string]$estado) {
+  switch -Regex ($estado) {
+    'Content|Conforme|Aprob' { return $C.verde }
+    'Dudos' { return $C.amarillo }
+    'Molest|Bloque' { return $C.rojo }
+    default { return $C.tenue }
+  }
+}
+
 $win = New-Object System.Windows.Window
-$win.Title = 'Panel de personas · neurodanza (en vivo)'
-$win.Width = 900; $win.Height = 640
+$win.Title = 'Role Agents · neurodanza'
+$win.Width = 1040; $win.Height = 660; $win.MinWidth = 760; $win.MinHeight = 420
 $win.WindowStartupLocation = 'CenterScreen'
 $win.Topmost = $true
-$win.Background = New-Brush '#0f172a'
+$win.Background = New-Brush $C.fondo
 $win.ResizeMode = 'CanResize'
 
-$root = New-Object System.Windows.Controls.DockPanel
-$root.Margin = '18'
+# Barra de scroll fina y oscura (la de Windows es clara y rompe el estilo).
+$scrollXaml = @'
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style TargetType="ScrollBar">
+    <Setter Property="Width" Value="6"/>
+    <Setter Property="MinWidth" Value="6"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ScrollBar">
+          <Track x:Name="PART_Track" IsDirectionReversed="True">
+            <Track.Thumb>
+              <Thumb>
+                <Thumb.Template>
+                  <ControlTemplate TargetType="Thumb"><Border CornerRadius="3" Background="#34343e"/></ControlTemplate>
+                </Thumb.Template>
+              </Thumb>
+            </Track.Thumb>
+          </Track>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>
+'@
+try { $win.Resources.MergedDictionaries.Add([System.Windows.Markup.XamlReader]::Parse($scrollXaml)) } catch { }
 
-# Encabezado
-$head = New-Object System.Windows.Controls.StackPanel
-[System.Windows.Controls.DockPanel]::SetDock($head, 'Top')
-$title = New-Object System.Windows.Controls.TextBlock
-$title.FontSize = 22; $title.FontWeight = 'Bold'; $title.Foreground = New-Brush '#e2e8f0'
-$title.Text = 'Panel de personas'
-$sub = New-Object System.Windows.Controls.TextBlock
-$sub.FontSize = 13; $sub.Foreground = New-Brush '#94a3b8'; $sub.TextWrapping = 'Wrap'; $sub.Margin = '0,2,0,12'
-$head.Children.Add($title) | Out-Null
-$head.Children.Add($sub) | Out-Null
+$root = New-Object System.Windows.Controls.Grid
+foreach ($h in @('Auto', '*', 'Auto')) {
+  $rd = New-Object System.Windows.Controls.RowDefinition
+  $rd.Height = if ($h -eq '*') { [System.Windows.GridLength]::new(1, 'Star') } else { [System.Windows.GridLength]::Auto }
+  $root.RowDefinitions.Add($rd) | Out-Null
+}
+
+# ── Encabezado: Role Agents, el cambio y a la derecha la ronda y el tiempo ──
+$head = New-Object System.Windows.Controls.Border
+$head.BorderBrush = New-Brush $C.rojo; $head.BorderThickness = '0,3,0,0'; $head.Padding = '22,14,22,12'
+$headGrid = New-Object System.Windows.Controls.DockPanel
+$right = New-Object System.Windows.Controls.StackPanel
+$right.Orientation = 'Horizontal'; $right.VerticalAlignment = 'Center'
+[System.Windows.Controls.DockPanel]::SetDock($right, 'Right')
+$lap = New-Text 'Ronda 1' 13 $C.tenue 'SemiBold' $TITULAR
+$lap.Margin = '0,0,16,0'
+$clock = New-Text '00:00' 22 $C.texto 'Bold' $TITULAR
+$right.Children.Add($lap) | Out-Null; $right.Children.Add($clock) | Out-Null
+$titles = New-Object System.Windows.Controls.StackPanel
+$brand = New-Object System.Windows.Controls.StackPanel
+$brand.Orientation = 'Horizontal'
+$mark = New-Object System.Windows.Shapes.Rectangle
+$mark.Width = 6; $mark.Height = 22; $mark.Fill = New-Brush $C.rojo; $mark.Margin = '0,0,10,0'
+$mark.RenderTransform = New-Object System.Windows.Media.SkewTransform(-15, 0)
+$title = New-Text 'Role Agents' 24 $C.texto 'Bold' $TITULAR
+$brand.Children.Add($mark) | Out-Null; $brand.Children.Add($title) | Out-Null
+$sub = New-Text '' 12.5 $C.tenue
+$sub.TextWrapping = 'Wrap'; $sub.Margin = '16,4,0,0'; $sub.TextTrimming = 'CharacterEllipsis'; $sub.MaxHeight = 36
+$titles.Children.Add($brand) | Out-Null; $titles.Children.Add($sub) | Out-Null
+$headGrid.Children.Add($right) | Out-Null; $headGrid.Children.Add($titles) | Out-Null
+$head.Child = $headGrid
+[System.Windows.Controls.Grid]::SetRow($head, 0)
 $root.Children.Add($head) | Out-Null
 
-# Tarjetas de las personas
-$cardsRow = New-Object System.Windows.Controls.Primitives.UniformGrid
-$cardsRow.Rows = 1
-[System.Windows.Controls.DockPanel]::SetDock($cardsRow, 'Top')
-$root.Children.Add($cardsRow) | Out-Null
-$global:NeurodanzaCards = $cardsRow
+# ── Cuerpo: personas (izquierda) | chat (derecha) ──
+$body = New-Object System.Windows.Controls.Grid
+$body.Margin = '16,4,16,0'
+$c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::new(360)
+$c2 = New-Object System.Windows.Controls.ColumnDefinition; $c2.Width = [System.Windows.GridLength]::new(14)
+$c3 = New-Object System.Windows.Controls.ColumnDefinition; $c3.Width = [System.Windows.GridLength]::new(1, 'Star')
+$body.ColumnDefinitions.Add($c1) | Out-Null; $body.ColumnDefinitions.Add($c2) | Out-Null; $body.ColumnDefinitions.Add($c3) | Out-Null
+[System.Windows.Controls.Grid]::SetRow($body, 1)
+$root.Children.Add($body) | Out-Null
 
-# Pie (estado de la ronda)
+function New-Column([string]$label) {
+  $box = New-Object System.Windows.Controls.DockPanel
+  $cap = New-Text $label 11 $C.tenue 'SemiBold' $TITULAR
+  $cap.Margin = '4,6,0,8'
+  [System.Windows.Controls.DockPanel]::SetDock($cap, 'Top')
+  $box.Children.Add($cap) | Out-Null
+  $sv = New-Object System.Windows.Controls.ScrollViewer
+  $sv.VerticalScrollBarVisibility = 'Auto'; $sv.HorizontalScrollBarVisibility = 'Disabled'
+  $sp = New-Object System.Windows.Controls.StackPanel
+  $sv.Content = $sp
+  $box.Children.Add($sv) | Out-Null
+  return @{ box = $box; scroll = $sv; list = $sp; caption = $cap }
+}
+
+$tower = New-Column 'Personas'
+[System.Windows.Controls.Grid]::SetColumn($tower.box, 0)
+$body.Children.Add($tower.box) | Out-Null
+
+$chatCol = New-Column 'Conversación'
+$chatBorder = New-Object System.Windows.Controls.Border
+$chatBorder.BorderBrush = New-Brush $C.linea; $chatBorder.BorderThickness = '1,0,0,0'; $chatBorder.Padding = '14,0,0,0'
+$chatBorder.Child = $chatCol.box
+[System.Windows.Controls.Grid]::SetColumn($chatBorder, 2)
+$body.Children.Add($chatBorder) | Out-Null
+
+# ── Pie: estado de la ronda / veredicto ──
 $foot = New-Object System.Windows.Controls.Border
-$foot.CornerRadius = 10; $foot.Padding = '12,8,12,8'; $foot.Margin = '0,12,0,0'
-$foot.Background = New-Brush '#1e293b'
-[System.Windows.Controls.DockPanel]::SetDock($foot, 'Bottom')
-$footText = New-Object System.Windows.Controls.TextBlock
-$footText.FontSize = 14; $footText.Foreground = New-Brush '#cbd5e1'; $footText.TextWrapping = 'Wrap'
-$footText.Text = 'Ronda en curso… las personas están probando la app.'
-$foot.Child = $footText
+$foot.Margin = '16,10,16,14'; $foot.Padding = '0'; $foot.Background = New-Brush $C.panel
+$footDock = New-Object System.Windows.Controls.DockPanel
+$flag = New-Object System.Windows.Controls.Border
+$flag.Width = 8; $flag.Background = New-Brush $C.rojo
+[System.Windows.Controls.DockPanel]::SetDock($flag, 'Left')
+$footText = New-Text 'Ronda en curso · las personas están probando la app' 13 $C.texto 'SemiBold' $TITULAR
+$footText.Margin = '14,9,14,9'; $footText.TextWrapping = 'Wrap'
+$footDock.Children.Add($flag) | Out-Null; $footDock.Children.Add($footText) | Out-Null
+$foot.Child = $footDock
+[System.Windows.Controls.Grid]::SetRow($foot, 2)
 $root.Children.Add($foot) | Out-Null
-
-# Conversación
-$scroll = New-Object System.Windows.Controls.ScrollViewer
-$scroll.Margin = '0,12,0,0'
-$scroll.VerticalScrollBarVisibility = 'Auto'
-$chat = New-Object System.Windows.Controls.StackPanel
-$scroll.Content = $chat
-$root.Children.Add($scroll) | Out-Null
 
 $win.Content = $root
 
-$script:people = @{}
+$script:people = [ordered]@{}
 $script:pos = 0
 $script:finished = $false
 $script:left = $CloseAfter
 $script:lastChange = Get-Date
+$script:start = Get-Date
+$script:active = $null
 
-function Add-Card($p) {
-  $card = New-Object System.Windows.Controls.Border
-  $card.CornerRadius = 14; $card.Margin = '6,0,6,0'; $card.Padding = '10'
-  $card.Background = New-Brush '#1e293b'; $card.BorderBrush = New-Brush $p.color; $card.BorderThickness = 2
-  $sp = New-Object System.Windows.Controls.StackPanel
-  $sp.HorizontalAlignment = 'Center'
+function New-Avatar($p, [double]$size) {
+  $g = New-Object System.Windows.Controls.Grid
+  $g.Width = $size; $g.Height = $size
+  $e = New-Object System.Windows.Shapes.Ellipse
   if ($p.imagen -and (Test-Path $p.imagen)) {
-    $img = New-Object System.Windows.Controls.Image
     $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
-    $bmp.BeginInit(); $bmp.UriSource = [Uri]$p.imagen; $bmp.CacheOption = 'OnLoad'; $bmp.EndInit()
-    $img.Source = $bmp; $img.Width = 84; $img.Height = 84
-    $sp.Children.Add($img) | Out-Null
+    $bmp.BeginInit(); $bmp.UriSource = [Uri]$p.imagen; $bmp.CacheOption = 'OnLoad'; $bmp.DecodePixelWidth = [int]($size * 2); $bmp.EndInit()
+    $ib = New-Object System.Windows.Media.ImageBrush $bmp
+    $ib.Stretch = 'UniformToFill'
+    $e.Fill = $ib
+    $g.Children.Add($e) | Out-Null
+  } else {
+    $e.Fill = New-Brush $p.color
+    $g.Children.Add($e) | Out-Null
+    $ini = New-Text ([string]$p.nombre).Substring(0, 1).ToUpper() ($size * 0.45) '#ffffff' 'Bold' $TITULAR
+    $ini.HorizontalAlignment = 'Center'
+    $g.Children.Add($ini) | Out-Null
   }
-  $n = New-Object System.Windows.Controls.TextBlock
-  $n.Text = $p.nombre; $n.FontSize = 15; $n.FontWeight = 'SemiBold'; $n.Foreground = [System.Windows.Media.Brushes]::White
-  $n.HorizontalAlignment = 'Center'; $n.Margin = '0,6,0,0'
-  $c = New-Object System.Windows.Controls.TextBlock
-  $c.Text = $p.cargo; $c.FontSize = 11; $c.Foreground = New-Brush '#94a3b8'; $c.HorizontalAlignment = 'Center'
-  $c.TextWrapping = 'Wrap'; $c.TextAlignment = 'Center'
-  $pill = New-Object System.Windows.Controls.Border
-  $pill.CornerRadius = 9; $pill.Padding = '8,2,8,2'; $pill.Margin = '0,6,0,0'; $pill.HorizontalAlignment = 'Center'
-  $pill.Background = New-Brush $p.color
-  $st = New-Object System.Windows.Controls.TextBlock
-  $st.Text = 'Esperando…'; $st.FontSize = 12; $st.FontWeight = 'Bold'; $st.Foreground = [System.Windows.Media.Brushes]::White
-  $pill.Child = $st
-  $sp.Children.Add($n) | Out-Null; $sp.Children.Add($c) | Out-Null; $sp.Children.Add($pill) | Out-Null
-  $card.Child = $sp
-  $global:NeurodanzaCards.Children.Add($card) | Out-Null
-  $script:people[$p.id] = @{ info = $p; status = $st }
+  return $g
 }
 
-function Add-Bubble($id, [string]$text) {
-  $p = $script:people[$id]
-  $color = if ($p) { $p.info.color } else { '#64748b' }
-  $name = if ($p) { $p.info.nombre } else { $id }
-  $row = New-Object System.Windows.Controls.DockPanel
-  $row.Margin = '0,0,0,8'
-  if ($p -and $p.info.imagen -and (Test-Path $p.info.imagen)) {
-    $img = New-Object System.Windows.Controls.Image
-    $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
-    $bmp.BeginInit(); $bmp.UriSource = [Uri]$p.info.imagen; $bmp.CacheOption = 'OnLoad'; $bmp.EndInit()
-    $img.Source = $bmp; $img.Width = 34; $img.Height = 34; $img.VerticalAlignment = 'Top'; $img.Margin = '0,0,8,0'
-    [System.Windows.Controls.DockPanel]::SetDock($img, 'Left')
-    $row.Children.Add($img) | Out-Null
+# Una fila: posición | franja de color | foto | nombre / cargo | estado | nota
+function New-Row($p) {
+  $row = New-Object System.Windows.Controls.Border
+  $row.Background = New-Brush $C.fila; $row.Margin = '0,0,0,3'; $row.Padding = '0,0,10,0'; $row.Height = 62
+  $g = New-Object System.Windows.Controls.Grid
+  foreach ($w in @(32, 5, 58, '*', 'Auto', 46)) {
+    $cd = New-Object System.Windows.Controls.ColumnDefinition
+    $cd.Width = if ($w -eq '*') { [System.Windows.GridLength]::new(1, 'Star') } elseif ($w -eq 'Auto') { [System.Windows.GridLength]::Auto } else { [System.Windows.GridLength]::new($w) }
+    $g.ColumnDefinitions.Add($cd) | Out-Null
   }
-  $b = New-Object System.Windows.Controls.Border
-  $b.CornerRadius = 10; $b.Padding = '10,6,10,6'; $b.Background = New-Brush '#1e293b'
-  $b.BorderBrush = New-Brush $color; $b.BorderThickness = '3,0,0,0'
-  $tb = New-Object System.Windows.Controls.TextBlock
-  $tb.TextWrapping = 'Wrap'; $tb.FontSize = 13; $tb.Foreground = New-Brush '#e2e8f0'
-  $who = New-Object System.Windows.Documents.Run ($name + ': ')
-  $who.FontWeight = 'Bold'; $who.Foreground = New-Brush $color
-  $tb.Inlines.Add($who)
-  $tb.Inlines.Add((New-Object System.Windows.Documents.Run $text))
-  $b.Child = $tb
-  $row.Children.Add($b) | Out-Null
-  $chat.Children.Add($row) | Out-Null
-  $scroll.ScrollToEnd()
+  $pos = New-Text '' 15 $C.texto 'Bold' $TITULAR
+  $pos.HorizontalAlignment = 'Center'
+  $stripe = New-Object System.Windows.Shapes.Rectangle
+  $stripe.Fill = New-Brush $p.color; $stripe.Margin = '0,8,0,8'
+  $av = New-Avatar $p 44
+  $av.HorizontalAlignment = 'Center'
+  $names = New-Object System.Windows.Controls.StackPanel
+  $names.VerticalAlignment = 'Center'
+  $n = New-Text ([string]$p.nombre) 15 $C.texto 'Bold' $TITULAR
+  $n.TextTrimming = 'CharacterEllipsis'
+  $cg = New-Text ([string]$p.cargo) 10.5 $C.tenue
+  $cg.TextTrimming = 'CharacterEllipsis'
+  $names.Children.Add($n) | Out-Null; $names.Children.Add($cg) | Out-Null
+  $st = New-Text 'Esperando' 11 $C.tenue 'SemiBold' $TITULAR
+  $st.Margin = '8,0,8,0'
+  $nota = New-Text '—' 16 $C.tenue 'Bold' $TITULAR
+  $nota.HorizontalAlignment = 'Right'
+  $i = 0
+  foreach ($el in @($pos, $stripe, $av, $names, $st, $nota)) { [System.Windows.Controls.Grid]::SetColumn($el, $i); $g.Children.Add($el) | Out-Null; $i++ }
+  $row.Child = $g
+  return @{ row = $row; pos = $pos; status = $st; nota = $nota }
+}
+
+function Update-Tower {
+  $tower.list.Children.Clear()
+  $i = 1
+  foreach ($id in $script:people.Keys) {
+    $p = $script:people[$id]
+    $p.ui.pos.Text = "$i"
+    # Quien habla ahora: fila más clara y su número en rojo.
+    $habla = $id -eq $script:active -and -not $script:finished
+    $p.ui.row.Background = New-Brush $(if ($habla) { $C.filaActiva } else { $C.fila })
+    $p.ui.pos.Foreground = New-Brush $(if ($habla) { $C.rojo } else { $C.texto })
+    $tower.list.Children.Add($p.ui.row) | Out-Null
+    $i++
+  }
+}
+
+function Add-Message($id, [string]$text, [string]$when) {
+  $p = $script:people[$id]
+  $color = if ($p) { $p.info.color } else { $C.tenue }
+  $name = if ($p) { [string]$p.info.nombre } else { "$id" }
+  $atBottom = $chatCol.scroll.VerticalOffset -ge ($chatCol.scroll.ScrollableHeight - 24)
+  $msg = New-Object System.Windows.Controls.DockPanel
+  $msg.Margin = '0,0,0,12'
+  if ($p) {
+    $face = New-Avatar $p.info 30
+    $face.VerticalAlignment = 'Top'; $face.Margin = '0,2,10,0'
+    [System.Windows.Controls.DockPanel]::SetDock($face, 'Left')
+    $msg.Children.Add($face) | Out-Null
+  }
+  $line = New-Object System.Windows.Controls.Border
+  $line.BorderBrush = New-Brush $color; $line.BorderThickness = '2,0,0,0'; $line.Padding = '10,0,6,0'
+  $sp = New-Object System.Windows.Controls.StackPanel
+  $hdr = New-Object System.Windows.Controls.StackPanel
+  $hdr.Orientation = 'Horizontal'
+  $who = New-Text $name 12.5 $color 'Bold' $TITULAR
+  $hora = New-Text $when 10.5 $C.tenue
+  $hora.Margin = '8,0,0,0'
+  $hdr.Children.Add($who) | Out-Null; $hdr.Children.Add($hora) | Out-Null
+  $tb = New-Text $text 13.5 $C.texto
+  $tb.TextWrapping = 'Wrap'; $tb.Margin = '0,2,0,0'; $tb.LineHeight = 19
+  $sp.Children.Add($hdr) | Out-Null; $sp.Children.Add($tb) | Out-Null
+  $line.Child = $sp
+  $msg.Children.Add($line) | Out-Null
+  $chatCol.list.Children.Add($msg) | Out-Null
+  # Solo baja sola si el usuario no está leyendo más arriba.
+  if ($atBottom) { $chatCol.scroll.ScrollToEnd() }
 }
 
 function Read-NewLines {
@@ -140,45 +277,70 @@ function Read-NewLines {
   return $text -split "`n" | Where-Object { $_.Trim() }
 }
 
+function Get-Hora($ev) {
+  try { return ([datetime]$ev.t).ToLocalTime().ToString('HH:mm:ss') } catch { return (Get-Date).ToString('HH:mm:ss') }
+}
+
 function Handle($ev) {
   $script:lastChange = Get-Date
   switch ($ev.type) {
     'inicio' {
-      $title.Text = $ev.titulo
       $sub.Text = $ev.cambio
-      foreach ($p in $ev.personas) { Add-Card $p }
+      if ($ev.titulo -match 'ronda\s+(\d+)') { $lap.Text = "Ronda $($Matches[1])" }
+      if ($ev.titulo -match 'v(\d+\.\d+(\.\d+)?)') { $lap.Text = "v$($Matches[1])  ·  $($lap.Text)" }
+      try { $script:start = ([datetime]$ev.t).ToLocalTime() } catch { $script:start = Get-Date }
+      foreach ($p in $ev.personas) { $script:people[$p.id] = @{ info = $p; ui = (New-Row $p); nota = $null } }
+      $tower.caption.Text = "Personas  ·  $($script:people.Count)"
+      Update-Tower
     }
     'msg' {
-      if ($ev.estado -and $script:people[$ev.persona]) { $script:people[$ev.persona].status.Text = $ev.estado }
-      if ($ev.texto) { Add-Bubble $ev.persona $ev.texto }
+      $p = $script:people[$ev.persona]
+      if ($ev.estado -and $p) {
+        $p.ui.status.Text = [string]$ev.estado
+        $p.ui.status.Foreground = New-Brush (Get-EstadoColor $ev.estado)
+      }
+      $script:active = $ev.persona
+      if ($ev.texto) { Add-Message $ev.persona $ev.texto (Get-Hora $ev) }
+      Update-Tower
     }
     'fin' {
-      foreach ($n in $ev.notas) {
-        if ($script:people[$n.persona]) { $script:people[$n.persona].status.Text = "$($n.estado) · $($n.nota)" }
-      }
-      $ok = [bool]$ev.aprobado
-      $foot.Background = New-Brush ($(if ($ok) { '#14532d' } else { '#7f1d1d' }))
-      $verdict = if ($ok) { 'APROBADO' } else { 'NO APROBADO' }
-      $script:verdict = "$verdict · promedio $($ev.promedio) / 10 (umbral $($ev.umbral))"
-      $footText.Foreground = [System.Windows.Media.Brushes]::White
-      $footText.FontWeight = 'Bold'
       $script:finished = $true
+      $best = ($ev.notas | ForEach-Object { [double]$_.nota } | Measure-Object -Maximum).Maximum
+      foreach ($n in $ev.notas) {
+        $p = $script:people[$n.persona]
+        if (-not $p) { continue }
+        $p.nota = [double]$n.nota
+        $p.ui.nota.Text = ('{0:0.0}' -f [double]$n.nota)
+        # Morado = la mejor nota; verde sobre el umbral; amarillo debajo.
+        $col = if ([double]$n.nota -eq $best) { $C.morado } elseif ([double]$n.nota -gt [double]$ev.umbral) { $C.verde } else { $C.amarillo }
+        $p.ui.nota.Foreground = New-Brush $col
+        if ($n.estado) { $p.ui.status.Text = [string]$n.estado; $p.ui.status.Foreground = New-Brush (Get-EstadoColor $n.estado) }
+      }
+      # Al cerrar, la lista se ordena por nota.
+      $sorted = [ordered]@{}
+      foreach ($k in ($script:people.Keys | Sort-Object { if ($null -eq $script:people[$_].nota) { -1 } else { $script:people[$_].nota } } -Descending)) { $sorted[$k] = $script:people[$k] }
+      $script:people = $sorted
+      Update-Tower
+      $ok = [bool]$ev.aprobado
+      $flag.Background = New-Brush $(if ($ok) { $C.verde } else { $C.rojo })
+      $script:verdict = "$(if ($ok) { 'Aprobado' } else { 'No aprobado' })  ·  promedio $('{0:0.00}' -f [double]$ev.promedio) / 10  ·  umbral $('{0:0.00}' -f [double]$ev.umbral)"
     }
   }
 }
 
 $timer = New-Object System.Windows.Threading.DispatcherTimer
-$timer.Interval = [TimeSpan]::FromMilliseconds(700)
+$timer.Interval = [TimeSpan]::FromMilliseconds(500)
 $timer.Add_Tick({
   foreach ($line in (Read-NewLines)) {
     try { Handle ($line | ConvertFrom-Json) } catch { Add-Content -Path ($State + ".log") -Value ("$($_.Exception.Message) @ $($_.InvocationInfo.ScriptLineNumber)") }
   }
-  if ($script:finished) {
-    $footText.Text = "$($script:verdict) — se cierra en $([math]::Ceiling($script:left)) s"
-    $script:left -= 0.7
+  if (-not $script:finished) {
+    $clock.Text = ((Get-Date) - $script:start).ToString('mm\:ss')
+    if (((Get-Date) - $script:lastChange).TotalMinutes -gt 45) { $timer.Stop(); $win.Close() }
+  } else {
+    $footText.Text = "$($script:verdict)  ·  se cierra en $([math]::Ceiling($script:left)) s"
+    $script:left -= 0.5
     if ($script:left -le 0) { $timer.Stop(); $win.Close() }
-  } elseif (((Get-Date) - $script:lastChange).TotalMinutes -gt 45) {
-    $timer.Stop(); $win.Close()
   }
 })
 $win.Add_ContentRendered({ $win.Activate() | Out-Null; $timer.Start() })

@@ -25,7 +25,7 @@ Revisa en orden:
 1. **Sistema:** solo existe en Windows. En macOS y Linux `en-vivo` responde `ronda iniciada (sin ventana)` y el resultado se ve en el chat.
 2. **Configuración:** `panel.ventana` debe ser `"windows"`. Con `"ninguna"` no se abre.
 3. **Salida de `en-vivo`:** debe decir `ventana en vivo abierta · <ruta>/ronda.jsonl`.
-4. **Detrás de otra ventana:** se abre siempre encima y centrada, pero algunas aplicaciones a pantalla completa la tapan; búscala en la barra de tareas («Panel de personas · neurodanza (en vivo)»).
+4. **Detrás de otra ventana:** se abre siempre encima y centrada, pero algunas aplicaciones a pantalla completa la tapan; búscala en la barra de tareas («Role Agents · neurodanza»).
 5. **Errores de la ventana:** quedan en `ronda.jsonl.log`, en la carpeta de la ronda.
 6. **Prueba a mano** (con consola visible, para ver el error):
    ```
