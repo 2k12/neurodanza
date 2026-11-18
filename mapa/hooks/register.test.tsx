@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { avisoPara, etiqueta, faseDe, irAFase, nuevoCiclo, pasosDelPlan, veredictoDe } from './register'
+import { avisoPara, etiqueta, faseDe, irAFase, maxPasos, nuevoCiclo, pasosDelPlan, PRESUPUESTO, veredictoDe } from './register'
 import type { Agente } from '../types'
 
 const PANE = {
@@ -20,6 +20,9 @@ test('fases: cada llamada del agente principal mueve el ciclo a su fase', () => 
   expect(faseDe({ tool: 'Bash', command: 'MSYS_NO_PATHCONV=1 node /x/panel/panel.mjs elegir' }, 3)).toBe(4)
   expect(faseDe({ tool: 'Bash', command: 'git commit -m "feat: x"' }, 4)).toBe(5)
   expect(faseDe({ tool: 'Edit', file_path: 'docs/bitacora.md' }, 5)).toBe(null)
+  expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:implementador' }, 0)).toBe(1)
+  expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:implementador' }, 3)).toBe(1)
+  expect(maxPasos('implementador', PRESUPUESTO)).toBe(60)
 })
 
 test('fases: volver atrás suma una vuelta y deja pendientes las de adelante', () => {
@@ -57,7 +60,7 @@ test('el mapa dibuja la fase y el subagente que corre, en cada superficie', asyn
 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   await $.tool.call({ tool: 'Skill', skill: 'neurodanza:neurodanza-feature', args: 'filtro por fecha' })
-  await $.agent.spawn({ subagentType: 'neurodanza:revisor-ui', description: 'revisar ui', prompt: 'x' })
+  await $.agent.spawn({ subagentType: 'neurodanza:revisor-ui', description: 'revisar ui', prompt: 'x' } as unknown as Parameters<typeof $.agent.spawn>[0])
   await $.tool.call({ tool: 'Grep', pattern: 'lucide', agentId: 'ag1' })
 
   for (const surface of ['terminal', 'desktop'] as const) {

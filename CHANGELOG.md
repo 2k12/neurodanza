@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.3.0 · 2026-11-18
+
+### Agregado
+- **Modo director** (`lib/director.mjs`, `docs/13-director.md`): el agente principal dirige y no edita; cada tarea la hace un `implementador` en su propio worktree, creado desde una foto del estado actual (incluye lo que no está en commit) y con los `node_modules` del repo real enlazados. `integrar` revisa que lo cambiado esté dentro del contrato, aplica el diff (con 3 vías si hace falta) y borra el worktree sin tocar las dependencias reales.
+- Agente `implementador`: cumple un contrato (objetivo, archivos, condición de terminado, presupuesto de 60 pasos) y responde un JSON.
+- Barreras del modo director: el principal no edita ni corre comandos que modifiquen archivos; cada subagente edita solo en su worktree y dentro de su contrato. Rutas protegidas y migraciones inmutables valen también en los worktrees. Lint al editar dentro de los worktrees.
+- Configuración `director` (`worktrees`, `enlazar`) y `ciclo.maxPasos.implementador`.
+- Mapa 0.2.0: `◆ modo director`, implementadores como nodos de la fase 1 con el nombre de su tarea y su presupuesto.
+
 ## 0.2.0 · 2026-11-18
 
 ### Agregado

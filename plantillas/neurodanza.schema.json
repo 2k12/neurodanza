@@ -57,13 +57,20 @@
         "alIniciar": { "type": "integer", "minimum": 0, "description": "Cuántos se cargan como contexto al iniciar la sesión." }
       }
     },
+    "director": {
+      "type": "object",
+      "properties": {
+        "worktrees": { "type": "string", "description": "Carpeta de los worktrees de las tareas; admite {proyecto}." },
+        "enlazar": { "type": "array", "items": { "enum": ["node_modules"] } }
+      }
+    },
     "ciclo": {
       "type": "object",
       "properties": {
         "plan": { "type": "string" },
         "maxPasos": {
           "type": "object",
-          "properties": { "revisor": { "type": "integer" }, "persona": { "type": "integer" }, "otro": { "type": "integer" } }
+          "properties": { "revisor": { "type": "integer" }, "persona": { "type": "integer" }, "implementador": { "type": "integer" }, "otro": { "type": "integer" } }
         },
         "revisores": { "enum": ["segun-cambio", "todos"] }
       }

@@ -16,6 +16,7 @@ Unos evals con respuesta conocida miden si los revisores y las personas evalúan
 | **Retroalimentación** | Al editar (hook `PostToolUse`) y al terminar (hook `Stop`) | Lint del archivo recién editado. Al terminar: lint, tipos y pruebas relacionadas de lo cambiado, generadores, y la definición de terminado (versión, bitácora, migraciones, guías, panel aprobado, evals). |
 | **Revisores** | Paso 3 de `/neurodanza-feature` | 4 agentes en paralelo (`revisor-coherencia`, `revisor-permisos`, `revisor-ui`, `revisor-docs`) que revisan el diff sin ver el razonamiento de quien lo hizo. |
 | **Panel de personas** | Paso 4 de `/neurodanza-feature` | De 3 a 5 personas (una por rol afectado) entran a la app con su propio usuario, navegan con Playwright, conversan en una **ventana en vivo** (solo Windows) y califican. Se aprueba si el promedio supera el umbral (8.99 por defecto). |
+| **Modo director** | Cambios grandes, en `/neurodanza-feature` | El agente principal no edita: divide el trabajo en tareas con dueños de archivos y las delega a implementadores, cada uno en su propio worktree y con un contrato. Las barreras hacen cumplir el contrato; el director integra el diff. |
 | **Mapa en vivo** | Siempre, con el plugin `neurodanza-mapa` | Panel al lado del chat con la fase del ciclo, cada subagente (pasos, última herramienta, tiempo, veredicto) y el plan. Avisa al subagente que se acerca a su presupuesto de pasos o repite la misma llamada. |
 | **Errores conocidos** | Al iniciar la sesión y en cada bloqueo | Cada problema de los hooks se guarda con una firma; si vuelve, el mensaje trae cómo se resolvió. |
 | **Evals** | `/neurodanza-evals` | Casos con errores sembrados y un control limpio para los revisores, y casos de calibración para el panel. |
@@ -68,6 +69,7 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 10. [Problemas comunes](docs/10-problemas-comunes.md)
 11. [Mapa en vivo y ciclo planificador + ejecutor](docs/11-mapa-y-ciclo.md)
 12. [Errores conocidos](docs/12-errores-conocidos.md)
+13. [Modo director](docs/13-director.md)
 
 Hay un ejemplo completo en [`ejemplos/nest-next/`](ejemplos/nest-next/): la configuración de un proyecto real NestJS + Next con tres repos (`backend`, `frontend`, `docs`).
 

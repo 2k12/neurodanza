@@ -62,6 +62,10 @@ Las barreras del plugin se apagan con `false`:
 "barreras": { "borradosRaiz": false }
 ```
 
+## Modo director
+
+Con el modo director activo (`lib/director.mjs activar`), las barreras distinguen al agente principal de los subagentes: el principal no edita ni corre comandos que modifiquen archivos (delega), y cada implementador edita solo en su worktree y dentro de los archivos de su contrato. Las rutas protegidas y las migraciones inmutables se aplican también dentro de los worktrees. Ver [13-director.md](13-director.md).
+
 ## La regla ESLint `neurodanza/no-junk-comments`
 
 Complementa las barreras dentro del código. `/neurodanza-init` la copia a `eslint-rules/` de cada repo con ESLint y la registra (`plugins: { neurodanza }`, `"neurodanza/no-junk-comments": "error"`). Marca en los comentarios:
