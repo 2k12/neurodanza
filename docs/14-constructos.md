@@ -38,7 +38,7 @@ Cada cambio de estado queda en el `CHANGELOG.md` del constructo, con el motivo (
     …
 ```
 
-**Se versiona** con el proyecto: la experiencia es del equipo. `/neurodanza-init` agrega `!.neurodanza/constructos/` al `.gitignore`.
+**Se versiona** con el proyecto: la experiencia es del equipo. Al iniciar la sesión, el plugin agrega `!.neurodanza/constructos/` al `.gitignore` de la raíz si es un repo. Si la raíz no es un repo (varios repos sueltos), queda local; para compartirla, apunta `constructos.carpeta` a una carpeta dentro de un repo.
 
 ## La reflexión
 

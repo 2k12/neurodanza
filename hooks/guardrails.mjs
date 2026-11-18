@@ -70,7 +70,11 @@ export const modifica = (cmd) => MUTA.some((re) => re.test(withoutQuotes(without
 function directorCheck(event, cfg, ctx, file, wt) {
   const tool = event?.tool_name ?? "";
   const principal = !event?.agent_id;
-  const plan = (p) => norm(isAbsolute(p) ? relative(cfg.root, p) : p).startsWith(".neurodanza/");
+  // El plan y el estado (.neurodanza/) sí; los worktrees de las tareas (aunque vivan en .neurodanza/wt) no.
+  const plan = (p) => {
+    const r = norm(isAbsolute(p) ? relative(cfg.root, p) : p);
+    return !wt && r.startsWith(".neurodanza/") && !r.startsWith(".neurodanza/wt/");
+  };
   if (ctx.modo?.activo && principal) {
     if (EDIT_TOOLS.has(tool) && file && !plan(file))
       return "Modo director: el agente principal no edita código. Delega: `director.mjs preparar --tarea …` y lanza un `implementador` con el contrato (solo el plan en .neurodanza/ se edita aquí). Si el usuario pide editar a mano: `director.mjs desactivar`.";

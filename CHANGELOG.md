@@ -9,7 +9,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 - `director.mjs preparar --constructo <nombre>`: el contrato incluye las lecciones del constructo.
 - `evals.mjs prompt` incluye las lecciones del revisor, para medirlo tal como trabaja.
 
+- **Autoconfiguración al iniciar la sesión** (`autoconfigurar`, `lib/autoconfig.mjs`): agrega el bloque de `.neurodanza/` al `.gitignore` de la raíz si es un repo, y avisa (sin darse permisos) si los worktrees quedan fuera del proyecto.
+
 ### Cambiado
+- `director.worktrees: "auto"`: si la raíz no es un repo, los worktrees van en `.neurodanza/wt` (sin permisos); si lo es, al lado del proyecto. El director tampoco puede editar `.neurodanza/wt`.
 - CI con Node 22 y 24 (Node 20 ya no tiene soporte); `engines` pide Node 22 o superior.
 - Ventana Role Agents: «los agents están probando la app».
 

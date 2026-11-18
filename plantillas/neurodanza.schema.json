@@ -158,7 +158,7 @@
       "properties": {
         "worktrees": {
           "type": "string",
-          "description": "Carpeta de los worktrees de las tareas; admite {proyecto}."
+          "description": "\"auto\" (por defecto) o carpeta de los worktrees; admite {proyecto}."
         },
         "enlazar": {
           "type": "array",
@@ -224,6 +224,10 @@
           "type": "boolean"
         }
       }
+    },
+    "autoconfigurar": {
+      "type": "boolean",
+      "description": "Al iniciar la sesión: .gitignore de la raíz y aviso de permisos de los worktrees."
     }
   }
 }

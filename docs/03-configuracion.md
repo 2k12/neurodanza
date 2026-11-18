@@ -49,6 +49,17 @@ En `panel.usuarios` los valores pueden leer variables de entorno: `${VAR}` (vac�
 
 Además, `{id}`, `{nombre}`, `{rol}`, `{email}` y `{clave}` se reemplazan por los datos de cada persona (ver [09-adaptadores.md](09-adaptadores.md)).
 
+## `autoconfigurar`
+
+`true` por defecto. Al iniciar cada sesión (hook `SessionStart`) el plugin deja el proyecto listo sin pasos a mano:
+
+- Si la raíz es un repo, agrega una vez a su `.gitignore` el bloque de neurodanza (`.neurodanza/*` local; `!.neurodanza/errores.json` y `!.neurodanza/constructos/` versionados) y te lo avisa.
+- Si los worktrees del modo director quedan fuera del proyecto y no están permitidos, le pide al agente que te diga cómo permitirlos (una línea en `.claude/settings.json` o `/add-dir`). El plugin **no** se da permisos solo.
+
+Con `false` no toca nada.
+
+> En un proyecto de varios repos cuya raíz no es un repo (`backend/`, `frontend/`, `docs/` sueltos), `.neurodanza/` vive en la raíz y no entra en ningún repo: los errores conocidos y los constructos quedan locales. Para compartirlos con el equipo, apunta `errores.archivo` y `constructos.carpeta` a una carpeta dentro de un repo (por ejemplo `docs/.neurodanza/…`).
+
 ## `repos`
 
 Lista de repos del proyecto (por defecto `[]`). Cada uno:
@@ -267,7 +278,7 @@ Modo director: el agente principal dirige y los implementadores trabajan en work
 
 | Clave | Por defecto | Qué hace |
 |---|---|---|
-| `worktrees` | `"../.neurodanza-wt/{proyecto}"` | Dónde se crean los worktrees de las tareas, relativo a la raíz (`{proyecto}` = nombre de la carpeta del proyecto). Fuera del proyecto, para que el lint y las pruebas del repo real no los encuentren. |
+| `worktrees` | `"auto"` | Dónde se crean los worktrees de las tareas. `"auto"`: si la raíz **no** es un repo (proyecto de varios repos), en `.neurodanza/wt` dentro del proyecto (ningún repo la ve y no pide permisos); si la raíz **es** un repo, en `../.neurodanza-wt/<proyecto>`, para que el lint y las pruebas del repo no los recorran. También acepta una ruta relativa a la raíz con `{proyecto}`. |
 | `enlazar` | `["node_modules"]` | Qué se enlaza del repo real en cada worktree (las dependencias, para no instalarlas). `[]` no enlaza nada. |
 
 ## `constructos`
