@@ -82,8 +82,4 @@ Con `neurodanza-mapa`, el modo director se ve como `◆ modo director` arriba de
 
 ## Lo que sigue
 
-Este modo es la base para orquestar muchos agentes. Las siguientes piezas ([11-mapa-y-ciclo.md](11-mapa-y-ciclo.md)):
-
-1. **Reflexión al cerrar:** comparar lo que entregó cada implementador con lo que encontraron los jueces y proponer lecciones.
-2. **Constructos:** cada agente con su playbook de lecciones y su historial, versionados.
-3. **Automejora con freno:** una lección entra al playbook solo si las evals demuestran que mejora sin romper nada.
+Cada implementador se lanza como un **constructo** (`--constructo implementador-frontend`): su contrato trae las lecciones que aprendió en el proyecto, y la reflexión al cerrar le anota los problemas que causó. Ver [14-constructos.md](14-constructos.md).

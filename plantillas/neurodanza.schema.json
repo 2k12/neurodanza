@@ -2,77 +2,227 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "neurodanza.config.json",
   "type": "object",
-  "required": ["repos"],
+  "required": [
+    "repos"
+  ],
   "properties": {
     "repos": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["nombre", "ruta"],
+        "required": [
+          "nombre",
+          "ruta"
+        ],
         "properties": {
-          "nombre": { "type": "string" },
-          "ruta": { "type": "string" },
-          "codigo": { "type": "array", "items": { "type": "string" } },
-          "ignorar": { "type": "array", "items": { "type": "string" } },
-          "lintGlobs": { "type": "array", "items": { "type": "string" } },
-          "lint": { "type": "string", "description": "Usa {archivos} para la lista de archivos." },
-          "tipos": { "type": "string" },
-          "relacionadas": { "type": "string", "description": "Usa {archivos}." },
-          "sinPruebas": { "type": "string" }
+          "nombre": {
+            "type": "string"
+          },
+          "ruta": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ignorar": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lintGlobs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lint": {
+            "type": "string",
+            "description": "Usa {archivos} para la lista de archivos."
+          },
+          "tipos": {
+            "type": "string"
+          },
+          "relacionadas": {
+            "type": "string",
+            "description": "Usa {archivos}."
+          },
+          "sinPruebas": {
+            "type": "string"
+          }
         }
       }
     },
-    "barreras": { "type": "object" },
-    "retroalimentacion": { "type": "object" },
+    "barreras": {
+      "type": "object"
+    },
+    "retroalimentacion": {
+      "type": "object"
+    },
     "reglas": {
       "type": "object",
       "properties": {
-        "coherencia": { "type": "array", "items": { "type": "string" } },
-        "permisos": { "type": "array", "items": { "type": "string" } },
-        "ui": { "type": "array", "items": { "type": "string" } },
-        "docs": { "type": "array", "items": { "type": "string" } }
+        "coherencia": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permisos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ui": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "docs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
-    "app": { "type": "object" },
+    "app": {
+      "type": "object"
+    },
     "roles": {
       "type": "object",
-      "properties": { "adaptador": { "enum": ["json", "markdown"] }, "fuente": { "type": "string" } }
+      "properties": {
+        "adaptador": {
+          "enum": [
+            "json",
+            "markdown"
+          ]
+        },
+        "fuente": {
+          "type": "string"
+        }
+      }
     },
     "panel": {
       "type": "object",
       "properties": {
-        "min": { "type": "integer", "minimum": 1 },
-        "max": { "type": "integer", "minimum": 1 },
-        "umbral": { "type": "number" },
-        "maxRondas": { "type": "integer" },
-        "ventana": { "enum": ["windows", "ninguna"] }
+        "min": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "umbral": {
+          "type": "number"
+        },
+        "maxRondas": {
+          "type": "integer"
+        },
+        "ventana": {
+          "enum": [
+            "windows",
+            "ninguna"
+          ]
+        }
       }
     },
-    "evals": { "type": "object" },
+    "evals": {
+      "type": "object"
+    },
     "errores": {
       "type": "object",
       "properties": {
-        "activo": { "type": "boolean" },
-        "archivo": { "type": "string", "description": "Catálogo de errores conocidos (se versiona)." },
-        "alIniciar": { "type": "integer", "minimum": 0, "description": "Cuántos se cargan como contexto al iniciar la sesión." }
+        "activo": {
+          "type": "boolean"
+        },
+        "archivo": {
+          "type": "string",
+          "description": "Catálogo de errores conocidos (se versiona)."
+        },
+        "alIniciar": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cuántos se cargan como contexto al iniciar la sesión."
+        }
       }
     },
     "director": {
       "type": "object",
       "properties": {
-        "worktrees": { "type": "string", "description": "Carpeta de los worktrees de las tareas; admite {proyecto}." },
-        "enlazar": { "type": "array", "items": { "enum": ["node_modules"] } }
+        "worktrees": {
+          "type": "string",
+          "description": "Carpeta de los worktrees de las tareas; admite {proyecto}."
+        },
+        "enlazar": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "node_modules"
+            ]
+          }
+        }
       }
     },
     "ciclo": {
       "type": "object",
       "properties": {
-        "plan": { "type": "string" },
+        "plan": {
+          "type": "string"
+        },
         "maxPasos": {
           "type": "object",
-          "properties": { "revisor": { "type": "integer" }, "persona": { "type": "integer" }, "implementador": { "type": "integer" }, "otro": { "type": "integer" } }
+          "properties": {
+            "revisor": {
+              "type": "integer"
+            },
+            "persona": {
+              "type": "integer"
+            },
+            "implementador": {
+              "type": "integer"
+            },
+            "otro": {
+              "type": "integer"
+            }
+          }
         },
-        "revisores": { "enum": ["segun-cambio", "todos"] }
+        "revisores": {
+          "enum": [
+            "segun-cambio",
+            "todos"
+          ]
+        }
+      }
+    },
+    "constructos": {
+      "type": "object",
+      "properties": {
+        "carpeta": {
+          "type": "string",
+          "description": "Lecciones e historial de los constructos (se versiona)."
+        },
+        "minEvidencias": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ciclosPrueba": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxLecciones": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "automatico": {
+          "type": "boolean"
+        }
       }
     }
   }

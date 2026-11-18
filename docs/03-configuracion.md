@@ -270,6 +270,18 @@ Modo director: el agente principal dirige y los implementadores trabajan en work
 | `worktrees` | `"../.neurodanza-wt/{proyecto}"` | Dónde se crean los worktrees de las tareas, relativo a la raíz (`{proyecto}` = nombre de la carpeta del proyecto). Fuera del proyecto, para que el lint y las pruebas del repo real no los encuentren. |
 | `enlazar` | `["node_modules"]` | Qué se enlaza del repo real en cada worktree (las dependencias, para no instalarlas). `[]` no enlaza nada. |
 
+## `constructos`
+
+Agentes que acumulan experiencia en el proyecto. Ver [14-constructos.md](14-constructos.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `carpeta` | `".neurodanza/constructos"` | Dónde viven las lecciones, el historial, el playbook y el CHANGELOG de cada constructo. **Se versiona.** |
+| `minEvidencias` | `2` | Evidencias para que una lección candidata pase a prueba. |
+| `ciclosPrueba` | `3` | Ciclos a prueba antes de juzgarla (aprobar si el problema bajó, descartar si no). |
+| `maxLecciones` | `30` | Tope de lecciones activas por constructo; al pasarlo se archivan las aprobadas con menos evidencias. |
+| `automatico` | `true` | Pasar a prueba solo al llegar a `minEvidencias`. Con `false`, solo a mano (`constructos.mjs probar`). |
+
 ## Validación
 
 `validate()` revisa:

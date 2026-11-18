@@ -145,7 +145,7 @@ $footDock = New-Object System.Windows.Controls.DockPanel
 $flag = New-Object System.Windows.Controls.Border
 $flag.Width = 8; $flag.Background = New-Brush $C.rojo
 [System.Windows.Controls.DockPanel]::SetDock($flag, 'Left')
-$footText = New-Text 'Ronda en curso · las personas están probando la app' 13 $C.texto 'SemiBold' $TITULAR
+$footText = New-Text 'Ronda en curso · los agents están probando la app' 13 $C.texto 'SemiBold' $TITULAR
 $footText.Margin = '14,9,14,9'; $footText.TextWrapping = 'Wrap'
 $footDock.Children.Add($flag) | Out-Null; $footDock.Children.Add($footText) | Out-Null
 $foot.Child = $footDock

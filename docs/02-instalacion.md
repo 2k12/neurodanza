@@ -9,7 +9,7 @@
 
 Con eso quedan registrados los hooks de `hooks/hooks.json`, los agentes de `agents/` y los skills de `skills/`. Los hooks solo actúan en proyectos con `neurodanza.config.json`.
 
-Requisitos: Node 20+, git. Para el panel, `@playwright/test` en el proyecto y Chromium (`npx playwright install chromium`). Para la ventana en vivo, Windows.
+Requisitos: Node 22+, git. Para el panel, `@playwright/test` en el proyecto y Chromium (`npx playwright install chromium`). Para la ventana en vivo, Windows.
 
 ## Preparar un proyecto: `/neurodanza-init`
 
