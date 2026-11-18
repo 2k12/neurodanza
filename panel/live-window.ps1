@@ -36,7 +36,7 @@ function Get-EstadoColor([string]$estado) {
 
 $win = New-Object System.Windows.Window
 $win.Title = 'Role Agents · neurodanza'
-$win.Width = 1100; $win.Height = 660; $win.MinWidth = 760; $win.MinHeight = 420
+$win.Width = 760; $win.Height = 620; $win.MinWidth = 600; $win.MinHeight = 420
 $win.WindowStartupLocation = 'CenterScreen'
 $win.Topmost = $true
 $win.Background = New-Brush $C.fondo
@@ -106,8 +106,8 @@ $root.Children.Add($head) | Out-Null
 # ── Cuerpo: personas (izquierda) | chat (derecha) ──
 $body = New-Object System.Windows.Controls.Grid
 $body.Margin = '16,4,16,0'
-$c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::new(410)
-$c2 = New-Object System.Windows.Controls.ColumnDefinition; $c2.Width = [System.Windows.GridLength]::new(14)
+$c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::new(270)
+$c2 = New-Object System.Windows.Controls.ColumnDefinition; $c2.Width = [System.Windows.GridLength]::new(12)
 $c3 = New-Object System.Windows.Controls.ColumnDefinition; $c3.Width = [System.Windows.GridLength]::new(1, 'Star')
 $body.ColumnDefinitions.Add($c1) | Out-Null; $body.ColumnDefinitions.Add($c2) | Out-Null; $body.ColumnDefinitions.Add($c3) | Out-Null
 [System.Windows.Controls.Grid]::SetRow($body, 1)
@@ -183,12 +183,12 @@ function New-Avatar($p, [double]$size) {
   return $g
 }
 
-# Una fila: posición | franja de color | foto | nombre / cargo | estado | nota
+# Una fila compacta: posición | franja de color | foto | nombre / cargo / estado | nota
 function New-Row($p) {
   $row = New-Object System.Windows.Controls.Border
-  $row.Background = New-Brush $C.fila; $row.Margin = '0,0,0,3'; $row.Padding = '0,0,10,0'; $row.Height = 62
+  $row.Background = New-Brush $C.fila; $row.Margin = '0,0,0,3'; $row.Padding = '0,0,10,0'; $row.Height = 66
   $g = New-Object System.Windows.Controls.Grid
-  foreach ($w in @(32, 5, 58, '*', 'Auto', 46)) {
+  foreach ($w in @(26, 4, 52, '*', 42)) {
     $cd = New-Object System.Windows.Controls.ColumnDefinition
     $cd.Width = if ($w -eq '*') { [System.Windows.GridLength]::new(1, 'Star') } elseif ($w -eq 'Auto') { [System.Windows.GridLength]::Auto } else { [System.Windows.GridLength]::new($w) }
     $g.ColumnDefinitions.Add($cd) | Out-Null
@@ -205,13 +205,13 @@ function New-Row($p) {
   $n.TextTrimming = 'CharacterEllipsis'
   $cg = New-Text ([string]$p.cargo) 10.5 $C.tenue
   $cg.TextTrimming = 'CharacterEllipsis'
-  $names.Children.Add($n) | Out-Null; $names.Children.Add($cg) | Out-Null
   $st = New-Text 'Esperando' 11 $C.tenue 'SemiBold' $TITULAR
-  $st.Margin = '8,0,8,0'
+  $st.Margin = '0,1,0,0'; $st.TextTrimming = 'CharacterEllipsis'
+  $names.Children.Add($n) | Out-Null; $names.Children.Add($cg) | Out-Null; $names.Children.Add($st) | Out-Null
   $nota = New-Text '—' 16 $C.tenue 'Bold' $TITULAR
   $nota.HorizontalAlignment = 'Right'
   $i = 0
-  foreach ($el in @($pos, $stripe, $av, $names, $st, $nota)) { [System.Windows.Controls.Grid]::SetColumn($el, $i); $g.Children.Add($el) | Out-Null; $i++ }
+  foreach ($el in @($pos, $stripe, $av, $names, $nota)) { [System.Windows.Controls.Grid]::SetColumn($el, $i); $g.Children.Add($el) | Out-Null; $i++ }
   $row.ToolTip = "$($p.nombre) · $($p.cargo)"
   $row.Child = $g
   return @{ row = $row; pos = $pos; status = $st; nota = $nota }
@@ -307,6 +307,13 @@ function Handle($ev) {
     'fin' {
       $script:finished = $true
       try { $clock.Text = (([datetime]$ev.t).ToLocalTime() - $script:start).ToString('mm\:ss') } catch { }
+      if ($ev.cancelada) {
+        # Cerrada sin notas (otra ronda empezó o terminó el turno): se va pronto.
+        $flag.Background = New-Brush $C.tenue
+        $script:verdict = "Ronda cerrada  ·  $($ev.motivo)"
+        $script:left = [math]::Min($script:left, 4)
+        return
+      }
       $best = ($ev.notas | ForEach-Object { [double]$_.nota } | Measure-Object -Maximum).Maximum
       foreach ($n in $ev.notas) {
         $p = $script:people[$n.persona]
@@ -338,7 +345,8 @@ $timer.Add_Tick({
   }
   if (-not $script:finished) {
     $clock.Text = ((Get-Date) - $script:start).ToString('mm\:ss')
-    if (((Get-Date) - $script:lastChange).TotalMinutes -gt 45) { $timer.Stop(); $win.Close() }
+    # Sin mensajes en 20 minutos, la ronda quedó huérfana: se cierra.
+    if (((Get-Date) - $script:lastChange).TotalMinutes -gt 20) { $timer.Stop(); $win.Close() }
   } else {
     $footText.Text = "$($script:verdict)  ·  se cierra en $([math]::Ceiling($script:left)) s"
     $script:left -= 0.5

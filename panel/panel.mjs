@@ -16,7 +16,8 @@
 //   node panel.mjs ventana --resultado <json>                   resumen final (sin ronda en vivo)
 //   node panel.mjs crear --rol <ROL> [--rolDoc x] [--cargo "…"]  persona nueva para un rol sin persona
 import { spawn } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -335,6 +336,9 @@ function calificar(ctx, a) {
   Object.assign(data, s, { umbral, fecha: new Date().toISOString() });
   writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
   console.log(JSON.stringify(s));
+  // Si la ventana en vivo sigue abierta, se cierra aquí con las notas (aunque después nadie llame a `cerrar`).
+  const cerrada = cerrarRondaActiva(ctx.cfg.root, "", data, umbral);
+  if (cerrada) console.log(`ronda en vivo cerrada con las notas · ${cerrada}`);
   if (!s.aprobado) process.exitCode = 1;
 }
 
@@ -353,8 +357,39 @@ function launchWindow(ctx, script, scriptArgs) {
 const roundFile = (dir) => join(resolve(dir), "ronda.jsonl");
 const append = (dir, ev) => appendFileSync(roundFile(dir), JSON.stringify({ ...ev, t: new Date().toISOString() }) + "\n", "utf8");
 
+// ── Ronda activa: se recuerda por proyecto para cerrarla aunque nadie llame a `cerrar` ──
+const activaFile = (root) => join(tmpdir(), `neurodanza-ronda-${createHash("sha1").update(String(root)).digest("hex").slice(0, 12)}.txt`);
+
+/** ¿La ronda de esa carpeta sigue abierta (empezó y no tiene evento de fin)? */
+export function rondaAbierta(dir) {
+  const f = roundFile(dir);
+  if (!existsSync(f)) return false;
+  const lines = readFileSync(f, "utf8").split("\n").filter(Boolean);
+  return lines.length > 0 && !lines.some((l) => l.includes('"type":"fin"'));
+}
+
+/** Evento de fin con notas, estados (desde la nota) y veredicto de un resultado del panel. */
+function finDe(umbral, data) {
+  return { type: "fin", promedio: data.promedio, aprobado: !!data.aprobado, umbral, notas: (data.evaluaciones ?? []).map((e) => ({ persona: e.persona, nota: e.nota, estado: estadoFinal(e.nota) })) };
+}
+
+/**
+ * Cierra la ronda en vivo que quedó abierta en el proyecto (la ventana se cierra sola). Con `data`
+ * muestra las notas; sin ella, la marca como cerrada con el motivo. Devuelve la carpeta o null.
+ */
+export function cerrarRondaActiva(root, motivo, data = null, umbral = 0) {
+  const af = activaFile(root);
+  if (!existsSync(af)) return null;
+  const dir = readFileSync(af, "utf8").trim();
+  rmSync(af, { force: true });
+  if (!dir || !rondaAbierta(dir)) return null;
+  append(dir, data ? finDe(umbral, data) : { type: "fin", cancelada: true, motivo });
+  return dir;
+}
+
 function enVivo(ctx, a) {
   const dir = resolve(a.ronda);
+  if (cerrarRondaActiva(ctx.cfg.root, "empezó otra ronda")) console.log("(la ronda anterior seguía abierta: se cerró)");
   mkdirSync(dir, { recursive: true });
   writeFileSync(roundFile(dir), "", "utf8");
   const personas = list(a.personas).map((id) => {
@@ -362,6 +397,7 @@ function enVivo(ctx, a) {
     return { id: p.id, nombre: p.nombre, cargo: p.cargo, color: p.color, imagen: imageOf(ctx, p) };
   });
   append(dir, { type: "inicio", titulo: a.titulo ?? "Panel de personas", cambio: a.cambio ?? "", personas });
+  writeFileSync(activaFile(ctx.cfg.root), dir, "utf8");
   const opened = launchWindow(ctx, "live-window.ps1", ["-State", roundFile(dir)]);
   console.log(`${opened ? "ventana en vivo abierta" : "ronda iniciada (sin ventana)"} · ${roundFile(dir)}`);
 }
@@ -382,13 +418,8 @@ function oir(a) {
 
 function cerrar(ctx, a) {
   const data = JSON.parse(readFileSync(resolve(a.resultado), "utf8"));
-  append(resolve(a.ronda), {
-    type: "fin",
-    promedio: data.promedio,
-    aprobado: !!data.aprobado,
-    umbral: ctx.cfg.panel.umbral,
-    notas: (data.evaluaciones ?? []).map((e) => ({ persona: e.persona, nota: e.nota, estado: estadoFinal(e.nota) })),
-  });
+  if (rondaAbierta(a.ronda)) append(resolve(a.ronda), finDe(ctx.cfg.panel.umbral, data));
+  rmSync(activaFile(ctx.cfg.root), { force: true });
   console.log(`ronda cerrada: ${data.aprobado ? "aprobado" : "no aprobado"} · promedio ${data.promedio}`);
 }
 

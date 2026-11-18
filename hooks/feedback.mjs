@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
 import { enWorktree, leerTareas } from "../lib/director.mjs";
+import { cerrarRondaActiva } from "../panel/panel.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
 
 const norm = (p) => String(p ?? "").replace(/\\/g, "/");
@@ -255,6 +256,12 @@ function versionContext(cfg) {
 
 async function stop(cfg, event) {
   const t0 = Date.now();
+  // Una ronda del panel que quedó abierta al terminar el turno se cierra (la ventana se cierra sola).
+  try {
+    cerrarRondaActiva(cfg.root, "terminó el turno");
+  } catch {
+    /* el panel es opcional */
+  }
   const changes = changesOf(cfg);
   const c = counter(event.session_id);
   if (Object.values(changes).every((f) => f.length === 0)) {

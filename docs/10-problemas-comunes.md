@@ -31,10 +31,10 @@ Revisa en orden:
    ```
    powershell -NoProfile -ExecutionPolicy Bypass -STA -File <plugin>\panel\live-window.ps1 -State <carpeta>\ronda.jsonl
    ```
-   Si `wscript.exe` está bloqueado por una política del equipo, la ventana no puede lanzarse oculta.
+   Si `wscript.exe` está bloqueado por una política del equipo, la ventana no puede lanzarse oculta. El lanzador (`panel/launch-hidden.vbs`) corre PowerShell dentro de `conhost --headless` para que no asome ninguna consola, ni siquiera con Windows Terminal como consola por defecto.
 7. **Sin fotos en las tarjetas:** la ventana muestra la imagen solo si existe `<panel.fotos>/<foto>.png` o `avatars/<id>.png`. Corre `recortar-fotos.mjs` o `avatares.mjs` (los PNG de avatares necesitan Playwright).
 
-Recuerda que se cierra sola 12 s después de `cerrar`, o tras 45 minutos sin mensajes.
+Se cierra sola 12 s después de `cerrar` o de `calificar`, cuando empieza otra ronda, al terminar el turno o tras 20 minutos sin mensajes.
 
 ## Playwright no instalado
 
