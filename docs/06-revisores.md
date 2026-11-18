@@ -1,6 +1,27 @@
 # 6. Revisores
 
-Cuatro agentes (`agents/revisor-*.md`) revisan cada cambio en el paso 3 de `/neurodanza-feature`. Se lanzan **en paralelo, en un solo mensaje**, y cada uno recibe **solo**: qué se pidió (una línea), los repos tocados, la rama y contra qué rama comparar. **No** reciben el razonamiento ni las conclusiones de quien implementó: así juzgan el diff y no la explicación.
+Cuatro agentes (`agents/revisor-*.md`) revisan cada cambio en el paso 3 de `/neurodanza-feature`. Se lanzan **en paralelo, en un solo mensaje**, y cada uno recibe **solo**: qué se pidió (una línea), los repos tocados, la rama, contra qué rama comparar y su presupuesto de pasos.
+
+## Cuáles se lanzan
+
+No siempre hacen falta los cuatro. `node <plugin>/lib/ciclo.mjs revisores` mira lo cambiado en la rama (commits contra la base y lo que no está en commit) y responde cuáles lanzar y por qué:
+
+| Revisor | Se lanza si… |
+|---|---|
+| `revisor-docs` | hay cualquier cambio. |
+| `revisor-ui` | cambiaron pantallas (`retroalimentacion.pantallas`) o archivos de interfaz (`.tsx`, `.jsx`, `.vue`, `.svelte`, estilos). |
+| `revisor-permisos` | cambiaron pantallas, o archivos de rutas, controladores, guardias, roles, auth o middleware. |
+| `revisor-coherencia` | cambió código en 2 repos o más, o un contrato (DTO, esquemas, validaciones, tipos, API, servicios). |
+
+Con `"ciclo": { "revisores": "todos" }` se lanzan siempre los cuatro.
+
+## Modelo y presupuesto
+
+Los revisores corren con `model: sonnet`: leen un diff contra reglas escritas y no necesitan el modelo más grande, así que terminan antes y cuestan menos. Cada uno tiene un presupuesto de pasos (`ciclo.maxPasos.revisor`, 25 por defecto). Con el mapa instalado ([11-mapa-y-ciclo.md](11-mapa-y-ciclo.md)), recibe un aviso al 80 % y otro al llegar al tope; entonces entrega su JSON con lo que tiene y un hallazgo `baja` con lo que no alcanzó a revisar. Después de cambiar el modelo o el presupuesto, corre `/neurodanza-evals`.
+
+## Qué reciben
+
+**No** reciben el razonamiento ni las conclusiones de quien implementó: así juzgan el diff y no la explicación.
 
 Cada revisor lee el diff por su cuenta (por defecto `git diff <rama base>` en cada repo de `repos`, más `git status` para archivos nuevos), puede leer archivos del repo para tener contexto y **no corrige nada**.
 

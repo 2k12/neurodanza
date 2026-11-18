@@ -2,6 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.2.0 · 2026-11-18
+
+### Agregado
+- **Mapa en vivo** (plugin nuevo `neurodanza-mapa`, carpeta `mapa/`): panel con scroll al lado del chat con la fase del ciclo (deducida de lo que hace el agente, con vueltas), cada subagente como nodo (pasos, última herramienta, tiempo, veredicto; clic para ver su conversación), la última verificación del hook `Stop` y el plan. Línea de estado con el resumen. Comando `/neurodanza-mapa`.
+- **Presupuesto de pasos por subagente** (`ciclo.maxPasos`: revisores 25, personas 40): el mapa le avisa al subagente al 80 %, al tope y si repite la misma llamada 3 veces.
+- **Planificador + ejecutor**: el paso 0 de `/neurodanza-feature` escribe `.neurodanza/plan.md` con pasos y condiciones de terminado; el agente lo marca y lo relee si se pierde.
+- **Errores conocidos** (`lib/errores.mjs`, `errores.*`): cada problema de los hooks se guarda con una firma estable y un contador por sesión; si vuelve, el mensaje trae la solución anotada. Hook `SessionStart` que carga los más útiles como contexto. Comandos `listar`, `resolver` y `buscar`.
+- `lib/ciclo.mjs revisores`: qué revisores aplican al diff de la rama y por qué (`ciclo.revisores`: `"segun-cambio"` o `"todos"`).
+
+### Cambiado
+- **Hook `Stop` más rápido**: lint, tipos y pruebas corren en paralelo (y los repos también), y un repo cuyo cambio no se movió reutiliza el resultado anterior (`retroalimentacion.cache`). Escribe tiempos y resultado en `.neurodanza/estado.json`.
+- Los 4 revisores corren con `model: sonnet` y entregan lo que tienen al llegar a su presupuesto.
+- Panel de personas: en la ronda siguiente solo se vuelve a evaluar a quien reprobó o usa una ruta que tocó el arreglo.
+- `/neurodanza-init` agrega `.neurodanza/*` y `!.neurodanza/errores.json` a `.gitignore` y sugiere instalar el mapa.
+
 ## 0.1.2 · 2026-11-18
 
 - El hook Stop ya no bloquea en ciclo: tras `maxBloqueos` intentos con los mismos problemas deja terminar (avisa una vez) hasta que los problemas cambien. Antes reiniciaba el contador y volvía a bloquear sin fin (por ejemplo, esperando un panel que depende de algo externo).

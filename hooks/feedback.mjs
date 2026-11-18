@@ -2,14 +2,19 @@
 // neurodanza · ciclo de retroalimentación.
 //   node feedback.mjs post  → PostToolUse: lint del archivo recién editado (error = se lo muestra al agente)
 //   node feedback.mjs stop  → Stop: no deja terminar si lo cambiado no pasa lint, tipos, pruebas
-//                             relacionadas o la definición de terminado del proyecto.
+//                             relacionadas o la definición de terminado del proyecto. Corre las
+//                             comprobaciones en paralelo y no repite las de un repo que no cambió
+//                             desde la última vez (caché por firma del cambio).
+//   node feedback.mjs inicio → SessionStart: carga los errores conocidos del proyecto como contexto.
 // Todo sale de `neurodanza.config.json`; sin ese archivo no hace nada. Ver docs/05-retroalimentacion.md.
-import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { exec, execSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
+import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
 
 const norm = (p) => String(p ?? "").replace(/\\/g, "/");
 const tail = (s, n = 25) => String(s).split(/\r?\n/).filter((l) => l.trim()).slice(-n).join("\n");
@@ -20,6 +25,18 @@ function sh(cmd, cwd, timeout = 240_000) {
   } catch (e) {
     return { ok: false, out: `${e.stdout ?? ""}${e.stderr ?? ""}`.trim() || String(e.message) };
   }
+}
+
+/** Igual que `sh`, pero sin bloquear: permite correr lint, tipos y pruebas a la vez. */
+function shAsync(cmd, cwd, timeout = 240_000) {
+  const t0 = Date.now();
+  return new Promise((res) => {
+    exec(cmd, { cwd, encoding: "utf8", timeout, maxBuffer: 32 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
+      const ms = Date.now() - t0;
+      if (!err) return res({ ok: true, out: stdout, ms });
+      res({ ok: false, out: `${stdout ?? ""}${stderr ?? ""}`.trim() || String(err.message), ms });
+    });
+  });
 }
 
 /** Archivos con cambios sin commit (incluye nuevos; excluye borrados). */
@@ -137,26 +154,67 @@ function changesOf(cfg) {
   return out;
 }
 
-function codeChecks(cfg, repo, files) {
+/** Lint, tipos y pruebas relacionadas de un repo, a la vez. Devuelve problemas y tiempos. */
+async function codeChecks(cfg, repo, files) {
   const dir = cfg.abs(repo.ruta);
   const code = files.filter((f) => matchesAny(f, repo.codigo ?? []) && !matchesAny(f, repo.ignorar ?? []));
-  const out = [];
-  if (code.length === 0) return out;
+  if (code.length === 0) return { problems: [], pasos: [] };
   const lintable = repo.lintGlobs ? code.filter((f) => matchesAny(f, repo.lintGlobs)) : code;
-  if (repo.lint && lintable.length > 0) {
-    const r = sh(repo.lint.replace("{archivos}", quote(lintable)), dir);
-    if (!r.ok) out.push(`${repo.nombre} · lint:\n${tail(r.out)}`);
+  const none = new RegExp(repo.sinPruebas ?? "No tests found|No test files found", "i");
+  const jobs = [];
+  if (repo.lint && lintable.length > 0) jobs.push({ paso: "lint", run: shAsync(repo.lint.replace("{archivos}", quote(lintable)), dir), n: 25 });
+  if (repo.tipos) jobs.push({ paso: "tipos", run: shAsync(repo.tipos, dir), n: 25 });
+  if (repo.relacionadas) jobs.push({ paso: "pruebas", run: shAsync(repo.relacionadas.replace("{archivos}", quote(code)), dir, 300_000), n: 30, none });
+  const problems = [];
+  const pasos = [];
+  for (const j of jobs) {
+    const r = await j.run;
+    const ok = r.ok || Boolean(j.none?.test(r.out));
+    pasos.push({ repo: repo.nombre, paso: j.paso, ok, ms: r.ms });
+    if (!ok) problems.push(`${repo.nombre} · ${j.paso === "pruebas" ? "pruebas relacionadas" : j.paso}:\n${tail(r.out, j.n)}`);
   }
-  if (repo.tipos) {
-    const r = sh(repo.tipos, dir);
-    if (!r.ok) out.push(`${repo.nombre} · tipos:\n${tail(r.out)}`);
+  return { problems, pasos };
+}
+
+/** Firma de un conjunto de partes (misma firma = mismo resultado de lint, tipos y pruebas). */
+export const fingerprint = (parts) => createHash("sha1").update(parts.join("\u0000")).digest("hex");
+
+/** Estado de un repo: commit, diff contra HEAD y tamaño y fecha de cada archivo cambiado o nuevo. */
+function repoFingerprint(cfg, repo, files) {
+  const dir = cfg.abs(repo.ruta);
+  const diff = sh("git diff HEAD --no-ext-diff --no-color", dir, 20_000);
+  const head = sh("git rev-parse HEAD", dir, 10_000);
+  const stats = files.map((f) => {
+    try {
+      const st = statSync(join(dir, f));
+      return `${f}:${st.size}:${st.mtimeMs}`;
+    } catch {
+      return `${f}:-`;
+    }
+  });
+  const cmds = JSON.stringify([repo.lint, repo.tipos, repo.relacionadas]);
+  return fingerprint([repo.nombre, head.out ?? "", diff.ok ? diff.out : String(Date.now()), ...stats, cmds]);
+}
+
+const cacheFile = (cfg) => join(tmpdir(), `neurodanza-cache-${createHash("sha1").update(cfg.root).digest("hex").slice(0, 12)}.json`);
+
+function readJson(file, fallback) {
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return fallback;
   }
-  if (repo.relacionadas) {
-    const t = sh(repo.relacionadas.replace("{archivos}", quote(code)), dir, 300_000);
-    const none = new RegExp(repo.sinPruebas ?? "No tests found|No test files found", "i");
-    if (!t.ok && !none.test(t.out)) out.push(`${repo.nombre} · pruebas relacionadas:\n${tail(t.out, 30)}`);
+}
+
+/** Estado de la última verificación, para el mapa en vivo (`neurodanza-mapa`). No falla nunca. */
+function writeEstado(cfg, estado) {
+  try {
+    const dir = cfg.abs(".neurodanza");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "estado.json"), JSON.stringify({ ...estado, at: new Date().toISOString() }, null, 2));
+  } catch {
+    /* el mapa es opcional */
   }
-  return out;
 }
 
 /** Corre los generadores cuyas condiciones se cumplen; los marcados `error` bloquean si fallan. */
@@ -194,13 +252,39 @@ function versionContext(cfg) {
   return { version, baseVersion: base.ok ? versionOf(base.out) : "" };
 }
 
-function stop(cfg, event) {
+async function stop(cfg, event) {
+  const t0 = Date.now();
   const changes = changesOf(cfg);
   const c = counter(event.session_id);
-  if (Object.values(changes).every((f) => f.length === 0)) return c.set(0);
+  if (Object.values(changes).every((f) => f.length === 0)) {
+    writeEstado(cfg, { fase: "sin cambios", pasos: [], problemas: 0, ms: Date.now() - t0 });
+    return c.set(0);
+  }
 
   const hard = [...regenerate(cfg, changes)];
-  for (const repo of cfg.repos) if ((changes[repo.nombre] ?? []).length > 0) hard.push(...codeChecks(cfg, repo, changes[repo.nombre]));
+  // Repos en paralelo; uno cuyo cambio es idéntico al de la última vez reutiliza su resultado.
+  const useCache = cfg.retroalimentacion.cache !== false;
+  const cache = useCache ? readJson(cacheFile(cfg), {}) : {};
+  const touched = cfg.repos.filter((r) => (changes[r.nombre] ?? []).length > 0);
+  const results = await Promise.all(
+    touched.map(async (repo) => {
+      const sig = useCache ? repoFingerprint(cfg, repo, changes[repo.nombre]) : "";
+      const prev = cache[repo.nombre];
+      if (useCache && prev?.sig === sig) return { problems: prev.problems, pasos: prev.pasos.map((p) => ({ ...p, cache: true })) };
+      const r = await codeChecks(cfg, repo, changes[repo.nombre]);
+      if (useCache) cache[repo.nombre] = { sig, ...r };
+      return r;
+    }),
+  );
+  const pasos = results.flatMap((r) => r.pasos);
+  hard.push(...results.flatMap((r) => r.problems));
+  if (useCache) {
+    try {
+      writeFileSync(cacheFile(cfg), JSON.stringify(cache));
+    } catch {
+      /* sin caché sigue funcionando */
+    }
+  }
 
   const { version, baseVersion } = versionContext(cfg);
   const umbral = cfg.panel.umbral;
@@ -213,6 +297,7 @@ function stop(cfg, event) {
     docsInBranch: docsCommittedInBranch(cfg),
   });
   hard.push(...done.hard);
+  writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, ms: Date.now() - t0 });
 
   const max = cfg.retroalimentacion.maxBloqueos;
   const soft = event.stop_hook_active ? [] : done.soft;
@@ -228,7 +313,7 @@ function stop(cfg, event) {
     return;
   }
   c.set(hard.length > 0 ? n + 1 : n, sig);
-  const reason = ["Antes de terminar, corrige esto (neurodanza):", ...hard.map((h) => `✖ ${h}`), ...soft.map((s) => `• ${s}`)].join("\n\n");
+  const reason = ["Antes de terminar, corrige esto (neurodanza):", ...registrarEnProyecto(cfg, hard, event.session_id).map((h) => `✖ ${h}`), ...soft.map((s) => `• ${s}`)].join("\n\n");
   process.stdout.write(JSON.stringify({ decision: "block", reason }));
 }
 
@@ -242,9 +327,23 @@ function post(cfg, event) {
   if (repo.lintGlobs && !matchesAny(rel, repo.lintGlobs)) return;
   const r = sh(repo.lint.replace("{archivos}", `"${rel}"`), at.dir, 90_000);
   if (!r.ok) {
-    process.stderr.write(`Lint de ${repo.nombre}/${rel}:\n${tail(r.out)}\n`);
+    const [msg] = registrarEnProyecto(cfg, [`${repo.nombre} · lint:\n${tail(r.out)}`], event.session_id);
+    process.stderr.write(`Lint de ${repo.nombre}/${rel}:\n${msg.split("\n").slice(1).join("\n")}\n`);
     process.exit(2);
   }
+}
+
+/** Contexto de inicio con los errores conocidos más útiles (vacío si no hay). */
+export function contextoErrores(list) {
+  if (!list.length) return "";
+  const lines = list.map((e) => `- [${e.firma}] ${e.categoria} (${e.veces}×): ${e.patron.slice(0, 140)}${e.solucion ? `\n  Solución: ${e.solucion}` : " (sin solución anotada)"}`);
+  return ["neurodanza · errores conocidos de este proyecto (si aparece uno, aplica su solución antes de investigar de cero):", ...lines].join("\n");
+}
+
+function inicio(cfg) {
+  if (cfg.errores?.activo === false) return;
+  const text = contextoErrores(top(loadErrores(archivoDe(cfg)), cfg.errores?.alIniciar ?? 5));
+  if (text) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
@@ -263,5 +362,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   if (!cfg) process.exit(0);
   if (process.argv[2] === "post") post(cfg, event);
-  else if (process.argv[2] === "stop") stop(cfg, event);
+  else if (process.argv[2] === "stop") await stop(cfg, event);
+  else if (process.argv[2] === "inicio") inicio(cfg);
 }
