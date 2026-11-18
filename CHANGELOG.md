@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.6.0 · 2026-11-18
+
+### Cambiado
+- **Constructos: lo crudo local, lo aprendido en git.** Los datos de cada ciclo (evidencias, candidatas, a prueba) quedan en `.neurodanza/constructos/` (local). Las lecciones **aprobadas** se escriben en `<repo>/.neurodanza/aprendido/<constructo>.md`, versionado: aparecen en el PR como una línea nueva que se revisa como cualquier cambio, y borrar una línea la retira (lo compartido manda). `constructos.compartido: "auto"`: la raíz si es un repo, si no el repo de docs.
+- El `.gitignore` automático versiona `!.neurodanza/aprendido/` en vez de todos los datos de los constructos (y actualiza el bloque de la 0.5.0).
+
+### Agregado
+- Si Claude se abre **dentro de un componente** (p. ej. `frontend/`), al iniciar la sesión el agente pide una vez `/add-dir` de la raíz del proyecto, donde viven el plan, los worktrees y los demás repos.
+
 ## 0.5.0 · 2026-11-18
 
 ### Agregado

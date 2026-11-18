@@ -26,19 +26,23 @@ flowchart LR
 
 Cada cambio de estado queda en el `CHANGELOG.md` del constructo, con el motivo (`0.67 → 0.00 por ciclo`).
 
-## Dónde vive
+## Dónde vive: lo crudo, local; lo aprendido, en git
 
 ```
-.neurodanza/constructos/
-  constructos.json                 ← lecciones, evidencias y ciclos (lo que usa la lógica)
-  implementador-frontend/
-    playbook.md                    ← aprobadas, a prueba, candidatas, descartadas (legible)
-    CHANGELOG.md                   ← cada cambio de estado con su motivo
-  revisor-ui/
-    …
+.neurodanza/constructos/                     ← LOCAL (cambia en cada ciclo)
+  constructos.json                           ciclos, evidencias, candidatas, a prueba, descartadas
+  implementador-frontend/playbook.md         informe legible de todo
+  implementador-frontend/CHANGELOG.md        cada cambio de estado con su motivo
+
+<repo>/.neurodanza/aprendido/                ← EN GIT (cambia solo al aprobarse algo)
+  implementador-frontend.md                  - Todo botón de solo icono lleva aria-label. `ui:aria-label-icono`
+  revisor-ui.md
 ```
 
-**Se versiona** con el proyecto: la experiencia es del equipo. Al iniciar la sesión, el plugin agrega `!.neurodanza/constructos/` al `.gitignore` de la raíz si es un repo. Si la raíz no es un repo (varios repos sueltos), queda local; para compartirla, apunta `constructos.carpeta` a una carpeta dentro de un repo.
+- **Lo crudo** (medición) es local: cambia en cada ciclo y en git solo ensuciaría los commits y chocaría entre ramas.
+- **Lo aprendido** (las lecciones aprobadas) se versiona. Cuando una lección se aprueba, aparece en tu PR como una línea nueva que revisas como cualquier cambio: es un **freno humano** sobre el freno automático. Si una lección se descarta o se archiva, su línea se quita.
+- **Lo compartido manda:** los agentes usan las aprobadas que están en `aprendido/`. Si en un PR alguien borra una línea, esa lección deja de usarse aunque en tu máquina siga aprobada. Las que están a prueba salen de lo local.
+- **Dónde va lo aprendido** (`constructos.compartido: "auto"`): en la raíz si es un repo; si no (varios repos sueltos, como `backend/`, `frontend/`, `docs/`), en el repo de documentación (`retroalimentacion.docs`); si no hay, queda local. Da igual si abres Claude en la raíz o dentro de un componente: el proyecto es el mismo.
 
 ## La reflexión
 

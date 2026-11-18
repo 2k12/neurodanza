@@ -53,12 +53,14 @@ Además, `{id}`, `{nombre}`, `{rol}`, `{email}` y `{clave}` se reemplazan por lo
 
 `true` por defecto. Al iniciar cada sesión (hook `SessionStart`) el plugin deja el proyecto listo sin pasos a mano:
 
-- Si la raíz es un repo, agrega una vez a su `.gitignore` el bloque de neurodanza (`.neurodanza/*` local; `!.neurodanza/errores.json` y `!.neurodanza/constructos/` versionados) y te lo avisa.
+- Si la raíz es un repo, agrega una vez a su `.gitignore` el bloque de neurodanza (`.neurodanza/*` local; `!.neurodanza/errores.json` y `!.neurodanza/aprendido/` versionados) y te lo avisa. Si tenía el bloque de la 0.5.0 (que versionaba todos los datos de los constructos), lo actualiza.
 - Si los worktrees del modo director quedan fuera del proyecto y no están permitidos, le pide al agente que te diga cómo permitirlos (una línea en `.claude/settings.json` o `/add-dir`). El plugin **no** se da permisos solo.
 
 Con `false` no toca nada.
 
-> En un proyecto de varios repos cuya raíz no es un repo (`backend/`, `frontend/`, `docs/` sueltos), `.neurodanza/` vive en la raíz y no entra en ningún repo: los errores conocidos y los constructos quedan locales. Para compartirlos con el equipo, apunta `errores.archivo` y `constructos.carpeta` a una carpeta dentro de un repo (por ejemplo `docs/.neurodanza/…`).
+- Si abres Claude **dentro de un componente** (por ejemplo `frontend/`), el plan, los worktrees y los demás repos quedan fuera de la carpeta de la sesión: el agente te pide una vez `/add-dir ..` (la raíz del proyecto). Si la raíz ya está permitida en `.claude/settings.json` de la raíz o del componente, no avisa.
+
+> En un proyecto de varios repos cuya raíz no es un repo (`backend/`, `frontend/`, `docs/` sueltos), `.neurodanza/` vive en la raíz y no entra en ningún repo: el plan, el estado y los datos de los constructos quedan locales (está bien) y lo aprendido se versiona en el repo de documentación (`constructos.compartido: "auto"`). Los errores conocidos quedan locales; para compartirlos, apunta `errores.archivo` a una carpeta dentro de un repo.
 
 ## `repos`
 
@@ -287,7 +289,8 @@ Agentes que acumulan experiencia en el proyecto. Ver [14-constructos.md](14-cons
 
 | Clave | Por defecto | Qué hace |
 |---|---|---|
-| `carpeta` | `".neurodanza/constructos"` | Dónde viven las lecciones, el historial, el playbook y el CHANGELOG de cada constructo. **Se versiona.** |
+| `carpeta` | `".neurodanza/constructos"` | Datos locales de los constructos: ciclos, evidencias, lecciones en todos sus estados, `playbook.md` y `CHANGELOG.md`. **No se versiona.** |
+| `compartido` | `"auto"` | Dónde se versionan las lecciones **aprobadas** (`aprendido/<constructo>.md`). `"auto"`: la raíz si es un repo; si no, el repo de `retroalimentacion.docs`; si no hay, todo local. `"local"`: no compartir. Otra cadena: carpeta relativa a la raíz. |
 | `minEvidencias` | `2` | Evidencias para que una lección candidata pase a prueba. |
 | `ciclosPrueba` | `3` | Ciclos a prueba antes de juzgarla (aprobar si el problema bajó, descartar si no). |
 | `maxLecciones` | `30` | Tope de lecciones activas por constructo; al pasarlo se archivan las aprobadas con menos evidencias. |

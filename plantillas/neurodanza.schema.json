@@ -206,7 +206,7 @@
       "properties": {
         "carpeta": {
           "type": "string",
-          "description": "Lecciones e historial de los constructos (se versiona)."
+          "description": "Datos locales de los constructos (no se versiona)."
         },
         "minEvidencias": {
           "type": "integer",
@@ -222,6 +222,10 @@
         },
         "automatico": {
           "type": "boolean"
+        },
+        "compartido": {
+          "type": "string",
+          "description": "auto | local | carpeta donde se versionan las lecciones aprobadas."
         }
       }
     },
