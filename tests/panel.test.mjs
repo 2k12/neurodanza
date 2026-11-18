@@ -70,3 +70,15 @@ test("plantillas y ejemplo nest-next son JSON válidos", () => {
     assert.doesNotThrow(() => JSON.parse(readFileSync(new URL(`../${f}`, import.meta.url), "utf8")), f);
   }
 });
+
+test("estados: concretos, el final sale de la nota", async () => {
+  const { estadoFinal, ESTADOS_RONDA } = await import("../panel/panel.mjs");
+  assert.equal(estadoFinal(10), "Sin observaciones");
+  assert.equal(estadoFinal(9.2), "Observaciones menores");
+  assert.equal(estadoFinal(8.9), "Funciona con dificultad");
+  assert.equal(estadoFinal(7), "Funciona con dificultad");
+  assert.equal(estadoFinal(6.5), "Requiere ayuda");
+  assert.equal(estadoFinal(4), "No funciona");
+  assert.equal(estadoFinal("x"), "");
+  assert.ok(!ESTADOS_RONDA.some((e) => /content|dudos|molest/i.test(e)));
+});

@@ -10,7 +10,7 @@
 //   node panel.mjs navegar --persona <id> --rutas <r1,r2> --salida <carpeta> [--acciones <json>] [--dispositivo tablet|celular]
 //   node panel.mjs calificar --resultado <json>                 promedio y aprobación (reescribe el json)
 //   node panel.mjs en-vivo --ronda <carpeta> --personas a,b,c --titulo "…" --cambio "…"
-//   node panel.mjs decir --ronda <carpeta> --persona <id> --texto "…" [--estado "Probando"]
+//   node panel.mjs decir --ronda <carpeta> --persona <id> --texto "…" [--estado "Probando"]   (estados: ESTADOS_RONDA)
 //   node panel.mjs oir --ronda <carpeta>
 //   node panel.mjs cerrar --ronda <carpeta> --resultado <json>
 //   node panel.mjs ventana --resultado <json>                   resumen final (sin ronda en vivo)
@@ -72,6 +72,25 @@ export function selectPersonas(rutas, personas, maps, { min = 3, max = 5, n, ign
 }
 
 /** Promedio y aprobación: aprueba si el promedio de todas las notas es mayor que el umbral. */
+/** Estados de una persona mientras prueba (qué hace o qué encontró). */
+export const ESTADOS_RONDA = ["Ingresando", "Probando", "Verificando", "Con observación", "Con error", "Bloqueado"];
+
+/** Estados finales, atados a la escala de notas (de mayor a menor). */
+export const ESTADOS_FINALES = [
+  [10, "Sin observaciones"],
+  [9, "Observaciones menores"],
+  [7, "Funciona con dificultad"],
+  [5, "Requiere ayuda"],
+  [0, "No funciona"],
+];
+
+/** Estado final que corresponde a una nota (el estado nunca contradice la nota). */
+export function estadoFinal(nota) {
+  const n = Number(nota);
+  if (!Number.isFinite(n)) return "";
+  return ESTADOS_FINALES.find(([min]) => n >= min)[1];
+}
+
 export function score(evaluaciones, umbral) {
   const notas = evaluaciones.map((e) => Number(e.nota)).filter((x) => Number.isFinite(x));
   if (notas.length === 0 || notas.length !== evaluaciones.length) return { promedio: 0, aprobado: false, motivo: "faltan notas" };
@@ -349,6 +368,8 @@ function enVivo(ctx, a) {
 
 function decir(a) {
   if (!a.persona || !a.texto) throw new Error("decir: --persona y --texto son obligatorios");
+  const validos = [...ESTADOS_RONDA, ...ESTADOS_FINALES.map(([, e]) => e)];
+  if (a.estado && !validos.includes(String(a.estado))) throw new Error(`decir: estado «${a.estado}» no válido. Usa uno de: ${validos.join(", ")}`);
   append(resolve(a.ronda), { type: "msg", persona: a.persona, texto: String(a.texto), ...(a.estado ? { estado: String(a.estado) } : {}) });
 }
 
@@ -366,7 +387,7 @@ function cerrar(ctx, a) {
     promedio: data.promedio,
     aprobado: !!data.aprobado,
     umbral: ctx.cfg.panel.umbral,
-    notas: (data.evaluaciones ?? []).map((e) => ({ persona: e.persona, nota: e.nota, estado: e.estado ?? "" })),
+    notas: (data.evaluaciones ?? []).map((e) => ({ persona: e.persona, nota: e.nota, estado: estadoFinal(e.nota) })),
   });
   console.log(`ronda cerrada: ${data.aprobado ? "aprobado" : "no aprobado"} · promedio ${data.promedio}`);
 }
@@ -375,7 +396,7 @@ function ventana(ctx, a) {
   const data = JSON.parse(readFileSync(resolve(a.resultado), "utf8"));
   const cards = (data.evaluaciones ?? []).map((e) => {
     const p = ctx.cast.personas.find((x) => x.id === e.persona) ?? { id: e.persona };
-    return { nombre: p.nombre ?? e.persona, cargo: p.cargo ?? "", color: p.color ?? "#64748b", imagen: imageOf(ctx, p), estado: e.estado ?? "", nota: e.nota, frase: e.resumen ?? "" };
+    return { nombre: p.nombre ?? e.persona, cargo: p.cargo ?? "", color: p.color ?? "#64748b", imagen: imageOf(ctx, p), estado: estadoFinal(e.nota), nota: e.nota, frase: e.resumen ?? "" };
   });
   const payload = { titulo: data.aprobado ? "Aprobado por el panel" : "No aprobado", cambio: data.cambio ?? "", promedio: data.promedio, aprobado: !!data.aprobado, segundos: Number(a.segundos ?? 9), cards };
   const tmp = join(tmpdir(), `neurodanza-ventana-${Date.now()}.json`);

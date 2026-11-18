@@ -24,19 +24,19 @@ function New-Text([string]$t, [double]$size, [string]$color, [string]$weight = '
   return $tb
 }
 
-# Color del estado: verde bien, amarillo duda, rojo problema.
+# Color del estado: verde sin problemas, amarillo observación, rojo error o bloqueo; gris mientras prueba.
 function Get-EstadoColor([string]$estado) {
   switch -Regex ($estado) {
-    'Content|Conforme|Aprob' { return $C.verde }
-    'Dudos' { return $C.amarillo }
-    'Molest|Bloque' { return $C.rojo }
+    '^(Sin observaciones|Observaciones menores)$' { return $C.verde }
+    '^(Con observación|Funciona con dificultad)$' { return $C.amarillo }
+    '^(Con error|Bloqueado|Requiere ayuda|No funciona)$' { return $C.rojo }
     default { return $C.tenue }
   }
 }
 
 $win = New-Object System.Windows.Window
 $win.Title = 'Role Agents · neurodanza'
-$win.Width = 1040; $win.Height = 660; $win.MinWidth = 760; $win.MinHeight = 420
+$win.Width = 1100; $win.Height = 660; $win.MinWidth = 760; $win.MinHeight = 420
 $win.WindowStartupLocation = 'CenterScreen'
 $win.Topmost = $true
 $win.Background = New-Brush $C.fondo
@@ -106,7 +106,7 @@ $root.Children.Add($head) | Out-Null
 # ── Cuerpo: personas (izquierda) | chat (derecha) ──
 $body = New-Object System.Windows.Controls.Grid
 $body.Margin = '16,4,16,0'
-$c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::new(360)
+$c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = [System.Windows.GridLength]::new(410)
 $c2 = New-Object System.Windows.Controls.ColumnDefinition; $c2.Width = [System.Windows.GridLength]::new(14)
 $c3 = New-Object System.Windows.Controls.ColumnDefinition; $c3.Width = [System.Windows.GridLength]::new(1, 'Star')
 $body.ColumnDefinitions.Add($c1) | Out-Null; $body.ColumnDefinitions.Add($c2) | Out-Null; $body.ColumnDefinitions.Add($c3) | Out-Null
@@ -306,14 +306,15 @@ function Handle($ev) {
     }
     'fin' {
       $script:finished = $true
+      try { $clock.Text = (([datetime]$ev.t).ToLocalTime() - $script:start).ToString('mm\:ss') } catch { }
       $best = ($ev.notas | ForEach-Object { [double]$_.nota } | Measure-Object -Maximum).Maximum
       foreach ($n in $ev.notas) {
         $p = $script:people[$n.persona]
         if (-not $p) { continue }
         $p.nota = [double]$n.nota
         $p.ui.nota.Text = ('{0:0.0}' -f [double]$n.nota)
-        # Morado = la mejor nota; verde sobre el umbral; amarillo debajo.
-        $col = if ([double]$n.nota -eq $best) { $C.morado } elseif ([double]$n.nota -gt [double]$ev.umbral) { $C.verde } else { $C.amarillo }
+        # Morado = la mejor nota; verde sobre el umbral; amarillo de 7 hasta el umbral; rojo bajo 7.
+        $col = if ([double]$n.nota -eq $best) { $C.morado } elseif ([double]$n.nota -gt [double]$ev.umbral) { $C.verde } elseif ([double]$n.nota -ge 7) { $C.amarillo } else { $C.rojo }
         $p.ui.nota.Foreground = New-Brush $col
         if ($n.estado) { $p.ui.status.Text = [string]$n.estado; $p.ui.status.Foreground = New-Brush (Get-EstadoColor $n.estado) }
       }

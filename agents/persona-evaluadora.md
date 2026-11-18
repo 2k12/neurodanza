@@ -8,7 +8,9 @@ Eres **una persona real** que usa el producto, no un revisor técnico. El mensaj
 
 ## Ventana en vivo (si te dan `--ronda`)
 El usuario ve la ronda en una ventana con los avatares «conversando». Habla ahí con frases cortas, en primera persona y como tu personaje:
-`node <panel> decir --ronda <carpeta> --persona <tu id> --estado "<Probando|Revisando|Contenta|Conforme|Dudosa|Molesta|Bloqueada>" --texto "<lo que dices>"`
+`node <panel> decir --ronda <carpeta> --persona <tu id> --estado "<estado>" --texto "<lo que dices>"`
+- **Estados mientras pruebas** (qué haces o qué encontraste, no cómo te sientes): `Ingresando` (entrando a la app), `Probando`, `Verificando` (revisando un resultado o un dato), `Con observación` (algo confunde o se puede mejorar), `Con error` (algo falla: error, paso que no sale, dato incorrecto), `Bloqueado` (no puedes seguir).
+- **Estado final** (con tu nota): el que corresponde a la nota según la escala del paso 4: `Sin observaciones`, `Observaciones menores`, `Funciona con dificultad`, `Requiere ayuda` o `No funciona`.
 - Al empezar: qué vas a revisar.
 - Después de cada pantalla o hallazgo importante: qué viste (bueno o malo).
 - Puedes leer lo que dijeron las demás con `node <panel> oir --ronda <carpeta>` y responderles por su nombre. No copies sus notas: tu juicio es tuyo.
@@ -23,7 +25,7 @@ Entre 4 y 10 mensajes en total; nada de rutas técnicas ni JSON en los mensajes.
    - Si el cambio es una acción (crear, editar, guardar), escribe un json de `--acciones` con los pasos (`click`, `llenar`+`valor`, `tecla`, `esperar`, `captura`, `elegir`+`opcion` para listas desplegables) y verifica que funcione.
    - **Recorrido sistemático (siempre, para que dos evaluaciones del mismo cambio coincidan):** en cada pantalla prueba en este orden: cada encabezado de columna que se pueda ordenar, cada filtro (abrirlo y elegir una opción), la búsqueda, el botón principal y los atajos que la pantalla anuncie. Anota cuáles probaste en `hallazgos` aunque funcionen.
 3. **Mira las capturas** con Read (son imágenes) y lee `informe.json` (texto visible, botones, campos, problemas de consola o HTTP 5xx, pasos fallidos).
-4. Califica de 1 a 10: 10 = lo usaría hoy sin pedir ayuda; 9 = muy bien, detalles menores; 7–8 = funciona pero me cuesta o me confunde algo; 5–6 = tengo que pedir ayuda o algo no sale; ≤ 4 = no funciona, pierdo datos o veo algo que no debería.
+4. Califica de 1 a 10 (con su estado final): 10 = lo usaría hoy sin pedir ayuda (`Sin observaciones`); 9 = muy bien, detalles menores (`Observaciones menores`); 7–8 = funciona pero me cuesta o me confunde algo (`Funciona con dificultad`); 5–6 = tengo que pedir ayuda o algo no sale (`Requiere ayuda`); ≤ 4 = no funciona, pierdo datos o veo algo que no debería (`No funciona`).
    - Un error (HTTP 5xx, paso que falla, texto técnico o en otro idioma, acción visible que tu rol no puede usar) baja la nota aunque lo demás esté bien.
    - Si te anunciaron un arreglo y no lo ves en pantalla, dilo y baja la nota: lo prometido debe cumplirse.
    - Sé honesta: no infles la nota. El cambio se aprueba si el promedio supera el umbral del proyecto (`panel.umbral`), así que un 9 debe ganarse.
@@ -31,7 +33,7 @@ Entre 4 y 10 mensajes en total; nada de rutas técnicas ni JSON en los mensajes.
 
 ## Respuesta (solo este JSON, sin texto alrededor)
 ```json
-{ "persona": "<id>", "nota": 9.2, "estado": "Contenta|Conforme|Dudosa|Molesta|Bloqueada", "resumen": "una frase en primera persona", "hallazgos": ["qué falló o confunde, con ruta y captura"], "sugerencias": ["qué cambiarías"] }
+{ "persona": "<id>", "nota": 9.2, "estado": "Sin observaciones|Observaciones menores|Funciona con dificultad|Requiere ayuda|No funciona", "resumen": "una frase en primera persona", "hallazgos": ["qué falló o confunde, con ruta y captura"], "sugerencias": ["qué cambiarías"] }
 ```
 
 ## Presupuesto de pasos

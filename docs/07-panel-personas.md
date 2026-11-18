@@ -181,7 +181,23 @@ node <plugin>/panel/panel.mjs decir --ronda <carpeta> --persona ana --estado "Pr
 node <plugin>/panel/panel.mjs oir --ronda <carpeta>
 ```
 
-- Estados: `Probando`, `Revisando`, `Contenta`, `Conforme`, `Dudosa`, `Molesta`, `Bloqueada`.
+- Estados concretos (qué hace o qué encontró, no cómo se siente). `decir` rechaza cualquier otro.
+
+  | Mientras prueba | Color |
+  |---|---|
+  | `Ingresando`, `Probando`, `Verificando` | gris |
+  | `Con observación` | amarillo |
+  | `Con error`, `Bloqueado` | rojo |
+
+  | Estado final | Nota |
+  |---|---|
+  | `Sin observaciones` | 10 |
+  | `Observaciones menores` | 9 |
+  | `Funciona con dificultad` | 7–8 |
+  | `Requiere ayuda` | 5–6 |
+  | `No funciona` | ≤ 4 |
+
+  Al cerrar la ronda, el estado final de cada persona sale de su nota (`cerrar` y `ventana` lo calculan), así nunca se contradicen.
 - Entre 4 y 10 mensajes por persona: al empezar, tras cada pantalla o hallazgo importante, y al final con su nota. Nada de rutas técnicas ni JSON.
 - Con `oir` pueden leer a las demás y responderles por su nombre, pero la nota es de cada una.
 
@@ -198,7 +214,7 @@ Cómo funciona: la ronda es un archivo `ronda.jsonl` en la carpeta `--ronda`. `e
 Cada persona responde solo un JSON:
 
 ```json
-{ "persona": "ana", "nota": 9.2, "estado": "Contenta", "resumen": "una frase en primera persona", "hallazgos": ["…"], "sugerencias": ["…"] }
+{ "persona": "ana", "nota": 9.2, "estado": "Observaciones menores", "resumen": "una frase en primera persona", "hallazgos": ["…"], "sugerencias": ["…"] }
 ```
 
 Escala: 10 = lo usaría hoy sin pedir ayuda; 9 = muy bien, detalles menores; 7–8 = funciona pero cuesta o confunde algo; 5–6 = hay que pedir ayuda o algo no sale; 4 o menos = no funciona, se pierden datos o se ve algo que no se debería. Un HTTP 5xx, un paso que falla, un texto técnico o en otro idioma, o una acción visible que el rol no puede usar bajan la nota. Si se anunció un arreglo y no aparece en pantalla, también.
