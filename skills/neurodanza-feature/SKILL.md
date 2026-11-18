@@ -6,7 +6,7 @@ description: Ciclo automático para cada funcionalidad o corrección en un proye
 # /neurodanza-feature: ciclo automático de una funcionalidad
 
 Configuración: `neurodanza.config.json` en la raíz del proyecto (si no existe, corre `/neurodanza-init`).
-Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
+Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
 Nunca agregues coautoría ni firmas de IA en commits, PR o código.
 Si está instalado `neurodanza-mapa`, el usuario ve en un panel la fase y cada subagente en vivo; se abre solo (o con `/neurodanza-mapa`).
 
@@ -32,7 +32,7 @@ Si el contexto de inicio trae **errores conocidos** del proyecto, tenlos present
 Tú diriges: planificas, delegas, integras y verificas. **No editas código** (la barrera lo impide mientras el modo está activo).
 1. `<director> activar`.
 2. Divide el plan en **tareas con dueños de archivos que no se pisan** (globs por repo). Las que dependen de otra van después de integrar esa. Anota en el plan qué tarea es cada paso.
-3. Por tarea: `<director> preparar --tarea <id> --repos <repos> --archivos "<repo:glob,…>" --objetivo "<una línea>" --terminado "<comprobación>"`. Responde las rutas de sus worktrees y el **contrato** listo para pegar.
+3. Por tarea: `<director> preparar --tarea <id> --repos <repos> --archivos "<repo:glob,…>" --objetivo "<una línea>" --terminado "<comprobación>" --constructo <implementador-área>`. Responde las rutas de sus worktrees y el **contrato** listo para pegar, con las **lecciones** que ese constructo aprendió en el proyecto. Usa siempre el mismo nombre de constructo para la misma área (`implementador-backend`, `implementador-frontend`, `implementador-migraciones`…): así acumula experiencia.
 4. Lanza en **un solo mensaje** un `implementador` por tarea independiente, con el contrato y solo el contexto que necesita (reglas que aplican, errores conocidos relevantes, archivos de referencia). No le pases tu razonamiento completo.
 5. Al volver cada uno, lee su JSON. Si `terminado` es `true`: `<director> integrar --tarea <id>`. Si responde `fuera del contrato`, decide si el archivo era necesario (`--forzar`) o si va en otra tarea; si responde `conflicto al aplicar`, crea una tarea de corrección sobre el estado actual. Si `terminado` es `false`, relánzalo con lo pendiente o divide la tarea.
 6. Integradas todas, sigue con el paso 2 (verificar) como siempre. Para corregir hallazgos de revisores o personas, crea tareas nuevas.
@@ -49,7 +49,7 @@ Corre lint, tipos y pruebas de cada repo tocado (los comandos están en `repos[]
 
 ## 3. Revisión técnica (solo los revisores que aplican, en paralelo)
 1. `<ciclo> revisores` responde qué revisores lanzar y por qué (`lanzar`, `motivos`, `omitir`): `docs` siempre; `ui` y `permisos` si hay pantallas, interfaz, rutas o accesos; `coherencia` si cambió código en 2 repos o un contrato. Con `ciclo.revisores: "todos"` van siempre los 4.
-2. Lanza en un solo mensaje los de `lanzar`. A cada uno dale **solo**: qué se pidió (una línea), los repos tocados, la rama, contra qué rama comparar y su presupuesto de pasos. **No** le pases tu razonamiento ni tus conclusiones.
+2. Lanza en un solo mensaje los de `lanzar`. A cada uno dale **solo**: qué se pidió (una línea), los repos tocados, la rama, contra qué rama comparar, su presupuesto de pasos y sus lecciones (`<constructos> playbook --constructo <revisor>`, si tiene). **No** le pases tu razonamiento ni tus conclusiones.
 - Si alguno devuelve `aprobado: false`, corrige los hallazgos altos y medios, vuelve al paso 2 y relanza solo los que reprobaron. Máximo 2 vueltas; si sigue reprobando, informa al usuario.
 
 ## 4. Panel de personas (aprueba si el promedio supera `panel.umbral`)
@@ -68,8 +68,20 @@ Corre lint, tipos y pruebas de cada repo tocado (los comandos están en `repos[]
 7. **Si aprobó**: el cambio cuenta como realizado. El hook de Stop no deja terminar un cambio de pantallas sin una evaluación aprobada de la versión actual.
 
 ## 5. Cerrar
+- **Reflexión (constructos).** Escribe `<scratchpad>/reflexion.json` con lo que encontraron los jueces en este ciclo y regístralo con `<constructos> reflexion --archivo <ese json>`:
+  ```json
+  { "ciclo": "<tema>-v<versión>", "version": "<versión>",
+    "agentes": [{ "constructo": "implementador-frontend", "pasos": 34, "terminado": true }, { "constructo": "revisor-ui" }],
+    "problemas": [{ "constructo": "implementador-frontend", "etiqueta": "ui:aria-label-icono", "fuente": "revisor-ui",
+                    "detalle": "botón de solo icono sin aria-label en pedidos/filtros.tsx",
+                    "leccion": "Todo botón de solo icono lleva aria-label en el idioma del producto." }] }
+  ```
+  - Un problema por cada hallazgo **alto o medio** de un revisor, cada queja de una persona que bajó su nota y cada error que se repitió (`<errores> listar`). Anótalo al constructo que lo **causó** (el implementador de esa área, o tú como `implementador` si trabajaste directo); si un revisor dejó pasar algo que encontró otro juez, anótale el problema también al revisor.
+  - `etiqueta` = `area:tema` en minúsculas, **estable**: reutiliza la misma para el mismo problema (`<constructos> estado` muestra las que existen). `leccion` = una regla accionable, no un relato.
+  - Si no hubo problemas, regístralo igual con `"problemas": []`: los ciclos limpios también cuentan para medir.
+  - La respuesta dice qué lecciones pasaron a prueba, se aprobaron o se descartaron. Inclúyelo en el informe. Si alguna lección de un revisor está a prueba, recomienda correr `/neurodanza-evals`.
 - Agrega a la bitácora de la versión la sección «Panel de personas» (personas, notas, promedio, rondas, pendientes).
 - Errores del ciclo: si resolviste algo que un hook marcó como `se repite`, verifica que quedó anotado (`<errores> listar`). El catálogo (`errores.archivo`) se versiona con el proyecto.
 - Marca el plan completo y bórralo (o déjalo, si el usuario quiere conservarlo); `.neurodanza/plan.md` y `.neurodanza/estado.json` no van a git.
 - Commit y push **solo si el usuario lo pidió**; PR hacia la rama principal, sin merge. Si encadenas PR, recuerda que fusionar un PR apilado no llega a la rama principal: apunta el último a ella.
-- Informe final corto: qué cambió, revisores (lanzados y omitidos), notas de las personas, promedio, errores nuevos o resueltos, PR.
+- Informe final corto: qué cambió, revisores (lanzados y omitidos), notas de las personas, promedio, errores nuevos o resueltos, lecciones (a prueba, aprobadas, descartadas), PR.

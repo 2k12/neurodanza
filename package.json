@@ -1,11 +1,11 @@
 {
   "name": "neurodanza",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Plugin de Claude Code: ciclo automático de calidad para proyectos JS/TS.",
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=22" },
   "scripts": {
     "test": "node --test tests/*.test.mjs"
   }

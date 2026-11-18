@@ -36,7 +36,7 @@ Más agentes no siempre es mejor: cada traspaso pierde contexto y cuesta tokens.
 | `descartar --tarea <id>` | Borra el worktree sin integrar. |
 | `estado` / `tareas` | Modo actual y tareas abiertas. |
 
-Los worktrees viven **fuera del proyecto** (`director.worktrees`, por defecto `../.neurodanza-wt/<proyecto>`), para que ni el lint ni las pruebas del repo real encuentren copias. Al integrar o descartar, los enlaces a `node_modules` se quitan antes de borrar el worktree: las dependencias reales no se tocan.
+Los worktrees se ubican solos (`director.worktrees: "auto"`): dentro de `.neurodanza/wt` si la raíz no es un repo, o al lado del proyecto si lo es, para que ni el lint ni las pruebas del repo real encuentren copias. Al integrar o descartar, los enlaces a `node_modules` se quitan antes de borrar el worktree: las dependencias reales no se tocan.
 
 ## El contrato
 
@@ -68,13 +68,16 @@ Además, las rutas protegidas y las migraciones inmutables valen **también dent
 
 ## Permisos de Claude Code
 
-Los worktrees están fuera de la carpeta del proyecto. Para que los implementadores editen ahí sin pedir permiso en cada archivo, agrega la carpeta a los directorios permitidos del proyecto (`.claude/settings.json`):
+Con `director.worktrees: "auto"` (por defecto) casi nunca hace falta nada:
 
-```json
-{ "permissions": { "additionalDirectories": ["../.neurodanza-wt"] } }
-```
+- **Raíz que no es un repo** (varios repos sueltos): los worktrees van en `.neurodanza/wt`, dentro del proyecto. Claude Code no pide permisos y ningún repo los ve.
+- **Raíz que es un repo:** van en `../.neurodanza-wt/<proyecto>`, fuera del proyecto. Al iniciar la sesión el plugin avisa, una vez, cómo permitir esa carpeta:
 
-`/neurodanza-init` lo propone.
+  ```json
+  { "permissions": { "additionalDirectories": ["../.neurodanza-wt"] } }
+  ```
+
+  (en `.claude/settings.json` del proyecto, o `/add-dir ../.neurodanza-wt`). El plugin no se da ese permiso solo.
 
 ## En el mapa
 
@@ -82,8 +85,4 @@ Con `neurodanza-mapa`, el modo director se ve como `◆ modo director` arriba de
 
 ## Lo que sigue
 
-Este modo es la base para orquestar muchos agentes. Las siguientes piezas ([11-mapa-y-ciclo.md](11-mapa-y-ciclo.md)):
-
-1. **Reflexión al cerrar:** comparar lo que entregó cada implementador con lo que encontraron los jueces y proponer lecciones.
-2. **Constructos:** cada agente con su playbook de lecciones y su historial, versionados.
-3. **Automejora con freno:** una lección entra al playbook solo si las evals demuestran que mejora sin romper nada.
+Cada implementador se lanza como un **constructo** (`--constructo implementador-frontend`): su contrato trae las lecciones que aprendió en el proyecto, y la reflexión al cerrar le anota los problemas que causó. Ver [14-constructos.md](14-constructos.md).

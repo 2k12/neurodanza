@@ -9,7 +9,7 @@ Casos y umbrales: `neurodanza.config.json → evals.casos`. Herramientas: `<eval
 
 ## 1. Revisores (4 agentes en paralelo, un solo mensaje)
 Para cada revisor (`revisor-coherencia`, `revisor-permisos`, `revisor-ui`, `revisor-docs`):
-- Genera sus instrucciones: `<evals> prompt --revisor <revisor> > <scratchpad>/evals/<revisor>.txt` (sus casos con errores sembrados + el control limpio).
+- Genera sus instrucciones: `<evals> prompt --revisor <revisor> > <scratchpad>/evals/<revisor>.txt` (sus casos con errores sembrados + el control limpio). Incluyen las **lecciones** del revisor (constructo), así se mide tal como trabaja hoy.
 - Lánzalo con el agente de ese tipo pidiéndole que lea **ese archivo** y siga sus instrucciones exactamente. No le digas qué casos tienen errores.
 - Guarda su arreglo JSON tal cual en `resultados.revisores["<revisor>"]`.
 
@@ -23,3 +23,4 @@ Requiere la app corriendo. `<evals> personas` lista los casos. Por cada uno, lan
 2. `<evals> calificar --resultados <ese json>`: agrega el `informe` (detección, falsos positivos, calibración) y sale con 1 si no pasa los umbrales.
 3. Si no pasa: si el **caso** estaba mal planteado (el revisor o la persona tenía razón), corrígelo y déjalo anotado en el caso (`nota`); si el **agente** falló, ajusta sus instrucciones. Nunca ajustes un caso solo para que pase. Vuelve a correr solo lo que falló.
 4. Registra el resultado en la bitácora de la versión e informa al usuario en pocas líneas.
+5. Corre `node "<carpeta de este skill>/../../lib/constructos.mjs" evaluar`: con este informe, las lecciones a prueba de los revisores se aprueban (si no empeoró la detección ni los falsos positivos) o se descartan.

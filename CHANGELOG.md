@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.5.0 · 2026-11-18
+
+### Agregado
+- **Constructos** (`lib/constructos.mjs`, `docs/14-constructos.md`): cada agente con nombre acumula lecciones en el proyecto. La **reflexión al cerrar** de `/neurodanza-feature` anota los problemas de los jueces (con etiqueta estable) al constructo que los causó. Una lección pasa de candidata a **a prueba** con 2 evidencias, viaja en el contrato o el mensaje del agente, y tras 3 ciclos se **aprueba** solo si el problema aparece menos por ciclo; si no, se **descarta**. Para revisores y personas también exige evals posteriores que no empeoren. Tope de 30 lecciones activas. `playbook.md` y `CHANGELOG.md` legibles por constructo.
+- `director.mjs preparar --constructo <nombre>`: el contrato incluye las lecciones del constructo.
+- `evals.mjs prompt` incluye las lecciones del revisor, para medirlo tal como trabaja.
+
+- **Autoconfiguración al iniciar la sesión** (`autoconfigurar`, `lib/autoconfig.mjs`): agrega el bloque de `.neurodanza/` al `.gitignore` de la raíz si es un repo, y avisa (sin darse permisos) si los worktrees quedan fuera del proyecto.
+
+### Cambiado
+- `director.worktrees: "auto"`: si la raíz no es un repo, los worktrees van en `.neurodanza/wt` (sin permisos); si lo es, al lado del proyecto. El director tampoco puede editar `.neurodanza/wt`.
+- CI con Node 22 y 24 (Node 20 ya no tiene soporte); `engines` pide Node 22 o superior.
+- Ventana Role Agents: «los agents están probando la app».
+
 ## 0.4.0 · 2026-11-18
 
 ### Cambiado

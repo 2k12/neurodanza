@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
+import { autoconfigurar } from "../lib/autoconfig.mjs";
 import { enWorktree, leerTareas } from "../lib/director.mjs";
 import { cerrarRondaActiva } from "../panel/panel.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
@@ -355,9 +356,14 @@ export function contextoErrores(list) {
 }
 
 function inicio(cfg) {
-  if (cfg.errores?.activo === false) return;
-  const text = contextoErrores(top(loadErrores(archivoDe(cfg)), cfg.errores?.alIniciar ?? 5));
-  if (text) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));
+  // Deja el proyecto listo (.gitignore, aviso de permisos) y carga los errores conocidos.
+  const auto = autoconfigurar(cfg);
+  const errores = cfg.errores?.activo === false ? "" : contextoErrores(top(loadErrores(archivoDe(cfg)), cfg.errores?.alIniciar ?? 5));
+  const contexto = [auto.contexto, errores].filter(Boolean).join("\n\n");
+  const out = {};
+  if (auto.mensaje) out.systemMessage = auto.mensaje;
+  if (contexto) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: contexto };
+  if (Object.keys(out).length) process.stdout.write(JSON.stringify(out));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
