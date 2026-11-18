@@ -116,6 +116,7 @@ Ver [05-retroalimentacion.md](05-retroalimentacion.md).
 |---|---|---|
 | `lintAlEditar` | `true` | Lint del archivo justo después de cada edición. |
 | `maxBloqueos` | `3` | Veces seguidas que el hook `Stop` puede bloquear por problemas graves antes de rendirse y pedirte revisión a mano. |
+| `cache` | `true` | El hook `Stop` no repite lint, tipos y pruebas de un repo cuyo cambio es idéntico al de la última vez (misma firma de commit, diff y archivos nuevos); reutiliza el resultado. `false` lo corre siempre. |
 | `version` | `null` | `{ "repo", "archivo", "ramaBase", "cambios" }`: exige subir la versión si cambió código. `ramaBase` por defecto `"main"`; `cambios` son `repo:glob`. |
 | `bitacora` | `null` | `{ "ruta", "archivo" }`: exige la bitácora de la versión. `archivo` admite `{minor}` (p. ej. `1.4`) y `{version}` (`1.4.0`). |
 | `migraciones` | `null` | `{ "repo", "schema", "nuevas" }`: si cambió el esquema, exige una migración nueva que coincida con `nuevas`. |
@@ -239,6 +240,26 @@ Ver [08-evals.md](08-evals.md).
   "vigilar": ["frontend:.claude/agents/**", "frontend:.claude/personas/**", "frontend:.claude/skills/**", "frontend:.claude/evals/**"]
 }
 ```
+
+## `errores`
+
+Catálogo de errores conocidos del proyecto. Ver [12-errores-conocidos.md](12-errores-conocidos.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `activo` | `true` | Registra los problemas de los hooks y anota la solución conocida junto al error. |
+| `archivo` | `".neurodanza/errores.json"` | Dónde se guarda. **Se versiona** para que todo el equipo lo aproveche. |
+| `alIniciar` | `5` | Cuántos errores (con solución primero, luego los más repetidos) se cargan como contexto al iniciar la sesión. `0` no carga ninguno. |
+
+## `ciclo`
+
+Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-mapa-y-ciclo.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `plan` | `".neurodanza/plan.md"` | Archivo del plan del ciclo (local, fuera de git). El mapa lo muestra. |
+| `maxPasos` | `{ "revisor": 25, "persona": 40, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
+| `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
 
 ## Validación
 

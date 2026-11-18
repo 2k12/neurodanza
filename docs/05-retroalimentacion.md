@@ -1,9 +1,10 @@
 # 5. Retroalimentación y definición de terminado
 
-`hooks/feedback.mjs` tiene dos modos, registrados en `hooks/hooks.json`:
+`hooks/feedback.mjs` tiene tres modos, registrados en `hooks/hooks.json`:
 
 | Modo | Hook | Tiempo máximo | Qué hace |
 |---|---|---|---|
+| `inicio` | `SessionStart` | 10 s | Carga como contexto los errores conocidos del proyecto ([12-errores-conocidos.md](12-errores-conocidos.md)). |
 | `post` | `PostToolUse` de `Edit`, `Write`, `MultiEdit` | 90 s | Lint del archivo recién editado. |
 | `stop` | `Stop` | 600 s | No deja terminar si lo cambiado no pasa lint, tipos, pruebas relacionadas o la definición de terminado. |
 
@@ -30,6 +31,8 @@ Cuando Claude va a terminar su turno:
    - `lint` con `{archivos}` (filtrados por `lintGlobs` si existe),
    - `tipos`,
    - `relacionadas` con `{archivos}` (si la salida coincide con `sinPruebas`, no es un fallo).
+
+   Los tres corren **a la vez**, y los repos también. Si el cambio de un repo es idéntico al de la última vez (misma firma: commit, `git diff HEAD` y tamaño y fecha de cada archivo cambiado), reutiliza el resultado anterior en vez de repetirlo (`retroalimentacion.cache`). Tiempos y resultado quedan en `.neurodanza/estado.json`, que lee el mapa en vivo.
 5. Revisa la **definición de terminado** (abajo).
 6. Si hay algo, bloquea el final y le devuelve al agente la lista:
 
@@ -43,6 +46,8 @@ Antes de terminar, corrige esto (neurodanza):
 
 • cambiaste pantallas (frontend/app/app/pedidos/page.tsx) sin tocar su guía de usuario. Si cambió lo que ve o hace el usuario, actualízala; si no, ignora este aviso.
 ```
+
+Cada `✖` se registra en el catálogo de errores conocidos: si ya pasó en otra sesión, el mensaje trae `↳ se repite [firma]` o, si alguien anotó la solución, `↳ error conocido [firma]… Se resolvió así: …`.
 
 `✖` son problemas **graves** (bloquean siempre); `•` son **avisos** (se muestran una sola vez: si el agente ya está continuando por un bloqueo anterior, los avisos no vuelven a bloquear).
 

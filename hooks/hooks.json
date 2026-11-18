@@ -1,6 +1,11 @@
 {
-  "description": "neurodanza: barreras antes de cada herramienta, lint al editar y ciclo de retroalimentación al terminar. Solo actúa en proyectos con neurodanza.config.json.",
+  "description": "neurodanza: barreras antes de cada herramienta, lint al editar, ciclo de retroalimentación al terminar y errores conocidos al iniciar. Solo actúa en proyectos con neurodanza.config.json.",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" inicio", "timeout": 10 }]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",

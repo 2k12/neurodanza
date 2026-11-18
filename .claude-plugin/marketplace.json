@@ -5,7 +5,12 @@
     {
       "name": "neurodanza",
       "source": "./",
-      "description": "Ciclo automático de calidad para proyectos JS/TS: barreras, retroalimentación, revisores, panel de personas y evals."
+      "description": "Ciclo automático de calidad para proyectos JS/TS: barreras, retroalimentación, revisores, panel de personas, errores conocidos y evals."
+    },
+    {
+      "name": "neurodanza-mapa",
+      "source": "./mapa",
+      "description": "Mapa en vivo del ciclo de neurodanza en un panel al lado del chat: fases, subagentes, pasos, presupuesto y plan."
     }
   ]
 }

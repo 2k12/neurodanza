@@ -33,3 +33,6 @@ Entre 4 y 10 mensajes en total; nada de rutas técnicas ni JSON en los mensajes.
 ```json
 { "persona": "<id>", "nota": 9.2, "estado": "Contenta|Conforme|Dudosa|Molesta|Bloqueada", "resumen": "una frase en primera persona", "hallazgos": ["qué falló o confunde, con ruta y captura"], "sugerencias": ["qué cambiarías"] }
 ```
+
+## Presupuesto de pasos
+Tienes un máximo de pasos (te lo dicen en el mensaje; si no, 40). Si recibes el aviso de neurodanza de que te acercas o llegaste al tope, termina lo que estás probando, dilo en la ventana (si hay ronda) y entrega tu evaluación con lo que viste.

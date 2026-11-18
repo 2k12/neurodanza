@@ -48,6 +48,25 @@
         "ventana": { "enum": ["windows", "ninguna"] }
       }
     },
-    "evals": { "type": "object" }
+    "evals": { "type": "object" },
+    "errores": {
+      "type": "object",
+      "properties": {
+        "activo": { "type": "boolean" },
+        "archivo": { "type": "string", "description": "Catálogo de errores conocidos (se versiona)." },
+        "alIniciar": { "type": "integer", "minimum": 0, "description": "Cuántos se cargan como contexto al iniciar la sesión." }
+      }
+    },
+    "ciclo": {
+      "type": "object",
+      "properties": {
+        "plan": { "type": "string" },
+        "maxPasos": {
+          "type": "object",
+          "properties": { "revisor": { "type": "integer" }, "persona": { "type": "integer" }, "otro": { "type": "integer" } }
+        },
+        "revisores": { "enum": ["segun-cambio", "todos"] }
+      }
+    }
   }
 }

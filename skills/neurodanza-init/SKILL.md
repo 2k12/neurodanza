@@ -27,7 +27,8 @@ Plantillas: `<carpeta de este skill>/../../plantillas/`. Ejemplo real y completo
 4. Evals: copia `plantillas/casos-base.json` a `.claude/evals/casos.json`, adapta las rutas de los diffs al proyecto y elige las personas de calibración (`persona-buena` con un rol que modifica una pantalla común; `persona-rota` con una tarea que su rol no puede hacer).
 5. ESLint: copia `eslint/no-junk-comments.mjs` a `eslint-rules/` de cada repo con ESLint y regístrala (`plugins: { neurodanza }`, `"neurodanza/no-junk-comments": "error"`).
 6. AGENTS.md (o CLAUDE.md) de cada repo: agrega `plantillas/AGENTS-neurodanza.md`.
-7. Comprueba: los hooks del plugin ya están activos (vienen con el plugin); corre `<panel> elegir --rutas <una ruta>` y `<panel> usuarios`.
+7. `.gitignore` de la raíz: agrega `.neurodanza/*` y `!.neurodanza/errores.json` (el plan y el estado del ciclo son locales; el catálogo de errores conocidos se versiona para todo el equipo).
+8. Comprueba: los hooks del plugin ya están activos (vienen con el plugin); corre `<panel> elegir --rutas <una ruta>` y `<panel> usuarios`.
 
 ## 4. Informar
-Resumen corto: qué detectó, qué preguntó, archivos creados y el siguiente paso (`/neurodanza-feature` en el próximo cambio; `/neurodanza-evals` para medir a los evaluadores).
+Resumen corto: qué detectó, qué preguntó, archivos creados y el siguiente paso (`/neurodanza-feature` en el próximo cambio; `/neurodanza-evals` para medir a los evaluadores). Si no está instalado, sugiere el mapa en vivo: `/plugin install neurodanza-mapa@neurodanza`.

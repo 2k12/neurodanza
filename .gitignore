@@ -2,3 +2,5 @@ node_modules/
 # Fotos de personas: siempre locales
 **/.claude/personas/fotos/
 *.log
+# Tipos que escribe Claude Code al cargar el mod
+mapa/.claude-plugin/types/

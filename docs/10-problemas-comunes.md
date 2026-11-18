@@ -72,6 +72,17 @@ Lee la lista: `✖` son problemas que hay que corregir; `•` son avisos que pue
 
 «panel de personas: cambiaste pantallas y no hay una evaluación aprobada…»: falta un JSON en `panel.evaluaciones` con la **versión actual** en `version`, `aprobado: true` y `promedio` mayor que el umbral. Si subiste la versión después de la evaluación, el resultado ya no cuenta.
 
+## El mapa en vivo no aparece
+
+- ¿Está instalado? `/plugin install neurodanza-mapa@neurodanza` y reinicia la sesión.
+- Se abre solo al empezar un ciclo (`/neurodanza-feature`) o al lanzar un revisor o una persona. Para abrirlo a mano: `/neurodanza-mapa`.
+- En una terminal de menos de unas 110 columnas no cabe al lado del chat: se ve encima del prompt, y la línea de estado resume la fase (`nd 3 Revisores · …`).
+- Si una fase no cambia cuando debería, el mapa no reconoció la señal (ver la tabla en [11-mapa-y-ciclo.md](11-mapa-y-ciclo.md)); el ciclo sigue igual. «reiniciar mapa» lo deja en blanco.
+
+## El hook `Stop` repite un resultado viejo
+
+Con `retroalimentacion.cache` (por defecto `true`), un repo cuyo cambio no se movió reutiliza el resultado anterior. Si cambiaste algo **fuera** del repo que afecta sus pruebas (una variable de entorno, otro repo enlazado), apaga la caché un momento con `"cache": false` o borra `neurodanza-cache-*.json` de la carpeta temporal del sistema.
+
 ## Los hooks no hacen nada
 
 - No hay `neurodanza.config.json` en la carpeta de trabajo ni en las de arriba (hasta 8 niveles).
