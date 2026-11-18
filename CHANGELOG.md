@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.4.0 · 2026-11-18
+
+### Cambiado
+- Ventana en vivo del panel rediseñada como **Role Agents**: lista de personas a la izquierda con scroll (foto, nombre tal cual, cargo, estado y nota; resalta a quien habla) y conversación vertical a la derecha con la foto de cada persona. Al cerrar, la lista se ordena por nota y el pie muestra el veredicto. Oscura y minimalista, con barra de scroll propia.
+- **Estados concretos** de las personas, sin emociones. Mientras prueban: `Ingresando`, `Probando`, `Verificando`, `Con observación`, `Con error`, `Bloqueado`. Estado final atado a la nota: `Sin observaciones` (10), `Observaciones menores` (9), `Funciona con dificultad` (7–8), `Requiere ayuda` (5–6), `No funciona` (≤ 4). `decir` rechaza cualquier otro, y `cerrar` y `ventana` calculan el final desde la nota para que nunca se contradigan. Notas bajo 7 en rojo.
+- La ventana **no queda abierta**: `calificar` cierra la ronda activa con las notas, `en-vivo` cierra la anterior, el hook `Stop` cierra la que quede abierta y sin mensajes en 20 minutos (antes 45) se cierra sola. **Más angosta** (760 px; el estado va bajo el cargo) y **sin consola**: el lanzador usa `conhost --headless`.
+
 ## 0.3.0 · 2026-11-18
 
 ### Agregado

@@ -70,3 +70,39 @@ test("plantillas y ejemplo nest-next son JSON válidos", () => {
     assert.doesNotThrow(() => JSON.parse(readFileSync(new URL(`../${f}`, import.meta.url), "utf8")), f);
   }
 });
+
+test("estados: concretos, el final sale de la nota", async () => {
+  const { estadoFinal, ESTADOS_RONDA } = await import("../panel/panel.mjs");
+  assert.equal(estadoFinal(10), "Sin observaciones");
+  assert.equal(estadoFinal(9.2), "Observaciones menores");
+  assert.equal(estadoFinal(8.9), "Funciona con dificultad");
+  assert.equal(estadoFinal(7), "Funciona con dificultad");
+  assert.equal(estadoFinal(6.5), "Requiere ayuda");
+  assert.equal(estadoFinal(4), "No funciona");
+  assert.equal(estadoFinal("x"), "");
+  assert.ok(!ESTADOS_RONDA.some((e) => /content|dudos|molest/i.test(e)));
+});
+
+test("ronda activa: se cierra aunque nadie llame a `cerrar`", async () => {
+  const { cerrarRondaActiva, rondaAbierta } = await import("../panel/panel.mjs");
+  const { mkdtempSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { createHash } = await import("node:crypto");
+  const root = mkdtempSync(join(tmpdir(), "nd-ronda-"));
+  const dir = join(root, "r1");
+  (await import("node:fs")).mkdirSync(dir);
+  writeFileSync(join(dir, "ronda.jsonl"), JSON.stringify({ type: "inicio", personas: [] }) + "\n");
+  const activa = join(tmpdir(), `neurodanza-ronda-${createHash("sha1").update(root).digest("hex").slice(0, 12)}.txt`);
+  writeFileSync(activa, dir);
+  assert.ok(rondaAbierta(dir));
+  assert.equal(cerrarRondaActiva(root, "terminó el turno"), dir);
+  assert.ok(!rondaAbierta(dir));
+  assert.match(readFileSync(join(dir, "ronda.jsonl"), "utf8"), /"cancelada":true,"motivo":"terminó el turno"/);
+  assert.equal(cerrarRondaActiva(root, "otra vez"), null, "ya no hay ronda activa");
+  // Con un resultado, cierra con las notas y el estado sale de la nota.
+  writeFileSync(join(dir, "ronda.jsonl"), JSON.stringify({ type: "inicio", personas: [] }) + "\n");
+  writeFileSync(activa, dir);
+  cerrarRondaActiva(root, "", { promedio: 9.5, aprobado: true, evaluaciones: [{ persona: "ana", nota: 9.5, estado: "Contenta" }] }, 8.99);
+  assert.match(readFileSync(join(dir, "ronda.jsonl"), "utf8"), /"estado":"Observaciones menores"/);
+});

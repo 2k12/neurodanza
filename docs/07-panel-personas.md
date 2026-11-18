@@ -168,7 +168,7 @@ Para que dos evaluaciones del mismo cambio coincidan, cada persona prueba en cad
 
 ## Ventana en vivo (solo Windows)
 
-Con `"panel.ventana": "windows"` y en Windows, la ronda se ve en una ventana siempre encima: arriba las tarjetas de las personas (foto, nombre, cargo y estado) y abajo la conversación.
+Con `"panel.ventana": "windows"` y en Windows, la ronda se ve en la ventana **Role Agents** (compacta, 760 px de ancho, sin consola), siempre encima: a la izquierda la lista «Agents» con scroll (foto, nombre, cargo, estado y nota; resalta a quien está hablando) y a la derecha la conversación, con la foto y el nombre de cada una junto a lo que dice. Al cerrar la ronda, la lista se ordena por nota (la mejor en morado, verde sobre el umbral, amarillo debajo) y el pie muestra el veredicto.
 
 ```
 node <plugin>/panel/panel.mjs en-vivo --ronda <scratchpad>/panel-1.4.0-r1 --personas ana,bruno,carla --titulo "Panel de personas · v1.4.0 · ronda 1" --cambio "Ahora puedes duplicar un embarque desde su detalle."
@@ -181,11 +181,29 @@ node <plugin>/panel/panel.mjs decir --ronda <carpeta> --persona ana --estado "Pr
 node <plugin>/panel/panel.mjs oir --ronda <carpeta>
 ```
 
-- Estados: `Probando`, `Revisando`, `Contenta`, `Conforme`, `Dudosa`, `Molesta`, `Bloqueada`.
+- Estados concretos (qué hace o qué encontró, no cómo se siente). `decir` rechaza cualquier otro.
+
+  | Mientras prueba | Color |
+  |---|---|
+  | `Ingresando`, `Probando`, `Verificando` | gris |
+  | `Con observación` | amarillo |
+  | `Con error`, `Bloqueado` | rojo |
+
+  | Estado final | Nota |
+  |---|---|
+  | `Sin observaciones` | 10 |
+  | `Observaciones menores` | 9 |
+  | `Funciona con dificultad` | 7–8 |
+  | `Requiere ayuda` | 5–6 |
+  | `No funciona` | ≤ 4 |
+
+  Al cerrar la ronda, el estado final de cada persona sale de su nota (`cerrar` y `ventana` lo calculan), así nunca se contradicen.
 - Entre 4 y 10 mensajes por persona: al empezar, tras cada pantalla o hallazgo importante, y al final con su nota. Nada de rutas técnicas ni JSON.
 - Con `oir` pueden leer a las demás y responderles por su nombre, pero la nota es de cada una.
 
-Al final, `cerrar` muestra en la ventana la nota de cada persona y el veredicto (`APROBADO` o `NO APROBADO · promedio 8.7 / 10 (umbral 8.99)`), y la ventana **se cierra sola a los 12 s**. Si nadie escribe en 45 minutos, también se cierra.
+Al final, `cerrar` muestra en la ventana la nota y el estado final de cada persona y el veredicto (`Aprobado` o `No aprobado · promedio 8,70 / 10 · umbral 8,99`), y la ventana **se cierra sola a los 12 s**.
+
+**La ventana no queda abierta aunque se olvide `cerrar`:** `calificar` cierra la ronda activa con las notas; una ronda nueva (`en-vivo`) cierra la anterior si seguía abierta; el hook `Stop` cierra la que quede abierta al terminar el turno; y sin mensajes en 20 minutos se cierra sola.
 
 Cómo funciona: la ronda es un archivo `ronda.jsonl` en la carpeta `--ronda`. `en-vivo` lo crea con el evento de inicio y abre `panel/live-window.ps1` (WPF) por medio de `panel/launch-hidden.vbs`, para que no aparezca una consola. `decir` y `cerrar` agregan líneas; la ventana las lee cada 0,7 s. Los errores de la ventana quedan en `ronda.jsonl.log`.
 
@@ -198,7 +216,7 @@ Cómo funciona: la ronda es un archivo `ronda.jsonl` en la carpeta `--ronda`. `e
 Cada persona responde solo un JSON:
 
 ```json
-{ "persona": "ana", "nota": 9.2, "estado": "Contenta", "resumen": "una frase en primera persona", "hallazgos": ["…"], "sugerencias": ["…"] }
+{ "persona": "ana", "nota": 9.2, "estado": "Observaciones menores", "resumen": "una frase en primera persona", "hallazgos": ["…"], "sugerencias": ["…"] }
 ```
 
 Escala: 10 = lo usaría hoy sin pedir ayuda; 9 = muy bien, detalles menores; 7–8 = funciona pero cuesta o confunde algo; 5–6 = hay que pedir ayuda o algo no sale; 4 o menos = no funciona, se pierden datos o se ve algo que no se debería. Un HTTP 5xx, un paso que falla, un texto técnico o en otro idioma, o una acción visible que el rol no puede usar bajan la nota. Si se anunció un arreglo y no aparece en pantalla, también.

@@ -63,7 +63,7 @@ Corre lint, tipos y pruebas de cada repo tocado (los comandos están en `repos[]
    ```json
    { "version": "1.4.0", "cambio": "…", "rutas": ["…"], "ronda": 1, "evaluaciones": [ <las respuestas> ] }
    ```
-   y ejecuta `<panel> calificar --resultado <ese json>`. Después **cierra la ronda en la ventana**: `<panel> cerrar --ronda <carpeta> --resultado <ese json>` (muestra notas y veredicto y se cierra sola). Hazlo también si no aprobó.
+   y ejecuta `<panel> calificar --resultado <ese json>`. Después **cierra la ronda en la ventana**: `<panel> cerrar --ronda <carpeta> --resultado <ese json>` (muestra notas y veredicto y se cierra sola). Hazlo también si no aprobó. Si lo olvidas, `calificar` la cierra con las notas, y el hook `Stop` cierra la que quede abierta.
 6. **Si no aprobó**: corrige con los hallazgos y sugerencias, vuelve al paso 2 y, si la app no recarga sola, levántala de nuevo. En la ronda siguiente (`ronda` + 1; conserva las anteriores en `"historial"`) **vuelve a evaluar solo a las personas con nota ≤ `panel.umbral`** y a las que usan una ruta que tocaste al corregir; las demás conservan su evaluación anterior (cópiala al JSON de la ronda nueva con `"reutilizada": true`). Máximo `panel.maxRondas`; si no llega, informa al usuario con los hallazgos y pregunta si autoriza otra ronda.
 7. **Si aprobó**: el cambio cuenta como realizado. El hook de Stop no deja terminar un cambio de pantallas sin una evaluación aprobada de la versión actual.
 
