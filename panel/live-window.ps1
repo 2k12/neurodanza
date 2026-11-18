@@ -212,6 +212,7 @@ function New-Row($p) {
   $nota.HorizontalAlignment = 'Right'
   $i = 0
   foreach ($el in @($pos, $stripe, $av, $names, $st, $nota)) { [System.Windows.Controls.Grid]::SetColumn($el, $i); $g.Children.Add($el) | Out-Null; $i++ }
+  $row.ToolTip = "$($p.nombre) · $($p.cargo)"
   $row.Child = $g
   return @{ row = $row; pos = $pos; status = $st; nota = $nota }
 }
