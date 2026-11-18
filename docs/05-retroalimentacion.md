@@ -6,6 +6,7 @@
 |---|---|---|---|
 | `inicio` | `SessionStart` | 10 s | Carga como contexto los errores conocidos del proyecto ([12-errores-conocidos.md](12-errores-conocidos.md)). |
 | `post` | `PostToolUse` de `Edit`, `Write`, `MultiEdit` | 90 s | Lint del archivo recién editado. |
+| `fin` | `SessionEnd` | 10 s | Cierra la ronda del panel que haya quedado abierta (la ventana se cierra sola). |
 | `stop` | `Stop` | 600 s | No deja terminar si lo cambiado no pasa lint, tipos, pruebas relacionadas o la definición de terminado. |
 
 Todo sale de `neurodanza.config.json` (`repos` y `retroalimentacion`); sin ese archivo no hace nada.

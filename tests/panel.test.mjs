@@ -106,3 +106,25 @@ test("ronda activa: se cierra aunque nadie llame a `cerrar`", async () => {
   cerrarRondaActiva(root, "", { promedio: 9.5, aprobado: true, evaluaciones: [{ persona: "ana", nota: 9.5, estado: "Contenta" }] }, 8.99);
   assert.match(readFileSync(join(dir, "ronda.jsonl"), "utf8"), /"estado":"Observaciones menores"/);
 });
+
+test("ronda activa: el fin del turno (Stop) no la cierra; el fin de la sesión (SessionEnd) sí", async () => {
+  const { rondaAbierta } = await import("../panel/panel.mjs");
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { createHash } = await import("node:crypto");
+  const { execFileSync } = await import("node:child_process");
+  const { fileURLToPath } = await import("node:url");
+  const root = mkdtempSync(join(tmpdir(), "nd-stop-"));
+  writeFileSync(join(root, "neurodanza.config.json"), JSON.stringify({ repos: [] }));
+  const dir = join(root, "ronda");
+  mkdirSync(dir);
+  writeFileSync(join(dir, "ronda.jsonl"), JSON.stringify({ type: "inicio", personas: [] }) + "\n");
+  writeFileSync(join(tmpdir(), `neurodanza-ronda-${createHash("sha1").update(root).digest("hex").slice(0, 12)}.txt`), dir);
+  const hook = fileURLToPath(new URL("../hooks/feedback.mjs", import.meta.url));
+  const run = (modo) => execFileSync(process.execPath, [hook, modo], { cwd: root, input: JSON.stringify({ cwd: root, session_id: "t" }), encoding: "utf8" });
+  run("stop");
+  assert.ok(rondaAbierta(dir), "las personas pueden seguir probando en segundo plano");
+  run("fin");
+  assert.ok(!rondaAbierta(dir), "al terminar la sesión se cierra");
+});
