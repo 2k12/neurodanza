@@ -127,7 +127,7 @@ function New-Column([string]$label) {
   return @{ box = $box; scroll = $sv; list = $sp; caption = $cap }
 }
 
-$tower = New-Column 'Personas'
+$tower = New-Column 'Agents'
 [System.Windows.Controls.Grid]::SetColumn($tower.box, 0)
 $body.Children.Add($tower.box) | Out-Null
 
@@ -291,7 +291,7 @@ function Handle($ev) {
       if ($ev.titulo -match 'v(\d+\.\d+(\.\d+)?)') { $lap.Text = "v$($Matches[1])  ·  $($lap.Text)" }
       try { $script:start = ([datetime]$ev.t).ToLocalTime() } catch { $script:start = Get-Date }
       foreach ($p in $ev.personas) { $script:people[$p.id] = @{ info = $p; ui = (New-Row $p); nota = $null } }
-      $tower.caption.Text = "Personas  ·  $($script:people.Count)"
+      $tower.caption.Text = "Agents  ·  $($script:people.Count)"
       Update-Tower
     }
     'msg' {

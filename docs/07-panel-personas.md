@@ -168,7 +168,7 @@ Para que dos evaluaciones del mismo cambio coincidan, cada persona prueba en cad
 
 ## Ventana en vivo (solo Windows)
 
-Con `"panel.ventana": "windows"` y en Windows, la ronda se ve en la ventana **Role Agents** (compacta, 760 px de ancho, sin consola), siempre encima: a la izquierda la lista de personas con scroll (foto, nombre, cargo, estado y nota; resalta a quien está hablando) y a la derecha la conversación, con la foto y el nombre de cada una junto a lo que dice. Al cerrar la ronda, la lista se ordena por nota (la mejor en morado, verde sobre el umbral, amarillo debajo) y el pie muestra el veredicto.
+Con `"panel.ventana": "windows"` y en Windows, la ronda se ve en la ventana **Role Agents** (compacta, 760 px de ancho, sin consola), siempre encima: a la izquierda la lista «Agents» con scroll (foto, nombre, cargo, estado y nota; resalta a quien está hablando) y a la derecha la conversación, con la foto y el nombre de cada una junto a lo que dice. Al cerrar la ronda, la lista se ordena por nota (la mejor en morado, verde sobre el umbral, amarillo debajo) y el pie muestra el veredicto.
 
 ```
 node <plugin>/panel/panel.mjs en-vivo --ronda <scratchpad>/panel-1.4.0-r1 --personas ana,bruno,carla --titulo "Panel de personas · v1.4.0 · ronda 1" --cambio "Ahora puedes duplicar un embarque desde su detalle."
