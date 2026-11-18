@@ -203,7 +203,7 @@ node <plugin>/panel/panel.mjs oir --ronda <carpeta>
 
 Al final, `cerrar` muestra en la ventana la nota y el estado final de cada persona y el veredicto (`Aprobado` o `No aprobado · promedio 8,70 / 10 · umbral 8,99`), y la ventana **se cierra sola a los 12 s**.
 
-**La ventana no queda abierta aunque se olvide `cerrar`:** `calificar` cierra la ronda activa con las notas; una ronda nueva (`en-vivo`) cierra la anterior si seguía abierta; el hook `Stop` cierra la que quede abierta al terminar el turno; y sin mensajes en 20 minutos se cierra sola.
+**La ventana no queda abierta aunque se olvide `cerrar`:** `calificar` cierra la ronda activa con las notas; una ronda nueva (`en-vivo`) cierra la anterior si seguía abierta; al **terminar la sesión** (hook `SessionEnd`) se cierra la que quede abierta; y sin mensajes en 20 minutos se cierra sola. El fin de un **turno** no la cierra: las personas corren en segundo plano y siguen probando mientras el agente principal espera.
 
 Cómo funciona: la ronda es un archivo `ronda.jsonl` en la carpeta `--ronda`. `en-vivo` lo crea con el evento de inicio y abre `panel/live-window.ps1` (WPF) por medio de `panel/launch-hidden.vbs`, para que no aparezca una consola. `decir` y `cerrar` agregan líneas; la ventana las lee cada 0,7 s. Los errores de la ventana quedan en `ronda.jsonl.log`.
 

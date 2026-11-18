@@ -1,26 +1,61 @@
 {
-  "description": "neurodanza: barreras antes de cada herramienta, lint al editar, ciclo de retroalimentación al terminar y errores conocidos al iniciar. Solo actúa en proyectos con neurodanza.config.json.",
+  "description": "neurodanza: errores conocidos al iniciar, barreras antes de cada herramienta, lint al editar, ciclo de retroalimentación al terminar y cierre de la ronda del panel al terminar la sesión. Solo actúa en proyectos con neurodanza.config.json.",
   "hooks": {
     "SessionStart": [
       {
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" inicio", "timeout": 10 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" inicio",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
         "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guardrails.mjs\"", "timeout": 10 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guardrails.mjs\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" post", "timeout": 90 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" post",
+            "timeout": 90
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" stop", "timeout": 600 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" stop",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" fin",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

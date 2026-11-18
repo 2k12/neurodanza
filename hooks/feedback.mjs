@@ -5,7 +5,8 @@
 //                             relacionadas o la definición de terminado del proyecto. Corre las
 //                             comprobaciones en paralelo y no repite las de un repo que no cambió
 //                             desde la última vez (caché por firma del cambio).
-//   node feedback.mjs inicio → SessionStart: carga los errores conocidos del proyecto como contexto.
+//   node feedback.mjs inicio → SessionStart: autoconfiguración y errores conocidos del proyecto como contexto.
+//   node feedback.mjs fin    → SessionEnd: cierra la ronda del panel que haya quedado abierta.
 // Todo sale de `neurodanza.config.json`; sin ese archivo no hace nada. Ver docs/05-retroalimentacion.md.
 import { exec, execSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -257,12 +258,9 @@ function versionContext(cfg) {
 
 async function stop(cfg, event) {
   const t0 = Date.now();
-  // Una ronda del panel que quedó abierta al terminar el turno se cierra (la ventana se cierra sola).
-  try {
-    cerrarRondaActiva(cfg.root, "terminó el turno");
-  } catch {
-    /* el panel es opcional */
-  }
+  // La ronda en vivo NO se cierra aquí: las personas corren en segundo plano y siguen probando
+  // después de que termina el turno principal. Se cierra con `calificar`, con otra ronda, al terminar
+  // la sesión (`fin`) o tras 20 minutos sin mensajes.
   const changes = changesOf(cfg);
   const c = counter(event.session_id);
   if (Object.values(changes).every((f) => f.length === 0)) {
@@ -355,6 +353,15 @@ export function contextoErrores(list) {
   return ["neurodanza · errores conocidos de este proyecto (si aparece uno, aplica su solución antes de investigar de cero):", ...lines].join("\n");
 }
 
+/** Fin de la sesión (SessionEnd): una ronda del panel que quedó abierta ya no la sigue nadie. */
+function fin(cfg) {
+  try {
+    if (cerrarRondaActiva(cfg.root, "terminó la sesión")) process.stderr.write("neurodanza: cerré la ronda del panel que quedó abierta.\n");
+  } catch {
+    /* el panel es opcional */
+  }
+}
+
 function inicio(cfg, event) {
   // Deja el proyecto listo (.gitignore, aviso de permisos) y carga los errores conocidos.
   const auto = autoconfigurar(cfg, event?.cwd ?? process.cwd());
@@ -384,4 +391,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   if (process.argv[2] === "post") post(cfg, event);
   else if (process.argv[2] === "stop") await stop(cfg, event);
   else if (process.argv[2] === "inicio") inicio(cfg, event);
+  else if (process.argv[2] === "fin") fin(cfg);
 }

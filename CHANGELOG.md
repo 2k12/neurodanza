@@ -2,6 +2,10 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.6.1 · 2026-11-18
+
+- **La ventana Role Agents ya no se cierra al terminar cada turno.** El hook `Stop` cerraba la ronda en vivo aunque las personas siguieran probando en segundo plano. Ahora la ronda se cierra con `calificar`, con otra ronda, al terminar la sesión (hook nuevo `SessionEnd`, `feedback.mjs fin`) o tras 20 minutos sin mensajes.
+
 ## 0.6.0 · 2026-11-18
 
 ### Cambiado
