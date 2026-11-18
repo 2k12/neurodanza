@@ -173,13 +173,13 @@ function regenerate(cfg, changes) {
 
 function counter(session) {
   const file = join(tmpdir(), `neurodanza-feedback-${String(session || "x").replace(/[^\w-]/g, "")}.json`);
-  let n = 0;
+  let state = { n: 0, sig: "" };
   try {
-    n = JSON.parse(readFileSync(file, "utf8")).n ?? 0;
+    state = { n: 0, sig: "", ...JSON.parse(readFileSync(file, "utf8")) };
   } catch {
-    n = 0;
+    state = { n: 0, sig: "" };
   }
-  return { n, set: (v) => writeFileSync(file, JSON.stringify({ n: v })) };
+  return { n: state.n, sig: state.sig, set: (v, sig = "") => writeFileSync(file, JSON.stringify({ n: v, sig })) };
 }
 
 function versionContext(cfg) {
@@ -217,12 +217,17 @@ function stop(cfg, event) {
   const max = cfg.retroalimentacion.maxBloqueos;
   const soft = event.stop_hook_active ? [] : done.soft;
   if (hard.length === 0 && soft.length === 0) return c.set(0);
-  if (hard.length > 0 && c.n >= max) {
-    c.set(0);
-    process.stdout.write(JSON.stringify({ systemMessage: `neurodanza: siguen ${hard.length} problema(s) tras ${max} intentos; revisa a mano.` }));
+  // Los mismos problemas seguidos suman intentos; si cambian, se empieza de nuevo.
+  const sig = hard.join("\n");
+  const n = sig === c.sig ? c.n : 0;
+  if (hard.length > 0 && n >= max) {
+    // Tras `maxBloqueos` intentos con los mismos problemas, deja terminar (avisa una sola vez)
+    // hasta que cambien. Antes volvía a 0 y bloqueaba otra vez sin fin.
+    if (n === max) process.stdout.write(JSON.stringify({ systemMessage: `neurodanza: siguen ${hard.length} problema(s) tras ${max} intentos; revisa a mano.` }));
+    c.set(max + 1, sig);
     return;
   }
-  c.set(hard.length > 0 ? c.n + 1 : c.n);
+  c.set(hard.length > 0 ? n + 1 : n, sig);
   const reason = ["Antes de terminar, corrige esto (neurodanza):", ...hard.map((h) => `✖ ${h}`), ...soft.map((s) => `• ${s}`)].join("\n\n");
   process.stdout.write(JSON.stringify({ decision: "block", reason }));
 }
