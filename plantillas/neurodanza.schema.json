@@ -191,6 +191,39 @@
             "windows",
             "ninguna"
           ]
+        },
+        "recorridos": {
+          "type": "string",
+          "description": "Carpeta de los recorridos permanentes (en git), con id estable."
+        },
+        "notaMaxSiFalla": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Nota máxima de una persona si un paso crítico de su recorrido no cumple."
+        },
+        "memoria": {
+          "type": "string",
+          "description": "Carpeta de la memoria por recorrido (historial por versión, en git)."
+        },
+        "regresion": {
+          "type": "object",
+          "properties": {
+            "clics": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "tiempo": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "description": "Umbrales de regresión de experiencia contra la última versión aprobada."
+        },
+        "exploracionPasos": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pasos máximos de exploración libre de cada persona tras su recorrido, solo en pantallas del diff."
         }
       }
     },
@@ -419,6 +452,40 @@
         "login": {
           "type": "object",
           "description": "Cómo entra una persona por API (url, cuerpo con {email} y {clave}, token)."
+        }
+      }
+    },
+    "indice": {
+      "type": "object",
+      "description": "Índice pre-cocido por commit (lib/indice.mjs): resumen enfocado para contratos y mensajes de subagentes.",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "maxLineas": {
+          "type": "integer",
+          "minimum": 5
+        }
+      }
+    },
+    "hotel": {
+      "type": "object",
+      "description": "Especialistas que el director consulta antes de delegar (lib/hotel.mjs).",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "maxPasos": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSegundos": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxPorTarea": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     }

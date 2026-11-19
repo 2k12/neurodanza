@@ -1,0 +1,504 @@
+{
+  "fecha": "2026-11-19T07:05:26.228Z",
+  "plugin": "C:\\Users\\jeipi\\AppData\\Local\\Temp\\claude\\4f573f375b2a9c90\\ec25cd63-ba72-4da4-a290-42d7d8118620\\scratchpad\\plugin-base3",
+  "version": "0.8.0",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "stop_normal": {
+      "valor": 1.3788441,
+      "unidad": "s",
+      "corridas": [
+        1.5928034,
+        1.3730927,
+        1.3787672,
+        1.3791120000000001,
+        1.3788441
+      ]
+    },
+    "stop_colgado": {
+      "valor": 85.34009359999999,
+      "unidad": "s",
+      "corridas": [
+        85.3275534,
+        85.3414814,
+        85.3590852,
+        85.34009359999999,
+        85.3202258
+      ],
+      "detalle": [
+        {
+          "segundos": 85.3275534,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.3414814,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.3590852,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.34009359999999,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.3202258,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        }
+      ],
+      "topeMedicion": 330
+    },
+    "guardrails_ms": {
+      "valor": 70.35386789999998,
+      "unidad": "ms",
+      "corridas": [
+        70.32322230000008,
+        70.35386789999998,
+        69.9587819,
+        70.52803429999996,
+        72.41417569999993
+      ],
+      "eventos": 1000
+    },
+    "subagente_congelado": {
+      "valor": 21.814,
+      "unidad": "s",
+      "sinCorte": false,
+      "topeMedicion": 45,
+      "corridas": [
+        21.814,
+        21.844,
+        21.779,
+        21.778,
+        21.834
+      ],
+      "detalle": [
+        {
+          "congelaA": 3.255,
+          "sinLatidoA": 10.938,
+          "cortadoA": 21.814,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.272,
+          "sinLatidoA": 10.917,
+          "cortadoA": 21.844,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.257,
+          "sinLatidoA": 10.928,
+          "cortadoA": 21.779,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.254,
+          "sinLatidoA": 10.922,
+          "cortadoA": 21.778,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.256,
+          "sinLatidoA": 10.934,
+          "cortadoA": 21.834,
+          "alVolverRechazado": true
+        }
+      ]
+    },
+    "revision_y_panel": {
+      "valor": 30.245,
+      "unidad": "s",
+      "corridas": [
+        30.331,
+        30.245,
+        30.248,
+        30.243,
+        30.233
+      ],
+      "orden": "revisores y panel en el mismo turno",
+      "modelo": "revisores 4 × 20 s en paralelo; personas 3 × 30 s en paralelo"
+    },
+    "fallo_externo": {
+      "valor": 3.423,
+      "unidad": "s",
+      "intentos": 2,
+      "resultado": "avanza con el panel pendiente",
+      "corridas": [
+        3.433,
+        3.428,
+        3.403,
+        3.407,
+        3.423
+      ],
+      "detalle": [
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.433
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.428
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.403
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.407
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.423
+        }
+      ],
+      "modelo": "hasta 3 rondas; 3 personas por ronda; 3 s por intento de persona"
+    },
+    "retomar_tras_corte": {
+      "valor": 5,
+      "unidad": "pasos",
+      "lecturas": 1,
+      "modo": "con pila",
+      "corridas": [
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "detalle": [
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        }
+      ]
+    },
+    "reintento_fallido": {
+      "valor": 30,
+      "unidad": "líneas",
+      "pasos": 21,
+      "modo": "rebobinar",
+      "corridas": [
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "detalle": [
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        }
+      ],
+      "modelo": "intento 1: 40 líneas, 12 pasos; encima: +25 líneas, 8 pasos; rebobinar: 30 líneas, 9 pasos"
+    },
+    "bloqueos_seguridad": {
+      "valor": 71.147276,
+      "unidad": "ms",
+      "permite": 98,
+      "rechaza": 12,
+      "pregunta": 90,
+      "porFigura": {
+        "leer · rev": {
+          "permite": 18,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · rev": {
+          "permite": 0,
+          "rechaza": 12,
+          "pregunta": 0
+        },
+        "verificar · rev": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · rev": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "destructivo · rev": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "leer · impl": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · impl": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "verificar · impl": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · impl": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "destructivo · impl": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "leer · principal": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · principal": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "verificar · principal": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · principal": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "destructivo · principal": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        }
+      },
+      "corridas": [
+        70.76210249999998,
+        71.48187699999994,
+        70.78337350000001,
+        71.147276,
+        71.2670685
+      ]
+    },
+    "panel_pasos": {
+      "valor": 40,
+      "unidad": "pasos",
+      "segundos": 12.362,
+      "verificada": true,
+      "modo": "sin guion",
+      "corridas": [
+        40,
+        40,
+        40,
+        40,
+        40
+      ],
+      "detalle": [
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.389
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.362
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.339
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.371
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.353
+        }
+      ],
+      "modelo": "cada paso de la persona: 300 ms; 6 mensajes en la ventana"
+    },
+    "regresion_ux": {
+      "valor": 0,
+      "unidad": "de 5 detectadas",
+      "texto": "0 de 5 detectadas",
+      "detalle": [
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        }
+      ]
+    },
+    "exploracion_implementador": {
+      "valor": 17,
+      "unidad": "lecturas y búsquedas",
+      "texto": "17 (15 lecturas · 2 búsquedas)",
+      "encontro": true,
+      "modo": "sin índice",
+      "indice": null,
+      "corridas": [
+        17,
+        17,
+        17,
+        17,
+        17
+      ],
+      "detalle": [
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        }
+      ]
+    },
+    "stop_y_ciclo_total": {
+      "valor": 21.48,
+      "unidad": "s",
+      "corridas": [
+        21.506,
+        21.403,
+        21.445,
+        21.48,
+        21.481
+      ],
+      "fases": {
+        "especialistas": 0,
+        "implementar": 7.554,
+        "verificar": 1.762,
+        "revisionPanel": 12.132
+      },
+      "modelo": {
+        "pasoMs": 300,
+        "pasosImplementador": 25,
+        "pasosPersona": 40,
+        "especialistas": false,
+        "fantasmas": true,
+        "orden": "revisión, panel y fantasmas en el mismo turno"
+      }
+    }
+  }
+}

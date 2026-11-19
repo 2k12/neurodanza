@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { avisoPara, etiqueta, faseDe, fundidasDe, irAFase, marcas, maxPasos, maxSegundos, muertesPorTarea, nuevoCiclo, pasosDelPlan, PRESUPUESTO, sinLatido, TIEMPOS, veredictoDe } from './register'
+import { avisoPara, etiqueta, faseDe, fundidasDe, hotelDe, irAFase, marcas, maxPasos, maxSegundos, muertesPorTarea, nuevoCiclo, pasosDelPlan, PRESUPUESTO, sinLatido, TIEMPOS, veredictoDe } from './register'
 import type { Agente } from '../types'
 
 const PANE = {
@@ -89,6 +89,18 @@ test('reemplazos, muertes, cuarentena y fantasmas en el mapa', () => {
   const a = { id: 'i2', toolUseId: 't', tipo: 'implementador', desc: 'pedidos-api ↻ 2', fase: 1, estado: 'corriendo' as const, pasos: 2, max: 60, ultima: '', inicio: 0, huella: '', repetidas: 0, avisos: [] }
   expect(marcas(a, { 'pedidos-api': 1 }, {})).toBe(' ✝ 1')
   expect(marcas(a, {}, { i2: true })).toBe(' ⛔ cuarentena')
+  // Regresiones de experiencia: solo en la persona dueña del recorrido.
+  const ana = { ...a, id: 'p1', tipo: 'neurodanza:persona-evaluadora', desc: 'Ana evalúa exportar' }
+  expect(marcas(ana, {}, {}, { ana: ['En la 1.0.0 me tomaba 2 clics; ahora 4.', 'otra'] })).toBe(' ⚠ 2 regresiones')
+  expect(marcas(ana, {}, {}, { luis: ['x'] })).toBe('')
+  expect(marcas(a, {}, {}, { ana: ['x'] })).toBe('')
+  // Hotel de especialistas: consultas del ciclo y fase.
+  expect(hotelDe({ consultas: [{ especialista: 'datos', estado: 'en caché' }, { especialista: 'permisos', estado: 'consultando' }, { especialista: 'a11y', estado: 'respondido' }] })).toBe('🏨 datos ✔ (caché) · 🏨 permisos ▶ · 🏨 a11y ✔')
+  expect(hotelDe(null)).toBe('')
+  expect(maxPasos('neurodanza:especialista-datos', PRESUPUESTO)).toBe(8)
+  expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:especialista-datos' } as never, 0)).toBe(1)
+  expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:persona-evaluadora' } as never, 0)).toBe(0)
+  expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:persona-evaluadora' } as never, 3)).toBe(4)
   expect(veredictoDe('{"id":"h1","confirmado":true,"gravedad":"alta"}')).toBe('✔ alta')
   expect(veredictoDe('resultado guardado · h2 · no confirmado')).toBe('sin hallazgo')
   expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:fantasma' }, 2)).toBe(3)

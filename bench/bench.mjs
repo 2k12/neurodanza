@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 // neurodanza · banco de pruebas de velocidad (sin dependencias).
 // Arma un proyecto de prueba (bench/fixture → carpeta temporal con dos repos git, api y web), corre los
-// hooks del plugin indicado con --plugin y mide 6 métricas con N corridas (mediana). Ver bench/README.md.
+// hooks del plugin indicado con --plugin y mide 13 métricas con N corridas (mediana). Ver bench/README.md.
+// --paso-ms: costo simulado de cada paso de un agente en las métricas de la parte 3 (300 por defecto).
 //
 //   node bench/bench.mjs [--plugin <carpeta del plugin>] [--salida bench/base.json] [--corridas 5] [--solo stop_normal,guardrails_ms]
 //   node bench/bench.mjs --comparar bench/base.json,bench/parte1.json      tabla base vs. ahora (markdown)
 import { execFileSync, execSync, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const arg = (n, d) => {
@@ -351,6 +352,8 @@ export function comparar(base, ahora) {
   const fmt = (m) => {
     if (!m) return "—";
     if (m.valor === null && m.sinCorte) return `sin corte (tope de medición ${m.topeMedicion} s)`;
+    if (m.texto) return m.texto;
+    if (m.unidad === "pasos" && m.segundos !== undefined) return `${m.valor} pasos · ${m.segundos.toFixed(1)} s`;
     const v = m.unidad === "ms" ? `${m.valor.toFixed(1)} ms` : m.unidad === "s" ? `${m.valor.toFixed(1)} s` : `${m.valor} ${m.unidad}`;
     if (m.intentos !== undefined) return `${v} · ${m.intentos} intentos`;
     if (m.lecturas !== undefined) return `${v} · ${m.lecturas} lecturas`;
@@ -575,7 +578,393 @@ async function bloqueosSeguridad(root) {
   return { valor: mediana(xs), unidad: "ms", ...ultimo.cuenta, porFigura: ultimo.porFigura, corridas: xs };
 }
 
-const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad };
+// ───────────────────────── parte 3: panel, exploración y ciclo total ─────────────────────────
+
+// Costo simulado de pensar cada paso (herramienta) de un agente. Es igual en base y final: lo que cambia es
+// cuántos pasos se dan y qué corre en paralelo.
+const PASO_MS = Number(arg("paso-ms", "300"));
+const libMod = async (n) => (hayLib(n) ? import(pathToFileURL(join(PLUGIN, "lib", `${n}.mjs`)).href) : null);
+const configDe = async (root) => (await import(pathToFileURL(join(PLUGIN, "lib", "config.mjs")).href)).loadConfig(root);
+const pensar = (n = 1) => sleep(PASO_MS * n);
+
+/**
+ * Navegador falso sobre la app simulada (HTTP). Implementa la interfaz que `lib/recorridos.mjs` espera de un
+ * navegador (la misma que el panel cumple con Playwright): ir, click, elegir, llenar, tecla, esperar, cumple, errores.
+ */
+function navegadorHttp(web) {
+  let actual = { url: "", html: "" };
+  const errores = [];
+  const enlaces = () => [...actual.html.matchAll(/<a href="([^"]+)">([^<]+)<\/a>/g)].map((m) => ({ href: m[1], texto: m[2] }));
+  const ir = async (ruta) => {
+    const r = await fetch(web + ruta);
+    actual = { url: ruta, html: await r.text() };
+    if (r.status >= 400) errores.push(`HTTP ${r.status} ${ruta}`);
+  };
+  const texto = () => actual.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  return {
+    enlaces,
+    url: () => actual.url,
+    ir,
+    async click(nombre) {
+      const e = enlaces().find((x) => x.texto === nombre);
+      if (!e) throw new Error(`no encontré «${nombre}»`);
+      await ir(e.href);
+    },
+    async elegir(combo, opcion) {
+      if (!new RegExp(`<label>${combo}<select[^>]*>[\\s\\S]*?<option>${opcion}</option>`, "i").test(actual.html)) throw new Error(`no encontré la lista «${combo}» con «${opcion}»`);
+    },
+    async llenar(etiqueta) {
+      if (!actual.html.includes(`<label>${etiqueta}<input`)) throw new Error(`no encontré el campo «${etiqueta}»`);
+    },
+    async tecla() {},
+    async esperar(ms) {
+      await sleep(Number(ms) || 0);
+    },
+    async cumple(espera = {}) {
+      if (espera.url) return { ok: actual.url.startsWith(espera.url), encontrado: actual.url };
+      const t = espera.texto ?? espera.mensaje ?? espera.elemento;
+      if (!t) return { ok: true, encontrado: "" };
+      const ok = texto().includes(t);
+      return { ok, encontrado: ok ? t : texto().slice(0, 80) };
+    },
+    errores: () => [...errores],
+  };
+}
+
+/** La app simulada en su versión (v1|v2), en un puerto propio. */
+async function levantarUx(root, version, puerto) {
+  const p = spawn(process.execPath, [join(root, "servidor.mjs")], { cwd: root, env: { ...process.env, BENCH_UX: version, BENCH_PUERTO: String(puerto) }, windowsHide: true, stdio: "ignore" });
+  const web = `http://localhost:${puerto}`;
+  for (let t0 = Date.now(); Date.now() - t0 < 5000; await sleep(100)) {
+    try {
+      if ((await fetch(`${web}/login`, { signal: AbortSignal.timeout(500) })).ok) return { p, web };
+    } catch {
+      /* todavía no */
+    }
+  }
+  return { p, web };
+}
+
+// Recorrido de la tarea «exportar pedidos» en cada versión de la app (mismo id: es el mismo recorrido).
+const RECORRIDO_UX = {
+  v1: {
+    id: "exportar-pedidos",
+    persona: "ana",
+    tarea: "Exportar los pedidos a CSV",
+    maxClics: 4,
+    maxSegundos: 60,
+    pasos: [
+      { ruta: "/pedidos", espera: { texto: "Pedidos" }, porQue: "Es donde empiezo cada mañana" },
+      { click: "Exportar", espera: { url: "/pedidos/exportar" }, porQue: "Necesito el archivo para contabilidad", critico: true },
+      { elegir: "Formato", opcion: "CSV", espera: { elemento: "Descargar" }, porQue: "Contabilidad solo acepta CSV" },
+      { click: "Descargar", espera: { texto: "Exportación lista" }, porQue: "Sin el archivo no cierro el día", critico: true },
+    ],
+  },
+  v2: {
+    id: "exportar-pedidos",
+    persona: "ana",
+    tarea: "Exportar los pedidos a CSV",
+    maxClics: 4,
+    maxSegundos: 60,
+    pasos: [
+      { ruta: "/pedidos", espera: { texto: "Pedidos" }, porQue: "Es donde empiezo cada mañana" },
+      { click: "Más acciones", espera: { texto: "Acciones" }, porQue: "Busco cómo exportar" },
+      { click: "Opciones de exportación", espera: { texto: "Opciones de exportación" }, porQue: "Busco cómo exportar" },
+      { click: "Exportar", espera: { url: "/pedidos/exportar" }, porQue: "Necesito el archivo para contabilidad", critico: true },
+      { elegir: "Formato", opcion: "CSV", espera: { elemento: "Descargar" }, porQue: "Contabilidad solo acepta CSV" },
+      { click: "Descargar", espera: { texto: "Exportación lista" }, porQue: "Sin el archivo no cierro el día", critico: true },
+    ],
+  },
+};
+
+/**
+ * Una persona falsa evalúa «exportar pedidos» (ruta del diff: /pedidos).
+ *  - Sin guion (hoy): recorrido sistemático de agents/persona-evaluadora.md: en cada pantalla, una llamada a
+ *    `navegar`, mirar la captura y probar cada control; sigue por todo lo que alcanza desde las rutas del diff,
+ *    hasta su presupuesto de pasos.
+ *  - Con recorrido (si el plugin tiene lib/recorridos.mjs): una llamada a `navegar --recorrido` (lo ejecuta
+ *    entero), leer su informe y la exploración libre acotada a `panel.exploracionPasos`, solo en pantallas del diff.
+ * Más 6 mensajes en la ventana en vivo en ambos casos. Cada paso de la persona cuesta PASO_MS.
+ */
+async function personaFalsa(root, web, { maxPasos = 40, rutasDiff = ["/pedidos"] } = {}) {
+  const rec = await libMod("recorridos");
+  const cfg = await configDe(root);
+  const nav = navegadorHttp(web);
+  let pasos = 0;
+  const paso = async (fn) => {
+    pasos++;
+    await pensar();
+    if (fn) await fn();
+  };
+  let verificada = false;
+  const MENSAJES = 6;
+  if (rec?.ejecutarRecorrido) {
+    let ej;
+    await paso(async () => {
+      ej = await rec.ejecutarRecorrido(nav, RECORRIDO_UX.v1);
+    });
+    await paso(); // leer el informe del recorrido
+    verificada = ej.totales.cumplidos === RECORRIDO_UX.v1.pasos.length;
+    const tope = cfg?.panel?.exploracionPasos ?? 10;
+    const vistas = new Set();
+    const cola = [...rutasDiff];
+    let libres = 0;
+    while (cola.length && libres < tope) {
+      const r = cola.shift();
+      if (vistas.has(r)) continue;
+      vistas.add(r);
+      libres++;
+      await paso(() => nav.ir(r));
+      for (const e of nav.enlaces()) if (rutasDiff.some((d) => e.href.startsWith(d)) && !vistas.has(e.href)) cola.push(e.href);
+    }
+  } else {
+    const vistas = new Set();
+    const cola = [...rutasDiff];
+    while (cola.length && pasos < maxPasos - MENSAJES) {
+      const r = cola.shift();
+      if (vistas.has(r)) continue;
+      vistas.add(r);
+      await paso(() => nav.ir(r)); // navegar
+      await paso(); // mirar la captura
+      for (const e of nav.enlaces()) {
+        if (pasos >= maxPasos - MENSAJES) break;
+        await paso(); // probar el control
+        if (!vistas.has(e.href)) cola.push(e.href);
+      }
+      if (r === "/pedidos/listo") verificada = true;
+    }
+  }
+  for (let i = 0; i < MENSAJES; i++) await paso();
+  return { pasos, verificada, modo: rec?.ejecutarRecorrido ? "con recorrido" : "sin guion" };
+}
+
+async function panelPasos(root) {
+  const app = await levantarUx(root, "v1", 47614);
+  const xs = [];
+  const det = [];
+  try {
+    for (let i = 0; i < CORRIDAS; i++) {
+      const t0 = Date.now();
+      const r = await personaFalsa(root, app.web);
+      const s = (Date.now() - t0) / 1000;
+      xs.push(r.pasos);
+      det.push({ ...r, segundos: s });
+      log(`panel_pasos #${i + 1} (${r.modo}): ${r.pasos} pasos · ${s.toFixed(1)} s · tarea verificada: ${r.verificada ? "sí" : "no"}`);
+    }
+  } finally {
+    app.p.kill();
+  }
+  return { valor: mediana(xs), unidad: "pasos", segundos: mediana(det.map((d) => d.segundos)), verificada: det.every((d) => d.verificada), modo: det[0].modo, corridas: xs, detalle: det, modelo: `cada paso de la persona: ${PASO_MS} ms; 6 mensajes en la ventana` };
+}
+
+/**
+ * Regresión de experiencia: la persona hace «exportar pedidos» en la v1 (queda en la memoria del recorrido como
+ * aprobada) y luego en la v2, que pide 2 clics más. ¿El harness lo marca? Sin memoria por recorrido: no.
+ */
+async function regresionUx(root) {
+  const rec = await libMod("recorridos");
+  const cfg = await configDe(root);
+  const det = [];
+  for (let i = 0; i < CORRIDAS; i++) {
+    if (!rec?.compararMemoria) {
+      det.push({ detectada: false, motivo: "sin memoria por recorrido" });
+      log(`regresion_ux #${i + 1}: no detectada (sin memoria por recorrido)`);
+      continue;
+    }
+    rmSync(cfg.abs(cfg.panel.memoria), { recursive: true, force: true });
+    const ej = {};
+    for (const [k, version, puerto] of [
+      ["v1", "1.0.0", 47615],
+      ["v2", "2.0.0", 47616],
+    ]) {
+      const app = await levantarUx(root, k, puerto);
+      try {
+        ej[k] = await rec.ejecutarRecorrido(navegadorHttp(app.web), RECORRIDO_UX[k]);
+      } finally {
+        app.p.kill();
+      }
+      const cmp = k === "v2" ? rec.compararMemoria(cfg, RECORRIDO_UX[k].id, ej[k]) : null;
+      rec.registrarMemoria(cfg, RECORRIDO_UX[k], ej[k], { version, persona: "ana", aprobado: k === "v1" });
+      if (cmp) {
+        const r = { detectada: cmp.regresiones.length > 0, regresiones: cmp.regresiones.map((x) => x.texto), clics: [ej.v1.totales.clics, ej.v2.totales.clics] };
+        det.push(r);
+        log(`regresion_ux #${i + 1}: ${r.detectada ? "detectada" : "no detectada"} · clics ${r.clics.join(" → ")} · ${r.regresiones.join(" | ")}`);
+      }
+    }
+  }
+  const detectadas = det.filter((d) => d.detectada).length;
+  return { valor: detectadas, unidad: `de ${CORRIDAS} detectadas`, texto: `${detectadas} de ${CORRIDAS} detectadas${det[0]?.clics ? ` (clics ${det[0].clics.join(" → ")})` : ""}`, detalle: det };
+}
+
+// Repo generado estilo NestJS + Next: por entidad, controlador, servicio, DTO, entidad, módulo, migración, prueba,
+// dos pantallas y un componente, con referencias cruzadas entre entidades.
+const ENTIDADES = ["pedidos", "clientes", "productos", "facturas", "pagos", "envios", "proveedores", "inventario", "usuarios", "roles", "empresas", "sucursales", "bodegas", "compras", "ventas", "cotizaciones", "devoluciones", "notas", "impuestos", "monedas", "categorias", "marcas", "descuentos", "promociones", "reportes", "auditoria", "tareas", "eventos", "contratos", "cuentas"];
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+function generarRepoGrande(dir, nEnt = 30, copias = 1) {
+  const w = (rel, s) => {
+    mkdirSync(dirname(join(dir, rel)), { recursive: true });
+    writeFileSync(join(dir, rel), s);
+  };
+  const ents = [];
+  for (let c = 0; c < copias; c++) for (const e of ENTIDADES.slice(0, nEnt)) ents.push(c ? `${e}${c}` : e);
+  ents.forEach((e, i) => {
+    const E = cap(e);
+    const otra = ents[(i + 1) % ents.length];
+    const otra2 = ents[(i + 7) % ents.length];
+    w(`backend/src/${e}/${e}.controller.ts`, `import { Body, Controller, Get, Param, Post } from "@nestjs/common";\nimport { ${E}Service } from "./${e}.service";\nimport { Crear${E}Dto } from "./dto/crear-${e}.dto";\n\n@Controller("${e}")\nexport class ${E}Controller {\n  constructor(private readonly servicio: ${E}Service) {}\n  @Get()\n  listar() { return this.servicio.listar(); }\n  @Get(":id")\n  uno(@Param("id") id: string) { return this.servicio.uno(id); }\n  @Post()\n  crear(@Body() dto: Crear${E}Dto) { return this.servicio.crear(dto); }\n}\n`);
+    w(`backend/src/${e}/${e}.service.ts`, `import { Injectable } from "@nestjs/common";\nimport { ${E} } from "./${e}.entity";\nimport { ${cap(otra)}Service } from "../${otra}/${otra}.service";\n\n// Usa ${otra} y ${otra2} para validar.\n@Injectable()\nexport class ${E}Service {\n  listar(): ${E}[] { return []; }\n  uno(id: string) { return { id }; }\n  crear(dto: unknown) { return dto; }\n}\n`);
+    w(`backend/src/${e}/dto/crear-${e}.dto.ts`, `export class Crear${E}Dto {\n  nombre!: string;\n  total?: number;\n}\n`);
+    w(`backend/src/${e}/${e}.entity.ts`, `import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";\n\n@Entity("${e}")\nexport class ${E} {\n  @PrimaryGeneratedColumn("uuid") id!: string;\n  @Column() nombre!: string;\n}\n`);
+    w(`backend/src/${e}/${e}.module.ts`, `import { Module } from "@nestjs/common";\nimport { ${E}Controller } from "./${e}.controller";\nimport { ${E}Service } from "./${e}.service";\n\n@Module({ controllers: [${E}Controller], providers: [${E}Service] })\nexport class ${E}Module {}\n`);
+    w(`backend/src/migrations/17000000${String(i).padStart(4, "0")}-crear-${e}.ts`, `export class Crear${E}17000000${i} {\n  async up(q: any) { await q.query("CREATE TABLE ${e} (id uuid primary key)"); }\n}\n`);
+    w(`backend/test/${e}.spec.ts`, `import { ${E}Service } from "../src/${e}/${e}.service";\n\ndescribe("${E}Service", () => { it("lista", () => expect(new ${E}Service().listar()).toEqual([])); });\n`);
+    w(`frontend/app/${e}/page.tsx`, `import { Tabla${E} } from "../../components/${e}/tabla-${e}";\n\nexport default function Pagina${E}() { return <Tabla${E} />; }\n`);
+    w(`frontend/app/${e}/nuevo/page.tsx`, `export default function Nuevo${E}() { return <form><label>Nombre<input /></label><button>Guardar</button></form>; }\n`);
+    w(`frontend/components/${e}/tabla-${e}.tsx`, `export function Tabla${E}() { return <table><caption>${E} (ver también ${otra2})</caption></table>; }\n`);
+  });
+  w("frontend/lib/api.ts", `export const rutas = ${JSON.stringify(ents)};\n`);
+  w("backend/README.md", `# backend\n\nMódulos: ${ents.join(", ")}.\n`);
+  return ents.length;
+}
+
+function armarGrande(root, nEnt, copias, nombre = "grande") {
+  const dir = join(root, nombre);
+  rmSync(dir, { recursive: true, force: true });
+  generarRepoGrande(dir, nEnt, copias);
+  writeFileSync(join(dir, "neurodanza.config.json"), JSON.stringify({ repos: [{ nombre: "grande", ruta: "." }] }, null, 2));
+  const g = (...a) => execFileSync("git", a, { cwd: dir, stdio: "ignore" });
+  g("init", "-q");
+  g("config", "user.email", "bench@localhost");
+  g("config", "user.name", "bench");
+  g("config", "core.autocrlf", "false");
+  g("add", ".");
+  g("commit", "-qm", "inicio");
+  return dir;
+}
+
+function archivosDe(dir, rel = "") {
+  const out = [];
+  for (const e of readdirSync(join(dir, rel), { withFileTypes: true })) {
+    if (e.name === ".git" || e.name === "node_modules" || e.name === ".neurodanza") continue;
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) out.push(...archivosDe(dir, r));
+    else out.push(r);
+  }
+  return out;
+}
+
+// Tarea: «agregar el campo descuento al crear pedidos (API y pantalla)». Archivos que hay que tocar:
+const OBJETIVO_TAREA = ["backend/src/pedidos/dto/crear-pedidos.dto.ts", "backend/src/pedidos/pedidos.entity.ts", "backend/src/pedidos/pedidos.service.ts", "frontend/app/pedidos/nuevo/page.tsx"];
+
+/**
+ * Cuántas lecturas y búsquedas hace un implementador falso para ubicar los archivos de la tarea.
+ *  - Sin índice: Glob del tema, Grep del tema y Read de cada archivo que coincide (para decidir si es suyo).
+ *  - Con índice (lib/indice.mjs): el contrato trae `indice.mjs resumen --foco pedidos`; lee solo los archivos
+ *    que ese resumen marca como probables.
+ */
+function explorarTarea(dir, conIndice) {
+  if (conIndice) {
+    const out = libCli("indice", ["resumen", "--repo", "grande", "--foco", "pedidos"], dir);
+    const leidos = [...new Set([...out.matchAll(/^\s*[-·]\s*([\w./[\]-]+\.(?:tsx?|jsx?|mjs))\b/gm)].map((m) => m[1]))];
+    return { lecturas: leidos.length, busquedas: 0, encontro: OBJETIVO_TAREA.every((f) => leidos.includes(f)), leidos };
+  }
+  const todos = archivosDe(dir);
+  const porNombre = todos.filter((f) => f.includes("pedido"));
+  const porTexto = todos.filter((f) => readFileSync(join(dir, f), "utf8").includes("pedidos"));
+  const leidos = [...new Set([...porNombre, ...porTexto])];
+  return { lecturas: leidos.length, busquedas: 2, encontro: OBJETIVO_TAREA.every((f) => leidos.includes(f)), leidos };
+}
+
+async function exploracionImplementador(root) {
+  const conIndice = hayLib("indice");
+  const dir = armarGrande(root, 30, 1);
+  const xs = [];
+  const det = [];
+  for (let i = 0; i < CORRIDAS; i++) {
+    rmSync(join(dir, ".neurodanza"), { recursive: true, force: true });
+    const r = explorarTarea(dir, conIndice);
+    xs.push(r.lecturas + r.busquedas);
+    det.push({ lecturas: r.lecturas, busquedas: r.busquedas, encontro: r.encontro });
+    log(`exploracion_implementador #${i + 1} (${conIndice ? "con índice" : "sin índice"}): ${r.lecturas} lecturas · ${r.busquedas} búsquedas · encontró todo: ${r.encontro ? "sí" : "no"}`);
+  }
+  // Tiempo de generar el índice en frío y en caché: proyecto de prueba, repo mediano (30 entidades) y grande (300).
+  let indice = null;
+  if (conIndice) {
+    const medir = (cwd) => {
+      const ys = [];
+      for (let i = 0; i < 3; i++) {
+        rmSync(join(cwd, ".neurodanza", "indice"), { recursive: true, force: true });
+        const t0 = Date.now();
+        libCli("indice", ["generar"], cwd);
+        ys.push(Date.now() - t0);
+      }
+      const t1 = Date.now();
+      libCli("indice", ["generar"], cwd);
+      return { frioMs: mediana(ys), cacheMs: Date.now() - t1 };
+    };
+    const grande = armarGrande(root, 30, 10, "grande10");
+    indice = { fixture: medir(root), mediano: { archivos: archivosDe(dir).length, ...medir(dir) }, grande: { archivos: archivosDe(grande).length, ...medir(grande) } };
+    rmSync(grande, { recursive: true, force: true });
+    log(`indice: fixture ${indice.fixture.frioMs} ms · mediano (${indice.mediano.archivos} archivos) ${indice.mediano.frioMs} ms, en caché ${indice.mediano.cacheMs} ms · grande (${indice.grande.archivos}) ${indice.grande.frioMs} ms`);
+  }
+  return { valor: mediana(xs), unidad: "lecturas y búsquedas", texto: `${mediana(xs)} (${mediana(det.map((d) => d.lecturas))} lecturas · ${det[0].busquedas} búsquedas)`, encontro: det.every((d) => d.encontro), modo: conIndice ? "con índice" : "sin índice", indice, corridas: xs, detalle: det };
+}
+
+/**
+ * El ciclo simulado completo, tal como lo indica el skill del plugin medido:
+ *  1. especialistas (si hay lib/hotel.mjs): 2 en paralelo, 8 pasos cada uno, antes de delegar;
+ *  2. implementar: un implementador da (exploración de la tarea + 6 ediciones + 2 verificaciones) pasos;
+ *  3. verificar: el hook Stop real del plugin sobre el proyecto de prueba;
+ *  4. revisión + panel + fantasmas: 4 revisores × 12 pasos, 3 personas × los pasos de `panel_pasos` y, si hay
+ *     lib/fantasmas.mjs, 2 fantasmas × 10 pasos; en el mismo turno si el skill lo dice, si no uno tras otro.
+ * Cada paso de un agente cuesta PASO_MS. Mide el orden y la cantidad de pasos que fija el harness, no un modelo.
+ */
+async function stopYCicloTotal(root) {
+  const hotel = hayLib("hotel");
+  const fantasmas = hayLib("fantasmas");
+  const paralelo = skillParalelo();
+  const dir = armarGrande(root, 30, 1);
+  const explora = explorarTarea(dir, hayLib("indice"));
+  const app = await levantarUx(root, "v1", 47617);
+  const persona = await personaFalsa(root, app.web);
+  app.p.kill();
+  const pasosImpl = explora.lecturas + explora.busquedas + 6 + 2;
+  const xs = [];
+  const det = [];
+  for (let i = 0; i < CORRIDAS; i++) {
+    const t = {};
+    const t0 = Date.now();
+    let tt = Date.now();
+    if (hotel) await Promise.all([dormir(8 * PASO_MS), dormir(8 * PASO_MS)]);
+    t.especialistas = (Date.now() - tt) / 1000;
+    tt = Date.now();
+    await dormir(pasosImpl * PASO_MS);
+    t.implementar = (Date.now() - tt) / 1000;
+    tt = Date.now();
+    cambiar(root);
+    await hook("feedback.mjs", "stop", { cwd: root, session_id: `ciclo-${i}-${Date.now()}` });
+    limpiarFondo(root);
+    t.verificar = (Date.now() - tt) / 1000;
+    tt = Date.now();
+    const REV = Array(4).fill(12 * PASO_MS);
+    const PER = Array(3).fill(persona.pasos * PASO_MS);
+    const FAN = fantasmas ? Array(2).fill(10 * PASO_MS) : [];
+    if (paralelo) await Promise.all([...REV, ...PER, ...FAN].map(dormir));
+    else {
+      await Promise.all(REV.map(dormir));
+      await Promise.all([...PER, ...FAN].map(dormir));
+    }
+    t.revisionPanel = (Date.now() - tt) / 1000;
+    const s = (Date.now() - t0) / 1000;
+    xs.push(s);
+    det.push(t);
+    log(`stop_y_ciclo_total #${i + 1}: ${s.toFixed(1)} s · especialistas ${t.especialistas.toFixed(1)} · implementar ${t.implementar.toFixed(1)} · verificar ${t.verificar.toFixed(1)} · revisión y panel ${t.revisionPanel.toFixed(1)}`);
+  }
+  const fase = (k) => mediana(det.map((d) => d[k]));
+  return { valor: mediana(xs), unidad: "s", corridas: xs, fases: { especialistas: fase("especialistas"), implementar: fase("implementar"), verificar: fase("verificar"), revisionPanel: fase("revisionPanel") }, modelo: { pasoMs: PASO_MS, pasosImplementador: pasosImpl, pasosPersona: persona.pasos, especialistas: hotel, fantasmas, orden: paralelo ? "revisión, panel y fantasmas en el mismo turno" : "revisores, después panel" } };
+}
+
+const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad, panel_pasos: panelPasos, regresion_ux: regresionUx, exploracion_implementador: exploracionImplementador, stop_y_ciclo_total: stopYCicloTotal };
 
 const root = armarProyecto();
 log(`proyecto de prueba: ${root} · plugin: ${PLUGIN} · ${CORRIDAS} corridas`);

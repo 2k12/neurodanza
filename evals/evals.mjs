@@ -12,6 +12,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
 import { cargar as cargarConstructos, playbookDe } from "../lib/constructos.mjs";
+import { notaPorPasos } from "../lib/recorridos.mjs";
 
 /** Casos del proyecto (o vacíos si no hay configuración: así el módulo se puede importar en pruebas). */
 function loadCases() {
@@ -67,11 +68,18 @@ export function calificar(resultados, casos = CASOS) {
   const personas = [];
   for (const p of casos.personas ?? []) {
     const r = resultados.personas?.[p.id];
-    const nota = Number(r?.nota);
+    // Con recorrido, la nota pasa por la misma regla que en el panel (un paso crítico que no cumple la limita).
+    const nota = p.recorrido && r?.pasos ? notaPorPasos(r, 6, p.recorrido).nota : Number(r?.nota);
     let ok = Number.isFinite(nota);
     let motivo = ok ? `nota ${nota}` : "sin nota";
     if (ok && p.esperado.notaMin !== undefined) ok = nota >= p.esperado.notaMin;
     if (ok && p.esperado.notaMax !== undefined) ok = nota <= p.esperado.notaMax;
+    // Recorrido con un paso que no puede cumplirse: la persona debe marcarlo «no cumple».
+    if (ok && p.esperado.pasoNoCumple !== undefined) {
+      const paso = (r?.pasos ?? []).find((x) => Number(x.n) === p.esperado.pasoNoCumple);
+      ok = paso?.resultado === "no cumple";
+      motivo = ok ? `nota ${nota}; detectó que el paso ${p.esperado.pasoNoCumple} no cumple` : `no marcó «no cumple» en el paso ${p.esperado.pasoNoCumple} (${paso?.resultado ?? "sin detalle por paso"})`;
+    }
     if (ok && p.repiteDe) {
       const base = Number(resultados.personas?.[p.repiteDe]?.nota);
       const dif = Math.abs(nota - base);
