@@ -339,6 +339,18 @@ CLI de la app (`lib/app.mjs`). Ver [21-cli-de-la-app.md](21-cli-de-la-app.md).
 
 Para entrar como una persona, la CLI usa `panel.usuarios` (o `fantasmas.login`): `--como admin` usa `panel.usuarios.login` tal cual; `--como <persona o ROL>`, el correo y la clave de esa persona.
 
+## `autoajuste`
+
+Autoajuste (`lib/autoajuste.mjs`): una pasada al día por la telemetría de las sesiones. Ver [22-autoajuste.md](22-autoajuste.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, no lanza la pasada diaria ni muestra propuestas al iniciar (los comandos siguen funcionando a mano). |
+| `ajustes` | `".claude/neurodanza-ajustes.json"` | Ajustes aplicados, en git: valor de antes, fecha y estado (aplicado o revertido). |
+| `umbrales` | `{}` | Reemplaza los de `UMBRALES` (`rechazos` 3, `errores` 3, `cortes` 3, `sesionesCorte` 2, `sesionesEvaluar` 5, `mejoraMin` 0,3, `factorPresupuesto` 1,5, `horasCerrada` 2). |
+
+`telemetria.transcripts` (por defecto `null`): carpeta de transcripts a leer en vez de `~/.claude/projects/<carpeta del proyecto y de cada repo>`. La variable `ND_TRANSCRIPTS` hace lo mismo.
+
 ## `indice`
 
 Índice pre-cocido por commit (`lib/indice.mjs`). Ver [19-menos-exploracion.md](19-menos-exploracion.md).

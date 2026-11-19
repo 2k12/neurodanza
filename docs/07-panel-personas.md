@@ -241,3 +241,7 @@ Después se cierra la ronda en la ventana (`cerrar`), haya aprobado o no.
 - **Si aprobó:** el cambio cuenta como realizado. El hook `Stop` comprueba que exista esa evaluación aprobada para la versión actual cuando cambiaron pantallas (ver [05-retroalimentacion.md](05-retroalimentacion.md)).
 
 Las personas no modifican código ni documentación, no dejan archivos dentro de los repos y no arrancan servicios.
+
+## Regresión mecánica
+
+`panel.mjs repetir` repite sin modelo los recorridos permanentes que el cambio puede tocar y solo lo que cambió va a su persona (modo juzgar). Ver [23-regresion-mecanica.md](23-regresion-mecanica.md).

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // App falsa del banco de pruebas. BENCH_APP=caido: no arranca. BENCH_APP=500: responde 500.
 // BENCH_UX=v1|v2: pantallas simuladas (enlaces, campos y listas). En la v2, exportar pedidos pide 2 clics más
-// (Más acciones → Opciones de exportación → Exportar).
+// (Más acciones → Opciones de exportación → Exportar). BENCH_ROTO=clientes: /clientes pierde «Importar».
 import { createServer } from "node:http";
 const puerto = Number(process.env.BENCH_PUERTO ?? 47613);
 if (process.env.BENCH_APP === "caido") {
@@ -23,7 +23,8 @@ const P = {
   "/pedidos/nuevo": `<h1>Nuevo pedido</h1>${campo("Cliente")}${campo("Total")}${a("/pedidos/guardado", "Guardar")}`,
   "/pedidos/guardado": `<h1>Pedido guardado</h1>${a("/pedidos", "Volver")}`,
   "/pedidos/filtrar": `<h1>Filtrar</h1>${campo("Desde")}${campo("Hasta")}${a("/pedidos", "Aplicar")}`,
-  "/clientes": `<h1>Clientes</h1>${a("/clientes/nuevo", "Nuevo cliente")}${a("/clientes/importar", "Importar")}${a("/inicio", "Inicio")}`,
+  // BENCH_ROTO=clientes: la regresión sembrada de la parte 5 (un componente compartido dejó sin «Importar»).
+  "/clientes": `<h1>Clientes</h1>${a("/clientes/nuevo", "Nuevo cliente")}${process.env.BENCH_ROTO === "clientes" ? "" : a("/clientes/importar", "Importar")}${a("/inicio", "Inicio")}`,
   "/clientes/nuevo": `<h1>Nuevo cliente</h1>${campo("Nombre")}${a("/clientes", "Guardar")}`,
   "/clientes/importar": `<h1>Importar clientes</h1>${a("/clientes", "Volver")}`,
   "/productos": `<h1>Productos</h1>${a("/productos/nuevo", "Nuevo producto")}${a("/productos/categorias", "Categorías")}${a("/inicio", "Inicio")}`,
