@@ -284,6 +284,10 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | `maxSegundos` | `{ "revisor": 300, "persona": 210, "implementador": 900, "otro": 420 }` | Tope de tiempo por subagente: aviso al 80 % y rechazo de toda herramienta al 100 %. El agente principal no tiene tope. |
 | `latidoSeg` | `90` | Segundos sin un paso para marcar a un subagente «sin latido». |
 | `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
+| `riesgo.activo` | `true` | Proporcionalidad (`lib/riesgo.mjs`): cada cambio es **bajo** (lint, tipos y pruebas; sin revisores, panel, fantasmas ni especialistas), **medio** (1 revisor, 1 persona si hay pantallas, 1 fantasma si aplica) o **alto** (el ciclo completo). Con `false`, todo cambio es alto. Ver [20-odd-en-neurodanza.md](20-odd-en-neurodanza.md). |
+| `riesgo.lineasBajo` | `40` | Hasta estas líneas (agregadas + borradas) en un repo, sin contratos ni archivos sensibles: bajo. Solo docs o pruebas también es bajo. |
+| `riesgo.lineasAlto` | `400` | Más de estas líneas: alto. |
+| `riesgo.altos` | migraciones, `*.sql`, `*auth*`, `*guard*`, `*polic*`, `*permis*`, `*acl*`, `*casl*`, `middleware*` | Globs de archivos sensibles: tocar uno es riesgo alto. También lo son las migraciones de `retroalimentacion.migraciones` y el código en 2 repos. |
 
 ## `pilas`
 
