@@ -9,6 +9,7 @@
 //   node panel.mjs usuarios                                     crea los usuarios de prueba de las personas
 //   node panel.mjs navegar --persona <id> --rutas <r1,r2> --salida <carpeta> [--acciones <json>] [--dispositivo tablet|celular]
 //   node panel.mjs navegar --persona <id> --recorrido <archivo o id> --salida <carpeta> [--rutas …]   primero el recorrido acordado
+//   node panel.mjs repetir [--base main] [--version x] [--ronda <carpeta>]   repite sin modelo los recorridos permanentes que el cambio toca
 //   node panel.mjs calificar --resultado <json>                 promedio y aprobación (reescribe el json)
 //   node panel.mjs comparar --recorrido <id> [--ejecucion <recorrido.json>]   regresiones contra la última versión aprobada
 //   node panel.mjs en-vivo --ronda <carpeta> --personas a,b,c --titulo "…" --cambio "…"
@@ -27,7 +28,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
 import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
-import { compararEjecuciones, compararMemoria, ejecutarRecorrido, leerMemoria, leerRecorrido, notaConRegresiones, notaPorPasos, registrarMemoria, textoRegresion, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
+import { aprobarVersion, compararEjecuciones, compararMemoria, ejecutarRecorrido, leerMemoria, leerRecorrido, notaConRegresiones, notaPorPasos, registrarMemoria, textoRegresion, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -409,6 +410,21 @@ export function navegadorPlaywright(page, web, registro, { capturas = null, carg
       }
     },
     errores: () => registro,
+    /** Firma de la pantalla (para la regresión mecánica): título, controles, campos y texto visible del main. */
+    async firma() {
+      await esperarPantalla(page, carga);
+      return page.evaluate(() => {
+        const vis = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+        const nombre = (el) => (el.getAttribute("aria-label") || el.textContent || el.getAttribute("placeholder") || "").trim().replace(/\s+/g, " ").slice(0, 60);
+        const raiz = document.querySelector("main") ?? document.body;
+        return {
+          titulo: document.querySelector("h1")?.textContent?.trim() ?? document.title,
+          controles: [...raiz.querySelectorAll("button, a[href], [role=button], [role=tab], [role=combobox], [role=menuitem]")].filter(vis).map(nombre).filter(Boolean),
+          campos: [...raiz.querySelectorAll("input, select, textarea")].filter(vis).map((el) => el.getAttribute("aria-label") || el.labels?.[0]?.textContent?.trim() || el.getAttribute("placeholder") || el.name).filter(Boolean),
+          texto: raiz.innerText.slice(0, 20000),
+        };
+      });
+    },
     async despues(fila) {
       if (!capturas) return;
       const f = join(capturas, `recorrido-${String(fila.n).padStart(2, "0")}.png`);
@@ -508,6 +524,96 @@ const leerJsonSiExiste = (f) => {
   }
 };
 
+/** Entra a la app como la persona (formulario de `app.login`). Si no avanza, cuenta para el fusible de la app. */
+async function entrar(ctx, page, p, web) {
+  const { cfg } = ctx;
+  const L = cfg.app.login;
+  const c = credentialsOf(ctx, p);
+  await page.goto(`${web}${L.ruta}`);
+  await page.getByLabel(L.usuario, { exact: true }).fill(c.email);
+  await page.getByLabel(L.clave, { exact: true }).fill(c.clave);
+  await page.getByRole("button", { name: new RegExp(L.boton, "i") }).click();
+  // «espera» = ruta a la que se llega tras entrar; con "/" basta con haber salido de la pantalla de login.
+  const loginPath = L.ruta.split("?")[0];
+  try {
+    if (!L.espera || L.espera === "/") await page.waitForURL((u) => !u.pathname.startsWith(loginPath), { timeout: 20_000 });
+    else await page.waitForURL((u) => u.pathname.startsWith(L.espera), { timeout: 20_000 });
+  } catch (e) {
+    // El login no avanza: es la app (o sus usuarios) la que falla, no la persona.
+    fallaFusible(cfg, "app", `el login de ${p.id} no avanza en 20 s`);
+    throw e;
+  }
+}
+
+const archivoRepeticion = (cfg) => cfg.abs(join(".neurodanza", "regresion", "ultima.json"));
+
+/**
+ * `panel.mjs repetir [--base main] [--archivos repo:ruta,…] [--version x] [--ronda <carpeta>] [--salida <carpeta>]`:
+ * repite sin modelo los recorridos permanentes afectados por el cambio (lib/impacto.mjs), cada uno como su
+ * persona y en su propio contexto, y los compara con su última versión aprobada. Con `--ronda`, la dueña de cada
+ * recorrido se suma a la ventana en vivo y dice si quedó igual o qué cambió.
+ */
+async function repetirCmd(ctx, a) {
+  const { cfg } = ctx;
+  const { impacto, permanentes } = await import("../lib/impacto.mjs");
+  const { repetir, resumenRepeticion } = await import("../lib/regresion.mjs");
+  let changes = null;
+  if (a.archivos) {
+    changes = {};
+    for (const x of list(a.archivos)) {
+      const [repo, f] = x.split(/:(.+)/);
+      (changes[repo] ??= []).push(f);
+    }
+  }
+  const imp = impacto(cfg, { ...(a.base ? { base: a.base } : {}), changes });
+  const ids = new Set(imp.afectados.map((x) => x.id));
+  const recs = permanentes(cfg).filter((r) => ids.has(r.id));
+  const version = a.version ?? "actual";
+  const out = resolve(a.salida ?? join(tmpdir(), "neurodanza-repeticion"));
+  mkdirSync(out, { recursive: true });
+  const informe = { version, fecha: new Date().toISOString(), pantallas: imp.pantallas.map((p) => ({ repo: p.repo, ruta: p.ruta, via: p.via })), noAfectados: imp.noAfectados, recorridos: [] };
+  if (recs.length) {
+    const ronda = a.ronda ? resolve(a.ronda) : null;
+    if (ronda && existsSync(roundFile(ronda))) {
+      const personas = [...new Set(recs.map((r) => r.persona))].map((id) => {
+        const p = ctx.cast.personas.find((x) => x.id === id) ?? { id, nombre: id, cargo: "", color: "#64748b" };
+        return { id: p.id, nombre: p.nombre, cargo: p.cargo, color: p.color, imagen: imageOf(ctx, p) };
+      });
+      append(ronda, { type: "persona", personas });
+    }
+    const web = await detectWeb(cfg);
+    const browser = await abrirNavegador(cfg);
+    const ignore = (cfg.app.ignorarConsola ?? ["status of 401"]).map((r) => new RegExp(r, "i"));
+    try {
+      informe.recorridos = await repetir(cfg, recs, {
+        version,
+        decir: ronda && existsSync(roundFile(ronda)) ? (persona, m) => append(ronda, { type: "msg", persona, texto: m.texto, estado: m.estado }) : null,
+        navegadorPara: async (personaId, rec) => {
+          const p = ctx.cast.personas.find((x) => x.id === personaId);
+          if (!p) throw new Error(`el recorrido ${rec.id} es de ${personaId}, que no está en el elenco`);
+          const contexto = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: cfg.app.idioma ?? "es-EC" });
+          const page = await contexto.newPage();
+          const registro = [];
+          page.on("console", (m) => m.type() === "error" && !ignore.some((re) => re.test(m.text())) && registro.push(`consola: ${m.text().slice(0, 200)}`));
+          page.on("response", (r) => r.status() >= 400 && !ignore.some((re) => re.test(`status of ${r.status()}`)) && registro.push(`HTTP ${r.status()} ${r.url().replace(web, "")}`));
+          await entrar(ctx, page, p, web);
+          registro.length = 0;
+          const dir = join(out, rec.id);
+          mkdirSync(dir, { recursive: true });
+          return { ...navegadorPlaywright(page, web, registro, { capturas: dir, carga: cfg.panel.carga }), cerrar: () => contexto.close() };
+        },
+      });
+    } finally {
+      await browser.close();
+    }
+  }
+  Object.assign(informe, resumenRepeticion(informe.recorridos, imp.noAfectados));
+  writeFileSync(join(out, "repeticion.json"), JSON.stringify(informe, null, 2));
+  mkdirSync(dirname(archivoRepeticion(cfg)), { recursive: true });
+  writeFileSync(archivoRepeticion(cfg), JSON.stringify(informe, null, 2));
+  console.log(JSON.stringify({ informe: join(out, "repeticion.json"), repetidos: informe.repetidos, iguales: informe.iguales, primeraVez: informe.primeraVez, conDiferencias: informe.conDiferencias, conRegresion: informe.conRegresion, noAfectados: informe.noAfectados, juzgar: informe.juzgar, pantallas: informe.pantallas.map((p) => `${p.repo}:${p.ruta}`) }, null, 2));
+}
+
 async function navegar(ctx, a) {
   const { cfg } = ctx;
   const p = ctx.cast.personas.find((x) => x.id === a.persona);
@@ -535,23 +641,8 @@ async function navegar(ctx, a) {
   page.on("console", (m) => m.type() === "error" && !ignore.some((re) => re.test(m.text())) && registro.push(`consola: ${m.text().slice(0, 200)}`));
   page.on("response", (r) => r.status() >= 400 && !ignore.some((re) => re.test(`status of ${r.status()}`)) && registro.push(`HTTP ${r.status()} ${r.url().replace(web, "")}`));
   const informe = { persona: p.id, rol: p.rol, dispositivo: a.dispositivo ?? "escritorio", web, pantallas: [], problemas };
-  const L = cfg.app.login;
   try {
-    const c = credentialsOf(ctx, p);
-    await page.goto(`${web}${L.ruta}`);
-    await page.getByLabel(L.usuario, { exact: true }).fill(c.email);
-    await page.getByLabel(L.clave, { exact: true }).fill(c.clave);
-    await page.getByRole("button", { name: new RegExp(L.boton, "i") }).click();
-    // «espera» = ruta a la que se llega tras entrar; con "/" basta con haber salido de la pantalla de login.
-    const loginPath = L.ruta.split("?")[0];
-    try {
-      if (!L.espera || L.espera === "/") await page.waitForURL((u) => !u.pathname.startsWith(loginPath), { timeout: 20_000 });
-      else await page.waitForURL((u) => u.pathname.startsWith(L.espera), { timeout: 20_000 });
-    } catch (e) {
-      // El login no avanza: es la app (o sus usuarios) la que falla, no la persona.
-      fallaFusible(cfg, "app", `el login de ${p.id} no avanza en 20 s`);
-      throw e;
-    }
+    await entrar(ctx, page, p, web);
     // Primero el recorrido acordado (Tenet): se ejecuta entero y se registra paso por paso.
     if (recorrido) {
       registro.length = 0;
@@ -622,6 +713,14 @@ function calificar(ctx, a) {
   Object.assign(data, s, { umbral, fecha: new Date().toISOString() });
   writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
   guardarMemorias(ctx.cfg, data, s.aprobado);
+  // Lo que se repitió mecánicamente en esta versión queda como la nueva base si la ronda aprobó.
+  if (s.aprobado) {
+    const rep = leerJsonSiExiste(archivoRepeticion(ctx.cfg));
+    if (rep?.version && (data.version === undefined || String(rep.version) === String(data.version) || rep.version === "actual")) {
+      const n = (rep.recorridos ?? []).reduce((k, r) => k + aprobarVersion(ctx.cfg, r.id, rep.version), 0);
+      if (n) console.log(`regresión mecánica: ${n} recorrido${n > 1 ? "s" : ""} repetido${n > 1 ? "s" : ""} quedan como base (v${rep.version})`);
+    }
+  }
   console.log(JSON.stringify(s));
   // En el chat: lo que limitó o bajó cada nota.
   for (const e of data.evaluaciones ?? []) {
@@ -756,13 +855,14 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
         console.log(JSON.stringify(elegidas.map((x) => ({ id: x.id, nombre: x.nombre, rol: x.rol, cargo: x.cargo })), null, 2));
       } else if (cmd === "usuarios") await usuarios(ctx);
       else if (cmd === "navegar") await navegar(ctx, a);
+      else if (cmd === "repetir") await repetirCmd(ctx, a);
       else if (cmd === "calificar") calificar(ctx, a);
       else if (cmd === "comparar") comparar(ctx, a);
       else if (cmd === "en-vivo") enVivo(ctx, a);
       else if (cmd === "cerrar") cerrar(ctx, a);
       else if (cmd === "ventana") ventana(ctx, a);
       else if (cmd === "crear") crear(ctx, a);
-      else console.log("comandos: elegir | usuarios | navegar | calificar | comparar | en-vivo | decir | oir | cerrar | ventana | crear");
+      else console.log("comandos: elegir | usuarios | navegar | repetir | calificar | comparar | en-vivo | decir | oir | cerrar | ventana | crear");
     }
   } catch (e) {
     console.error(String(e?.message ?? e));

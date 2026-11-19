@@ -17,6 +17,8 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Panel con recorridos | `lib/recorridos.mjs`, `panel.mjs navegar --recorrido` / `comparar` | Recorridos acordados antes de implementar, memoria por versión y regresiones de experiencia. Ver [18-panel-con-recorridos.md](18-panel-con-recorridos.md). |
 | Menos exploración | `lib/indice.mjs`, `lib/hotel.mjs`, `lib/operador.mjs`, `agents/especialista-*.md` | Índice pre-cocido por commit, especialistas antes de delegar y lecciones que se recuerdan al tocar sus archivos. Ver [19-menos-exploracion.md](19-menos-exploracion.md). |
 | Proporcionalidad y ODD | `lib/riesgo.mjs`, `lib/cambios.mjs`, `lib/funcionalidad.mjs`, `lib/pruebas.mjs` | Riesgo del cambio (bajo, medio, alto) y qué corre en cada uno; documento de la funcionalidad con el pedido textual; prueba en rojo antes de implementar. Ver [20-odd-en-neurodanza.md](20-odd-en-neurodanza.md). |
+| Autoajuste | `lib/telemetria.mjs`, `lib/autoajuste.mjs` | Telemetría de las sesiones (de los transcripts, sin hooks nuevos) y una pasada al día que aprende lecciones, errores conocidos y macros con su freno, y propone presupuestos y arreglos que después evalúa. Ver [22-autoajuste.md](22-autoajuste.md). |
+| Regresión mecánica | `lib/impacto.mjs`, `lib/regresion.mjs`, `panel.mjs repetir` | Mapa de impacto (imports y layouts → pantallas → recorridos permanentes) y repetición sin modelo con la firma de cada pantalla; solo lo que cambió va a su persona. Ver [23-regresion-mecanica.md](23-regresion-mecanica.md). |
 | CLI de la app | `lib/app.mjs`, `lib/comentarios.mjs` | La app por comandos (sesiones en caché, peticiones, verificar), macros que nacen del uso y la barrera de comentarios. Ver [21-cli-de-la-app.md](21-cli-de-la-app.md). |
 | Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff, según su riesgo, y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
@@ -56,6 +58,9 @@ flowchart TD
     AP -- "2 fallos: capa fundida" --> PP["Panel PENDIENTE<br/>decide el usuario"]
     AP -- responde --> T3["3. Mismo turno, en paralelo<br/>cuántos, según el riesgo"]
     PP --> T3
+    AP -- responde --> RM["Regresión mecánica, sin modelo<br/>impacto.mjs → recorridos permanentes afectados<br/>panel.mjs repetir: igual · diferencias · regresión"]
+    RM -. "solo lo que cambió" .-> N
+    AU["Autoajuste, una vez al día<br/>telemetría de las sesiones → lecciones,<br/>errores conocidos, macros, propuestas"] -.contexto de inicio.-> B
     T3 --> R["Revisores que aplican<br/>coherencia · permisos · ui · docs"]
     T3 --> N["persona-evaluadora × N, a la vez<br/>primero su recorrido (una llamada),<br/>después exploración corta en pantallas del diff"]
     N --> WW["Memoria por recorrido (Westworld)<br/>regresiones: más clics, más tiempo,<br/>pasos que dejan de cumplir"]

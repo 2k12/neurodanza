@@ -495,6 +495,21 @@
         "sesionMin": { "type": "number", "description": "Minutos que vale una sesión en caché." }
       }
     },
+    "autoajuste": {
+      "type": "object",
+      "description": "Autoajuste (lib/autoajuste.mjs): una pasada al día por la telemetría de las sesiones; lecciones, errores conocidos y macros con su freno; presupuestos y arreglos como propuestas que se evalúan.",
+      "properties": {
+        "activo": { "type": "boolean" },
+        "ajustes": { "type": "string", "description": "Ajustes aplicados (en git)." },
+        "umbrales": { "type": "object", "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }, "description": "Reemplaza los umbrales por defecto (rechazos, errores, cortes, sesionesCorte, sesionesEvaluar, mejoraMin, factorPresupuesto, horasCerrada)." }
+      }
+    },
+    "telemetria": {
+      "type": "object",
+      "properties": {
+        "transcripts": { "type": ["string", "null"], "description": "Carpeta de transcripts en vez de ~/.claude/projects/<carpeta>." }
+      }
+    },
     "indice": {
       "type": "object",
       "description": "Índice pre-cocido por commit (lib/indice.mjs): resumen enfocado para contratos y mensajes de subagentes.",

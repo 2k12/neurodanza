@@ -2,6 +2,31 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.2.0 · 2026-11-19
+
+Autoajuste y regresión mecánica. Ver `docs/22-autoajuste.md`, `docs/23-regresion-mecanica.md` y `bench/`.
+
+### Agregado
+- **Telemetría de las sesiones** (`lib/telemetria.mjs`): de los transcripts de Claude Code del proyecto (la carpeta principal y la de cada repo, con los subagentes y su tipo), sin hooks nuevos. Tokens, comandos y sus errores, rechazos de las barreras, cortes y subagentes por sesión; incremental.
+- **Autoajuste** (`lib/autoajuste.mjs`, `autoajuste`): una pasada al día en segundo plano al iniciar.
+  - Los rechazos repetidos se vuelven lecciones del agente que los provoca, con el freno de los constructos (se aprueban solo si bajan por día).
+  - Los errores de comandos repetidos entran a los errores conocidos.
+  - Los comandos largos repetidos entre sesiones entran a las macros sugeridas.
+  - Los cortes por tiempo repetidos y los comandos configurados que fallan siempre son **propuestas**: las aplica el usuario (la barrera lo pregunta) y después se evalúan (mantener o revertir).
+  - Las lecciones del agente principal se muestran al iniciar.
+- **Mapa de impacto** (`lib/impacto.mjs`): archivo cambiado → pantallas (por imports y layouts de Next) → recorridos permanentes que pasan por ellas.
+- **Regresión mecánica** (`lib/regresion.mjs`, `panel.mjs repetir`):
+  - Repite sin modelo los recorridos afectados, cada uno como su persona.
+  - Los compara con su última versión aprobada: las métricas de siempre y la **firma de cada pantalla** (título, controles, campos y texto sin números).
+  - La dueña de cada uno se suma a la ventana en vivo y dice si quedó igual o qué cambió. Solo lo que cambió va a la persona, en **modo juzgar** (`agents/persona-evaluadora.md`).
+  - La ronda aprobada deja esa versión como base.
+- Ventana en vivo: evento `persona` (sumar una persona a mitad de la ronda).
+- Banco: `autoajuste`, `regresion_impacto` e `inicio_ms`; `bench/transcripts.mjs` (transcripts falsos con el formato real).
+
+### Corregido
+- La persona evaluadora corría el panel desde la carpeta equivocada («No hay neurodanza.config.json», 5 veces en las sesiones de un proyecto real; lo encontró el autoajuste): sus instrucciones dicen ahora que corra los comandos desde la carpeta del proyecto.
+- Si la firma de una pantalla falla, el paso del recorrido vale igual (antes no existía la firma; ahora nunca marca un paso como fallido).
+
 ## 1.1.2 · 2026-11-19
 
 ### Corregido

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // neurodanza · banco de pruebas de velocidad (sin dependencias).
 // Arma un proyecto de prueba (bench/fixture → carpeta temporal con dos repos git, api y web), corre los
-// hooks del plugin indicado con --plugin y mide 18 métricas con N corridas (mediana). Ver bench/README.md.
+// hooks del plugin indicado con --plugin y mide 21 métricas con N corridas (mediana). Ver bench/README.md.
 // --paso-ms: costo simulado de cada paso de un agente en las métricas de la parte 3 (300 por defecto).
 //
 //   node bench/bench.mjs [--plugin <carpeta del plugin>] [--salida bench/base.json] [--corridas 5] [--solo stop_normal,guardrails_ms]
@@ -628,12 +628,14 @@ function navegadorHttp(web) {
       return { ok, encontrado: ok ? t : texto().slice(0, 80) };
     },
     errores: () => [...errores],
+    // Firma de la pantalla (la misma forma que la del panel con Playwright).
+    firma: async () => ({ titulo: (actual.html.match(/<h1>([^<]*)<\/h1>/) ?? [])[1] ?? "", controles: [...enlaces().map((e) => e.texto), ...[...actual.html.matchAll(/<label>([^<]+)<select/g)].map((m) => m[1])], campos: [...actual.html.matchAll(/<label>([^<]+)<input/g)].map((m) => m[1]), texto: texto() }),
   };
 }
 
 /** La app simulada en su versión (v1|v2), en un puerto propio. */
-async function levantarUx(root, version, puerto) {
-  const p = spawn(process.execPath, [join(root, "servidor.mjs")], { cwd: root, env: { ...process.env, BENCH_UX: version, BENCH_PUERTO: String(puerto) }, windowsHide: true, stdio: "ignore" });
+async function levantarUx(root, version, puerto, extra = {}) {
+  const p = spawn(process.execPath, [join(root, "servidor.mjs")], { cwd: root, env: { ...process.env, BENCH_UX: version, BENCH_PUERTO: String(puerto), ...extra }, windowsHide: true, stdio: "ignore" });
   const web = `http://localhost:${puerto}`;
   for (let t0 = Date.now(); Date.now() - t0 < 5000; await sleep(100)) {
     try {
@@ -1205,11 +1207,174 @@ async function pruebaPrimero() {
   return { valor: bien, unidad: "casos", de: 2, detalle: resultados, texto: `${bien} de 2 bien clasificados` };
 }
 
-const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad, panel_pasos: panelPasos, regresion_ux: regresionUx, exploracion_implementador: exploracionImplementador, stop_y_ciclo_total: stopYCicloTotal, ciclo_por_riesgo: cicloPorRiesgo, comandos_app: comandosApp, comentarios_barrera: comentariosBarrera, pedido_textual: pedidoTextual, prueba_primero: pruebaPrimero };
+// ───────────────────────── parte 5: autoajuste ─────────────────────────
+
+/**
+ * Autoajuste: sesiones sembradas (bench/transcripts.mjs) con lo que un harness que se mide debería aprender.
+ * Primero, como hoy, cada comando pasa por la barrera mientras se trabaja (lo que el plugin ve en vivo); después,
+ * si el plugin tiene lib/autoajuste.mjs, la pasada diaria sobre los transcripts. Se cuenta:
+ *  - aprendido (6): la lección del rechazo repetido, los 2 errores repetidos en el catálogo, la macro sugerida y
+ *    las 2 propuestas (presupuesto del revisor y el lint del repo api);
+ *  - falsos: propuestas o lecciones que no estaban sembradas (el ruido);
+ *  - evaluación (2): tras aplicar el presupuesto, ¿mantiene si los cortes bajan y propone revertir si no?
+ */
+async function autoajusteMetrica() {
+  const { escenarioAutoajuste, despuesDelAjuste, escribirTranscripts } = await import(pathToFileURL(join(AQUI, "transcripts.mjs")).href);
+  const auto = hayLib("autoajuste") ? await import(pathToFileURL(join(PLUGIN, "lib", "autoajuste.mjs")).href) : null;
+  const hoy = Date.now();
+  const leer = (root, rel, d) => {
+    try {
+      return JSON.parse(readFileSync(join(root, rel), "utf8"));
+    } catch {
+      return d;
+    }
+  };
+  const armar = async () => {
+    const esc = escenarioAutoajuste(hoy);
+    const root = proyectoCon((c) => {
+      c.repos.find((r) => r.nombre === "api").lint = "npx eslint src";
+    });
+    const trans = join(root, ".transcripts");
+    escribirTranscripts(trans, esc.sesiones);
+    for (const s of esc.sesiones) for (const e of s.eventos) if (e.cmd !== undefined) await hook("guardrails.mjs", "", { cwd: root, session_id: s.sesion, tool_name: "Bash", tool_input: { command: e.cmd } });
+    return { esc, root, trans };
+  };
+  const { esc, root, trans } = await armar();
+  const t0 = Date.now();
+  const inf = auto ? await auto.diario(await configDe(root), { carpetas: [trans], ahora: hoy }) : null;
+  const ms = Date.now() - t0;
+  const cons = leer(root, ".neurodanza/constructos/constructos.json", { constructos: {} });
+  const leccion = (cons.constructos.principal?.lecciones ?? []).some((l) => /push directo a main/.test(l.texto) && l.estado !== "descartada");
+  const errores = Object.values(leer(root, ".neurodanza/errores.json", { errores: {} }).errores ?? {});
+  const erroresBien = ["unexpected EOF", "eslint"].filter((x) => errores.some((e) => String(e.ejemplo).includes(x))).length;
+  const rep = leer(root, ".neurodanza/app/repetidos.json", { comandos: {} });
+  const macro = Object.values(rep.comandos ?? {}).some((e) => e.veces >= 3 && /PrismaClient/.test(e.ejemplo));
+  const ids = (inf?.propuestas ?? []).map((p) => p.id);
+  const propBien = esc.esperado.propuestas.filter((p) => ids.includes(p)).length;
+  const falsos = ids.filter((p) => !esc.esperado.propuestas.includes(p)).length + Object.keys(cons.constructos).filter((k) => !esc.esperado.lecciones.includes(k)).length + errores.filter((e) => !["unexpected EOF", "eslint"].some((x) => String(e.ejemplo).includes(x))).length;
+  const aprendido = Number(leccion) + erroresBien + Number(macro) + propBien;
+  borrar(root);
+  // Evaluación de un ajuste aplicado: con y sin cortes después.
+  let evalBien = 0;
+  if (auto) {
+    for (const cortes of [false, true]) {
+      const x = await armar();
+      await auto.diario(await configDe(x.root), { carpetas: [x.trans], ahora: hoy });
+      try {
+        auto.aplicar(await configDe(x.root), "presupuesto:revisor", { ahora: hoy - 2.5 * 86_400_000 });
+        escribirTranscripts(x.trans, despuesDelAjuste(hoy, { cortes }));
+        const i2 = await auto.diario(await configDe(x.root), { carpetas: [x.trans], ahora: hoy });
+        const ev = i2.evaluaciones.find((e) => e.id === "presupuesto:revisor");
+        if (ev?.decision === (cortes ? "revertir" : "mantener")) evalBien++;
+      } catch (e) {
+        log(`autoajuste evaluación: ${e.message}`);
+      }
+      borrar(x.root);
+    }
+  }
+  const texto = `aprendido ${aprendido} de 6 · falsos ${falsos} · evaluación ${evalBien} de 2${auto ? ` · pasada ${ms} ms` : ""}`;
+  log(`autoajuste: ${texto} (lección ${leccion ? "sí" : "no"}, errores ${erroresBien}/2, macro ${macro ? "sí" : "no"}, propuestas ${propBien}/2)`);
+  return { valor: aprendido, unidad: "de 6", falsos, evaluacion: evalBien, ms: auto ? ms : null, detalle: { leccion, errores: erroresBien, macro, propuestas: ids }, texto };
+}
+
+// ───────────────────────── parte 5: regresión mecánica ─────────────────────────
+
+// Pasos de modelo de la dueña de un recorrido que cambió: leer el informe de la repetición y las capturas de los
+// pasos con diferencias, y 2 mensajes en la ventana.
+const JUZGAR_PASOS = 3;
+const RECS_IMPACTO = {
+  pedidos: RECORRIDO_UX.v1,
+  clientes: { id: "importar-clientes", persona: "luis", tarea: "Importar clientes", maxClics: 2, maxSegundos: 60, pasos: [{ ruta: "/clientes", espera: { texto: "Clientes" }, porQue: "Cargo la lista del mes" }, { click: "Importar", espera: { texto: "Importar clientes" }, porQue: "Sin importar no empiezo", critico: true }] },
+  productos: { id: "ver-categorias", persona: "eva", tarea: "Ver las categorías", maxClics: 1, maxSegundos: 60, pasos: [{ ruta: "/productos", espera: { texto: "Productos" }, porQue: "Reviso el catálogo" }, { click: "Categorías", espera: { texto: "Categorías" }, porQue: "Ordeno el catálogo", critico: true }] },
+};
+
+/**
+ * Regresión fuera del diff: el cambio toca un componente compartido (web/src/ui/tabla.tsx) y la pantalla de pedidos.
+ * La pantalla de pedidos es «del diff» (la prueba una persona en ambas versiones del plugin); la de clientes usa el
+ * mismo componente pero nadie la cambió a propósito, y en el caso «roto» perdió «Importar». Productos no lo usa.
+ * Hay 3 recorridos permanentes con su versión 1.0.0 aprobada en la memoria.
+ *  - Hoy: personas solo en las pantallas del diff → la regresión de clientes no se ve.
+ *  - Con regresión mecánica: se repiten sin modelo los recorridos afectados (pedidos y clientes) y solo lo que
+ *    cambió va a su dueña (JUZGAR_PASOS pasos de modelo).
+ * Caso «limpio» (sin regresión): mide los falsos positivos.
+ */
+async function regresionImpacto() {
+  const rec = await libMod("recorridos");
+  const reg = await libMod("regresion");
+  const imp = await libMod("impacto");
+  const det = {};
+  let puerto = 47640;
+  for (const [caso, extra] of [
+    ["roto", { BENCH_ROTO: "clientes" }],
+    ["limpio", {}],
+  ]) {
+    const root = proyectoCon(() => {});
+    const web = join(root, "web");
+    const g = (...a) => execFileSync("git", a, { cwd: web, stdio: "ignore" });
+    const base = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: web, encoding: "utf8" }).trim();
+    escribir(root, "web/src/ui/tabla.tsx", "export function Tabla(filas) { return filas.length; }\n");
+    escribir(root, "web/src/app/pedidos/page.tsx", 'import { Tabla } from "../../ui/tabla.tsx";\nexport default function Pedidos() { return Tabla([]); }\n');
+    escribir(root, "web/src/app/clientes/page.tsx", 'import { Tabla } from "../../ui/tabla.tsx";\nexport default function Clientes() { return Tabla([]); }\n');
+    escribir(root, "web/src/app/productos/page.tsx", "export default function Productos() { return null; }\n");
+    g("add", ".");
+    g("commit", "-qm", "pantallas");
+    g("checkout", "-qb", "cambio");
+    escribir(root, "web/src/ui/tabla.tsx", "export function Tabla(filas) { return filas.length + 0; }\n");
+    escribir(root, "web/src/app/pedidos/page.tsx", 'import { Tabla } from "../../ui/tabla.tsx";\nexport default function Pedidos() { return Tabla([1]); }\n');
+    for (const r of Object.values(RECS_IMPACTO)) escribir(root, `.claude/personas/recorridos/${r.id}.json`, JSON.stringify(r, null, 2));
+    const cfg = await configDe(root);
+    // La versión 1.0.0, aprobada: la memoria de cada recorrido (con la firma de sus pantallas si el plugin la toma).
+    const v1 = await levantarUx(root, "v1", puerto++);
+    try {
+      for (const r of Object.values(RECS_IMPACTO)) rec.registrarMemoria(cfg, r, await rec.ejecutarRecorrido(navegadorHttp(v1.web), r), { version: "1.0.0", persona: r.persona, aprobado: true });
+    } finally {
+      v1.p.kill();
+    }
+    const v2 = await levantarUx(root, "v1", puerto++, extra);
+    const r = { pasosModelo: 0, repetidos: 0, de: Object.keys(RECS_IMPACTO).length, detectada: false, falsos: 0, msMecanica: 0, juzgar: [] };
+    try {
+      r.pasosModelo += (await personaFalsa(root, v2.web, { rutasDiff: ["/pedidos"] })).pasos;
+      if (reg && imp) {
+        const i = imp.impacto(cfg, { base });
+        const recs = imp.permanentes(cfg).filter((x) => i.afectados.some((a) => a.id === x.id));
+        const t0 = Date.now();
+        const res = await reg.repetir(cfg, recs, { version: "2.0.0", navegadorPara: async () => navegadorHttp(v2.web) });
+        r.msMecanica = Date.now() - t0;
+        r.repetidos = res.length;
+        r.juzgar = res.filter((x) => x.estado === "diferencias" || x.estado === "regresion").map((x) => `${x.id} (${x.estado})`);
+        r.pasosModelo += r.juzgar.length * JUZGAR_PASOS;
+        r.detectada = res.some((x) => x.id === "importar-clientes" && (x.estado === "regresion" || x.estado === "diferencias"));
+        r.falsos = res.filter((x) => x.id !== "importar-clientes" && x.estado !== "igual").length + (caso === "limpio" && r.detectada ? 1 : 0);
+        r.pantallas = i.pantallas.map((p) => p.ruta);
+      }
+    } finally {
+      v2.p.kill();
+    }
+    det[caso] = r;
+    log(`regresion_impacto ${caso}: ${caso === "roto" ? `detectada ${r.detectada ? "sí" : "no"} · ` : ""}falsos ${r.falsos} · ${r.pasosModelo} pasos de modelo · repetidos ${r.repetidos} de ${r.de} en ${r.msMecanica} ms${r.juzgar.length ? ` · a juzgar: ${r.juzgar.join(", ")}` : ""}`);
+    borrar(root);
+  }
+  const d = det.roto;
+  return { valor: Number(d.detectada), unidad: "de 1 detectada", falsos: d.falsos + det.limpio.falsos, pasosModelo: { roto: d.pasosModelo, limpio: det.limpio.pasosModelo }, detalle: det, texto: `regresión fuera del diff ${d.detectada ? "detectada" : "no detectada"} · falsos ${d.falsos + det.limpio.falsos} · pasos de modelo ${d.pasosModelo} (roto) y ${det.limpio.pasosModelo} (limpio) · repetidos ${d.repetidos} de ${d.de}` };
+}
+
+/** Latencia del hook de inicio de sesión (SessionStart), N veces sobre el mismo proyecto. */
+async function inicioMs(root) {
+  const xs = [];
+  for (let i = 0; i < Math.max(CORRIDAS, 5) * 4; i++) {
+    const r = await hook("feedback.mjs", "inicio", { cwd: root, session_id: `ini-${i}` });
+    xs.push(r.ms);
+  }
+  log(`inicio_ms: mediana ${mediana(xs).toFixed(1)} ms`);
+  return { valor: mediana(xs), unidad: "ms", corridas: xs };
+}
+
+const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad, panel_pasos: panelPasos, regresion_ux: regresionUx, exploracion_implementador: exploracionImplementador, stop_y_ciclo_total: stopYCicloTotal, ciclo_por_riesgo: cicloPorRiesgo, comandos_app: comandosApp, comentarios_barrera: comentariosBarrera, pedido_textual: pedidoTextual, prueba_primero: pruebaPrimero, autoajuste: autoajusteMetrica, regresion_impacto: regresionImpacto, inicio_ms: inicioMs };
 
 const root = armarProyecto();
 log(`proyecto de prueba: ${root} · plugin: ${PLUGIN} · ${CORRIDAS} corridas`);
-const resultado = { fecha: new Date().toISOString(), plugin: PLUGIN, version: JSON.parse(readFileSync(join(PLUGIN, "package.json"), "utf8")).version, plataforma: `${process.platform} ${process.arch}`, node: process.version, corridas: CORRIDAS, metricas: {} };
+// Sin rutas de la máquina (traen el nombre del usuario): «este repo» o la carpeta medida, solo su nombre.
+const resultado = { fecha: new Date().toISOString(), plugin: PLUGIN === resolve(AQUI, "..") ? "este repo" : `otra carpeta (${PLUGIN.split(/[\\/]/).pop()})`, version: JSON.parse(readFileSync(join(PLUGIN, "package.json"), "utf8")).version, plataforma: `${process.platform} ${process.arch}`, node: process.version, corridas: CORRIDAS, metricas: {} };
 for (const [nombre, fn] of Object.entries(METRICAS)) {
   if (SOLO.length && !SOLO.includes(nombre)) continue;
   log(`── ${nombre}`);

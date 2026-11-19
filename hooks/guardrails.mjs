@@ -307,6 +307,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   if (app) {
     const cmd = String(event.tool_input?.command ?? "");
     // Guardar o borrar una macro cambia lo que todo el equipo puede correr: lo decide el usuario.
+    // Un ajuste del autoajuste cambia la configuración del equipo: también lo decide el usuario.
+    if (/autoajuste\.mjs["']?\s+(aplicar|revertir)\b/.test(cmd)) pregunta = pregunta || `neurodanza: ${/\baplicar\b/.test(cmd) ? "aplicar un ajuste propuesto por el autoajuste (cambia neurodanza.config.json o queda registrado en .claude/neurodanza-ajustes.json)" : "revertir un ajuste del autoajuste"}. ¿Lo apruebas?`;
     if (/app\.mjs["']?\s+(aceptar|borrar)\b/.test(cmd)) pregunta = pregunta || `neurodanza: ${/\baceptar\b/.test(cmd) ? "guardar un comando como macro del proyecto (queda en git y cualquiera la puede correr)" : "borrar una macro del proyecto"}. ¿Lo apruebas?`;
     try {
       const extra = [app.contarRepetido(cfg, cmd), app.pistaApp(cfg, event)].filter(Boolean).join("\n");
