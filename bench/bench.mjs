@@ -1373,7 +1373,8 @@ const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrail
 
 const root = armarProyecto();
 log(`proyecto de prueba: ${root} · plugin: ${PLUGIN} · ${CORRIDAS} corridas`);
-const resultado = { fecha: new Date().toISOString(), plugin: PLUGIN, version: JSON.parse(readFileSync(join(PLUGIN, "package.json"), "utf8")).version, plataforma: `${process.platform} ${process.arch}`, node: process.version, corridas: CORRIDAS, metricas: {} };
+// Sin rutas de la máquina (traen el nombre del usuario): «este repo» o la carpeta medida, solo su nombre.
+const resultado = { fecha: new Date().toISOString(), plugin: PLUGIN === resolve(AQUI, "..") ? "este repo" : `otra carpeta (${PLUGIN.split(/[\\/]/).pop()})`, version: JSON.parse(readFileSync(join(PLUGIN, "package.json"), "utf8")).version, plataforma: `${process.platform} ${process.arch}`, node: process.version, corridas: CORRIDAS, metricas: {} };
 for (const [nombre, fn] of Object.entries(METRICAS)) {
   if (SOLO.length && !SOLO.includes(nombre)) continue;
   log(`── ${nombre}`);

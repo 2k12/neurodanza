@@ -23,7 +23,7 @@ test("autoconfig: bloque del .gitignore idempotente", () => {
   assert.match(conBloque(""), /^# neurodanza/);
 });
 
-test("autoconfig: raíz que no es repo (varios repos, como leza): worktrees dentro, sin permisos ni .gitignore", () => {
+test("autoconfig: raíz que no es repo (varios repos en una carpeta principal): worktrees dentro, sin permisos ni .gitignore", () => {
   const { root, cfg } = proyecto(false);
   assert.equal(baseWorktrees(cfg), join(root, ".neurodanza", "wt"));
   assert.equal(worktreesFuera(cfg), false);

@@ -26,8 +26,8 @@ test("telemetría: rechazos de barrera, cortes y permisos del usuario se disting
   assert.equal(errorConTexto("<ruta> N <ruta>"), false);
   assert.equal(errorConTexto("eslint: not found en <ruta>"), true);
   // Claude Code nombra la carpeta de transcripts con la ruta absoluta (cada carácter que no es letra o número → «-»).
-  if (process.platform === "win32") assert.equal(slugDe("C:\\Users\\a\\leza"), "C--Users-a-leza");
-  else assert.equal(slugDe("/home/a/leza"), "-home-a-leza");
+  if (process.platform === "win32") assert.equal(slugDe("C:\\Users\\ana\\proyecto"), "C--Users-ana-proyecto");
+  else assert.equal(slugDe("/home/ana/proyecto"), "-home-ana-proyecto");
 });
 
 test("telemetría: una sesión cuenta tokens una vez por mensaje, comandos que fallan, rechazos y cortes", () => {
