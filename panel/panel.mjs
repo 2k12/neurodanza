@@ -10,6 +10,7 @@
 //   node panel.mjs navegar --persona <id> --rutas <r1,r2> --salida <carpeta> [--acciones <json>] [--dispositivo tablet|celular]
 //   node panel.mjs navegar --persona <id> --recorrido <archivo o id> --salida <carpeta> [--rutas …]   primero el recorrido acordado
 //   node panel.mjs calificar --resultado <json>                 promedio y aprobación (reescribe el json)
+//   node panel.mjs comparar --recorrido <id> [--ejecucion <recorrido.json>]   regresiones contra la última versión aprobada
 //   node panel.mjs en-vivo --ronda <carpeta> --personas a,b,c --titulo "…" --cambio "…"
 //   node panel.mjs decir --ronda <carpeta> --persona <id> --texto "…" [--estado "Probando"]   (estados: ESTADOS_RONDA)
 //   node panel.mjs oir --ronda <carpeta>
@@ -26,7 +27,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
 import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
-import { ejecutarRecorrido, leerRecorrido, notaPorPasos, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
+import { compararEjecuciones, compararMemoria, ejecutarRecorrido, leerMemoria, leerRecorrido, notaConRegresiones, notaPorPasos, registrarMemoria, textoRegresion, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -367,15 +368,81 @@ export function navegadorPlaywright(page, web, registro, { capturas = null } = {
  * Notas con detalle por paso (Tenet): un paso crítico que no cumple (según la persona o la ejecución mecánica)
  * limita la nota a `panel.notaMaxSiFalla`. Guarda la nota de la persona en `notaPersona`. `leer(ruta)` → JSON|null.
  */
-export function ajustarEvaluaciones(data, { notaMax = 6, leer = () => null } = {}) {
+export function ajustarEvaluaciones(data, { notaMax = 6, leer = () => null, regresionesDe = () => [] } = {}) {
   for (const e of data.evaluaciones ?? []) {
     if (!e.pasos && !e.recorrido) continue;
+    if (e.reutilizada) continue; // ya se ajustó en su ronda
     const rec = e.recorrido?.archivo ? leer(e.recorrido.archivo) : null;
     const ej = e.recorrido?.informe ? leer(e.recorrido.informe) : null;
-    const r = notaPorPasos({ ...e, nota: e.notaPersona ?? e.nota }, notaMax, rec, ej?.recorrido ?? ej);
-    if (r.limitada) Object.assign(e, { notaPersona: e.notaPersona ?? e.nota, nota: r.nota, limite: r.motivo });
+    const notaPersona = Number(e.notaPersona ?? e.nota);
+    // Westworld: las regresiones de experiencia frente a la última versión aprobada bajan la nota (regla documentada).
+    const regs = ej ? regresionesDe(e, rec, ej.recorrido ?? ej) : [];
+    let nota = notaPersona;
+    if (regs.length) {
+      const c = notaConRegresiones(nota, regs);
+      nota = c.nota;
+      Object.assign(e, { regresiones: regs.map((r) => r.texto), descuentoRegresiones: c.descuento });
+    }
+    // Tenet: un paso crítico que no cumple limita la nota.
+    const r = notaPorPasos({ ...e, nota }, notaMax, rec, ej?.recorrido ?? ej);
+    if (r.limitada) {
+      nota = r.nota;
+      e.limite = r.motivo;
+    }
+    if (nota !== notaPersona) Object.assign(e, { notaPersona, nota });
   }
   return data;
+}
+
+/** Regresiones de una evaluación con recorrido, contra la memoria del proyecto. */
+const regresionesConfig = (cfg, version) => (e, rec, ej) => {
+  const id = e.recorrido?.id ?? rec?.id ?? ej?.id;
+  return id ? compararMemoria(cfg, id, ej, { excluirVersion: version }).regresiones : [];
+};
+
+/**
+ * Tras calificar: cada recorrido **permanente** guarda su ejecución en la memoria (versión de la app del resultado,
+ * aprobada si la ronda aprobó) y las regresiones por persona quedan en `.neurodanza/regresiones.json` (el mapa).
+ */
+function guardarMemorias(cfg, data, aprobado) {
+  const porPersona = {};
+  for (const e of data.evaluaciones ?? []) {
+    if (e.regresiones?.length) porPersona[e.persona] = e.regresiones;
+    if (e.reutilizada || !e.recorrido?.informe) continue;
+    const ej = leerJsonSiExiste(e.recorrido.informe);
+    const ejec = ej?.recorrido ?? ej;
+    const rec = (e.recorrido.archivo && leerJsonSiExiste(e.recorrido.archivo)) || leerRecorrido(cfg, e.recorrido.id ?? ejec?.id ?? "");
+    if (!ejec?.pasos || !rec) continue;
+    const permanente = rec.permanente === true || existsSync(join(cfg.abs(cfg.panel.recorridos), `${rec.id}.json`));
+    if (permanente) registrarMemoria(cfg, rec, ejec, { version: data.version, persona: e.persona, aprobado });
+  }
+  try {
+    mkdirSync(cfg.abs(".neurodanza"), { recursive: true });
+    writeFileSync(cfg.abs(".neurodanza/regresiones.json"), JSON.stringify(porPersona, null, 2));
+  } catch {
+    /* el mapa es una ayuda */
+  }
+}
+
+/** `panel.mjs comparar --recorrido <id> [--ejecucion <recorrido.json>]`: regresiones contra la última versión aprobada. */
+function comparar(ctx, a) {
+  const { cfg } = ctx;
+  if (!a.recorrido) throw new Error("comparar: --recorrido <id> es obligatorio");
+  const mem = leerMemoria(cfg, a.recorrido);
+  let ej = a.ejecucion ? leerJsonSiExiste(a.ejecucion) : null;
+  ej = ej?.recorrido ?? ej;
+  if (!ej) {
+    // Sin ejecución dada: la última registrada contra la última aprobada anterior.
+    const ultima = mem.historial.at(-1);
+    if (!ultima) return console.log(JSON.stringify({ recorrido: a.recorrido, regresiones: [], motivo: "sin historial previo" }, null, 2));
+    const previa = mem.historial.slice(0, -1).reverse().find((x) => x.aprobado);
+    if (!previa) return console.log(JSON.stringify({ recorrido: a.recorrido, regresiones: [], motivo: "sin una versión aprobada anterior" }, null, 2));
+    const regs = compararEjecuciones(previa, ultima, cfg.panel.regresion).map((r) => ({ ...r, texto: textoRegresion(r, ultima.tarea ?? a.recorrido, previa.version) }));
+    return console.log(JSON.stringify({ recorrido: a.recorrido, contra: previa.version, version: ultima.version, regresiones: regs }, null, 2));
+  }
+  const r = compararMemoria(cfg, a.recorrido, ej);
+  console.log(JSON.stringify({ recorrido: a.recorrido, contra: r.base?.version ?? null, regresiones: r.regresiones, ...(r.motivo ? { motivo: r.motivo } : {}) }, null, 2));
+  if (r.regresiones.length) console.error(r.regresiones.map((x) => `⚠ ${x.texto}`).join("\n"));
 }
 
 const leerJsonSiExiste = (f) => {
@@ -491,13 +558,19 @@ async function navegar(ctx, a) {
 
 function calificar(ctx, a) {
   const file = resolve(a.resultado);
-  const data = ajustarEvaluaciones(JSON.parse(readFileSync(file, "utf8")), { notaMax: ctx.cfg.panel.notaMaxSiFalla ?? 6, leer: leerJsonSiExiste });
+  const crudo = JSON.parse(readFileSync(file, "utf8"));
+  const data = ajustarEvaluaciones(crudo, { notaMax: ctx.cfg.panel.notaMaxSiFalla ?? 6, leer: leerJsonSiExiste, regresionesDe: regresionesConfig(ctx.cfg, crudo.version) });
   const umbral = ctx.cfg.panel.umbral;
   const s = veredictoRonda(data, umbral, fundidas(ctx.cfg));
   Object.assign(data, s, { umbral, fecha: new Date().toISOString() });
   writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
+  guardarMemorias(ctx.cfg, data, s.aprobado);
   console.log(JSON.stringify(s));
-  for (const e of data.evaluaciones ?? []) if (e.limite) console.log(`✖ ${e.persona}: ${e.limite}`);
+  // En el chat: lo que limitó o bajó cada nota.
+  for (const e of data.evaluaciones ?? []) {
+    for (const r of e.regresiones ?? []) console.log(`⚠ regresión · ${e.persona}: ${r}`);
+    if (e.limite) console.log(`✖ ${e.persona}: ${e.limite}`);
+  }
   // Si la ventana en vivo sigue abierta, se cierra aquí con las notas (aunque después nadie llame a `cerrar`).
   const cerrada = cerrarRondaActiva(ctx.cfg.root, "", data, umbral);
   if (cerrada) console.log(`ronda en vivo cerrada con las notas · ${cerrada}`);
@@ -532,7 +605,7 @@ export function rondaAbierta(dir) {
 
 /** Evento de fin con notas, estados (desde la nota) y veredicto de un resultado del panel. */
 function finDe(umbral, data) {
-  return { type: "fin", promedio: data.promedio, aprobado: !!data.aprobado, umbral, notas: (data.evaluaciones ?? []).map((e) => ({ persona: e.persona, nota: e.nota, estado: estadoFinal(e.nota) })) };
+  return { type: "fin", promedio: data.promedio, aprobado: !!data.aprobado, umbral, notas: (data.evaluaciones ?? []).map((e) => ({ persona: e.persona, nota: e.nota, estado: estadoFinal(e.nota), ...(e.regresiones?.length ? { regresiones: e.regresiones } : {}) })) };
 }
 
 /**
@@ -627,11 +700,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       } else if (cmd === "usuarios") await usuarios(ctx);
       else if (cmd === "navegar") await navegar(ctx, a);
       else if (cmd === "calificar") calificar(ctx, a);
+      else if (cmd === "comparar") comparar(ctx, a);
       else if (cmd === "en-vivo") enVivo(ctx, a);
       else if (cmd === "cerrar") cerrar(ctx, a);
       else if (cmd === "ventana") ventana(ctx, a);
       else if (cmd === "crear") crear(ctx, a);
-      else console.log("comandos: elegir | usuarios | navegar | calificar | en-vivo | decir | oir | cerrar | ventana | crear");
+      else console.log("comandos: elegir | usuarios | navegar | calificar | comparar | en-vivo | decir | oir | cerrar | ventana | crear");
     }
   } catch (e) {
     console.error(String(e?.message ?? e));

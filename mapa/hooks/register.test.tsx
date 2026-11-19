@@ -89,6 +89,11 @@ test('reemplazos, muertes, cuarentena y fantasmas en el mapa', () => {
   const a = { id: 'i2', toolUseId: 't', tipo: 'implementador', desc: 'pedidos-api ↻ 2', fase: 1, estado: 'corriendo' as const, pasos: 2, max: 60, ultima: '', inicio: 0, huella: '', repetidas: 0, avisos: [] }
   expect(marcas(a, { 'pedidos-api': 1 }, {})).toBe(' ✝ 1')
   expect(marcas(a, {}, { i2: true })).toBe(' ⛔ cuarentena')
+  // Regresiones de experiencia: solo en la persona dueña del recorrido.
+  const ana = { ...a, id: 'p1', tipo: 'neurodanza:persona-evaluadora', desc: 'Ana evalúa exportar' }
+  expect(marcas(ana, {}, {}, { ana: ['En la 1.0.0 me tomaba 2 clics; ahora 4.', 'otra'] })).toBe(' ⚠ 2 regresiones')
+  expect(marcas(ana, {}, {}, { luis: ['x'] })).toBe('')
+  expect(marcas(a, {}, {}, { ana: ['x'] })).toBe('')
   expect(veredictoDe('{"id":"h1","confirmado":true,"gravedad":"alta"}')).toBe('✔ alta')
   expect(veredictoDe('resultado guardado · h2 · no confirmado')).toBe('sin hallazgo')
   expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:fantasma' }, 2)).toBe(3)

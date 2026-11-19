@@ -113,12 +113,19 @@ export function muertesPorTarea(m: unknown): Record<string, number> {
   return out
 }
 
-/** Marcas de un nodo: continuación (↻ n, del re-enfundado), muertes (✝ n), cuarentena (⛔). */
-export function marcas(a: Agente, muertes: Record<string, number>, cuarentena: Record<string, boolean>): string {
+/**
+ * Marcas de un nodo: continuación (↻ n, del re-enfundado), muertes (✝ n), cuarentena (⛔) y, en las personas,
+ * regresiones de experiencia de su recorrido (⚠ n, de `.neurodanza/regresiones.json`).
+ */
+export function marcas(a: Agente, muertes: Record<string, number>, cuarentena: Record<string, boolean>, regresiones: Record<string, string[]> = {}): string {
   const out: string[] = []
   const tarea = Object.keys(muertes).find((t) => a.desc.includes(t))
   if (tarea) out.push(`✝ ${muertes[tarea]}`)
   if (cuarentena[a.id]) out.push('⛔ cuarentena')
+  if (/persona-evaluadora/.test(a.tipo)) {
+    const p = Object.keys(regresiones).find((id) => new RegExp(`\\b${id.replace(/[^\w-]/g, '')}\\b`, 'i').test(a.desc))
+    if (p && regresiones[p].length) out.push(`⚠ ${regresiones[p].length} ${regresiones[p].length > 1 ? 'regresiones' : 'regresión'}`)
+  }
   return out.length ? ` ${out.join(' ')}` : ''
 }
 
@@ -183,7 +190,7 @@ let presupuesto: Presupuesto = PRESUPUESTO
 let tiempos: Tiempos = TIEMPOS
 let latidoMs = 90_000
 let tick: { cancel: () => void } | undefined
-const archivos: { plan: string; estado: Estado | null; director: boolean; fundidas: { capa: string; motivo: string }[]; muertes: Record<string, number>; cuarentena: Record<string, boolean>; leido: number } = { plan: '', estado: null, director: false, fundidas: [], muertes: {}, cuarentena: {}, leido: 0 }
+const archivos: { plan: string; estado: Estado | null; director: boolean; fundidas: { capa: string; motivo: string }[]; muertes: Record<string, number>; cuarentena: Record<string, boolean>; regresiones: Record<string, string[]>; leido: number } = { plan: '', estado: null, director: false, fundidas: [], muertes: {}, cuarentena: {}, regresiones: {}, leido: 0 }
 
 const ahora = () => Date.now()
 
@@ -240,6 +247,11 @@ async function leerArchivos($: Dollar) {
     archivos.muertes = muertesPorTarea(JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/muertes.json`))))
   } catch {
     archivos.muertes = {}
+  }
+  try {
+    archivos.regresiones = JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/regresiones.json`))) ?? {}
+  } catch {
+    archivos.regresiones = {}
   }
   // Cuarentena: solo de los subagentes que siguen corriendo (pocos archivos).
   const corriendo = (await read($, ciclo)).agentes.filter((a) => a.estado === 'corriendo')
@@ -499,7 +511,7 @@ export const register: Register = (on) => {
                     {a.estado === 'corriendo' ? corto(a.ultima, Math.max(12, ancho - 52)) : a.veredicto ?? a.estado} · {a.pasos}/{a.max} pasos · {reloj((a.fin ?? t) - a.inicio)}{a.maxSeg ? `/${reloj(a.maxSeg * 1000)}` : ''}
                   </Text>
                   <Text color="warning">{alerta(a)}</Text>
-                  <Text color="error">{marcas(a, archivos.muertes, archivos.cuarentena)}</Text>
+                  <Text color="error">{marcas(a, archivos.muertes, archivos.cuarentena, archivos.regresiones)}</Text>
                 </Button>
               ))}
             </Box>

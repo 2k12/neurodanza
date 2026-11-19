@@ -223,6 +223,8 @@ Ver [07-panel-personas.md](07-panel-personas.md).
 | `usuarios` | `null` | Cómo se crean y cómo entran los usuarios de las personas. |
 | `recorridos` | `".claude/personas/recorridos"` | Carpeta de los recorridos **permanentes** (en git, con id estable), los que se comparan entre versiones. Ver [18-panel-con-recorridos.md](18-panel-con-recorridos.md). |
 | `notaMaxSiFalla` | `6` | Nota máxima de una persona si un paso **crítico** de su recorrido no cumple (según ella o según la ejecución). |
+| `memoria` | `".claude/personas/memoria"` | Historial por versión de cada recorrido permanente (en git: la comparación es compartida). |
+| `regresion` | `{ "clics": 1, "tiempo": 0.3 }` | Regresión de experiencia frente a la última versión aprobada: `clics` o más clics, o `tiempo` (fracción: 0.3 = +30 %, y al menos 1 s) más de tiempo. También cuentan un paso que antes cumplía y ahora no, y errores nuevos. |
 
 ```json
 "panel": {

@@ -38,6 +38,7 @@ Entre 4 y 10 mensajes en total; nada de rutas técnicas ni JSON en los mensajes.
 2. **Si tienes recorrido, ejecútalo primero** (una sola llamada; lo hace entero y registra cada paso):
    `node <panel> navegar --persona <id> --recorrido <archivo> --salida <carpeta>`
    Lee `recorrido.json` en la carpeta de salida (y la captura de cada paso) y califica **contra lo que predijiste**, paso por paso: `cumple`, `cumple con fricción` (llegaste, pero te costó: más clics, un texto confuso, una espera) o `no cumple`, con el motivo en tu voz: «esperaba X, encontré Y». Un paso crítico que no cumple limita tu nota (`panel.notaMaxSiFalla`, 6).
+   **Regresiones** (si tu recorrido es permanente): `node <panel> comparar --recorrido <id> --ejecucion <carpeta de salida>/recorrido.json` lo compara con la última versión aprobada. Si marca regresiones (más clics, más tiempo, un paso que antes cumplía y ahora no, errores nuevos), dilas en la ventana con tu voz y el estado `Con observación` («En la 2.0 exportar me tomaba 2 clics; ahora 4») y ponlas en `hallazgos`. **No las descuentes tú de la nota**: `calificar` aplica la regla del proyecto.
    Después puedes explorar libremente, con un presupuesto corto.
 3. Sin recorrido, o al explorar, prueba el cambio con la app real (en Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`):
    `node <panel> navegar --persona <id> --rutas <r1,r2> --salida <carpeta> [--acciones <archivo.json>] [--dispositivo tablet|celular]`
