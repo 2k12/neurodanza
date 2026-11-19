@@ -222,4 +222,4 @@ Las otras 19 métricas quedan iguales o dentro de ±1,5 % (`stop_normal` 1,4 s, 
 
 **Lo que el banco no mide:** si las lecciones bajan los rechazos en sesiones reales (lo juzga cada lección, por día) ni la repetición con Chromium en una app real.
 
-Datos: [`base5.json`](base5.json), [`final5.json`](final5.json). `base5-autoajuste.json` es una medición parcial anterior de la misma base.
+Datos: [`base5.json`](base5.json), [`final5.json`](final5.json).
