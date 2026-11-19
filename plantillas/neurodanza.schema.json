@@ -467,6 +467,27 @@
           "minimum": 5
         }
       }
+    },
+    "hotel": {
+      "type": "object",
+      "description": "Especialistas que el director consulta antes de delegar (lib/hotel.mjs).",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "maxPasos": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSegundos": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxPorTarea": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     }
   }
 }

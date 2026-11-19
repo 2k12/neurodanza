@@ -325,6 +325,17 @@ Ataques acotados contra la app local, en modo propuesta. Ver [17-seguridad.md](1
 | `activo` | `true` | Con `false`, ni el contrato ni los mensajes llevan el resumen del índice. |
 | `maxLineas` | `60` | Líneas máximas del resumen que va en un contrato o mensaje. |
 
+## `hotel`
+
+Especialistas de solo lectura que el director consulta antes de delegar (`lib/hotel.mjs`). Ver [19-menos-exploracion.md](19-menos-exploracion.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, el contrato no lleva «Lo que ya sabemos de este proyecto». |
+| `maxPasos` | `8` | Presupuesto de pasos de cada especialista. |
+| `maxSegundos` | `120` | Tope de tiempo de cada especialista. |
+| `maxPorTarea` | `4` | Especialistas como máximo por tarea. |
+
 ## `fusible`
 
 Nada de reintentos infinitos contra algo externo. Ver [15-velocidad.md](15-velocidad.md#4-fusible).

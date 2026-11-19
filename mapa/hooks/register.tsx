@@ -52,7 +52,10 @@ export function faseDe(e: Llamada, actual: number): number | null {
   if (t === 'Agent' || t === 'Task') {
     const tipo = str(e.subagent_type)
     if (/revisor-|fantasma/.test(tipo)) return 3
-    if (/persona-evaluadora/.test(tipo)) return 4
+    // En el paso 0 las personas escriben su recorrido futuro (Tenet): siguen en la fase de planificar.
+    if (/persona-evaluadora/.test(tipo)) return actual < 1 ? 0 : 4
+    // Los especialistas responden antes de delegar: fase de implementar.
+    if (/especialista-/.test(tipo)) return 1
     if (/implementador/.test(tipo)) return actual >= 2 && actual !== 5 ? 1 : actual < 1 ? 1 : null
     return null
   }
@@ -93,12 +96,13 @@ export const PRESUPUESTO: Presupuesto = { revisor: 25, persona: 20, implementado
 
 /** Presupuesto de los fantasmas (`fantasmas.maxPasos`, `fantasmas.maxSegundos`). */
 export const fantasmaTope = { pasos: 15, seg: 180 }
+export const especialistaTope = { pasos: 8, seg: 120 }
 
 export type Tiempos = { revisor: number; persona: number; implementador: number; otro: number }
 export const TIEMPOS: Tiempos = { revisor: 300, persona: 210, implementador: 900, otro: 420 }
 
 /** Tope de tiempo (s) de un subagente según su tipo (`ciclo.maxSegundos`). */
-export const maxSegundos = (tipo: string, t: Tiempos) => (/fantasma/.test(tipo) ? fantasmaTope.seg : /revisor-/.test(tipo) ? t.revisor : /persona-evaluadora/.test(tipo) ? t.persona : /implementador/.test(tipo) ? t.implementador : t.otro)
+export const maxSegundos = (tipo: string, t: Tiempos) => (/fantasma/.test(tipo) ? fantasmaTope.seg : /especialista-/.test(tipo) ? especialistaTope.seg : /revisor-/.test(tipo) ? t.revisor : /persona-evaluadora/.test(tipo) ? t.persona : /implementador/.test(tipo) ? t.implementador : t.otro)
 
 /** ¿Un subagente que sigue corriendo pasó `latidoMs` sin dar un paso? */
 export const sinLatido = (a: Agente, ahora: number, latidoMs: number) => a.estado === 'corriendo' && ahora - (a.ultimoPaso ?? a.inicio) > latidoMs
@@ -129,6 +133,12 @@ export function marcas(a: Agente, muertes: Record<string, number>, cuarentena: R
   return out.length ? ` ${out.join(' ')}` : ''
 }
 
+/** Consultas al hotel de especialistas (`.neurodanza/hotel/consultas.json`): «🏨 datos ✔ (caché) · 🏨 permisos ▶». */
+export function hotelDe(h: unknown): string {
+  const cs = (h as { consultas?: { especialista: string; estado: string }[] } | null)?.consultas ?? []
+  return cs.map((c) => `🏨 ${c.especialista} ${c.estado === 'en caché' ? '✔ (caché)' : c.estado === 'respondido' ? '✔' : '▶'}`).join(' · ')
+}
+
 /** Capas fundidas del fusible (`.neurodanza/fusible.json`): no se reintentan y dejan el panel pendiente. */
 export function fundidasDe(f: unknown): { capa: string; motivo: string }[] {
   const capas = (f as { capas?: Record<string, { fundida?: boolean; motivo?: string }> } | null)?.capas ?? {}
@@ -137,7 +147,7 @@ export function fundidasDe(f: unknown): { capa: string; motivo: string }[] {
     .map(([capa, c]) => ({ capa, motivo: String(c.motivo ?? '') }))
 }
 
-export const maxPasos = (tipo: string, p: Presupuesto) => (/fantasma/.test(tipo) ? fantasmaTope.pasos : /revisor-/.test(tipo) ? p.revisor : /persona-evaluadora/.test(tipo) ? p.persona : /implementador/.test(tipo) ? p.implementador : p.otro)
+export const maxPasos = (tipo: string, p: Presupuesto) => (/fantasma/.test(tipo) ? fantasmaTope.pasos : /especialista-/.test(tipo) ? especialistaTope.pasos : /revisor-/.test(tipo) ? p.revisor : /persona-evaluadora/.test(tipo) ? p.persona : /implementador/.test(tipo) ? p.implementador : p.otro)
 
 /** Aviso que toca mandarle a un subagente tras un paso, o null. Cada aviso se manda una vez. */
 export function avisoPara(a: Agente): { clave: string; texto: string } | null {
@@ -190,7 +200,7 @@ let presupuesto: Presupuesto = PRESUPUESTO
 let tiempos: Tiempos = TIEMPOS
 let latidoMs = 90_000
 let tick: { cancel: () => void } | undefined
-const archivos: { plan: string; estado: Estado | null; director: boolean; fundidas: { capa: string; motivo: string }[]; muertes: Record<string, number>; cuarentena: Record<string, boolean>; regresiones: Record<string, string[]>; leido: number } = { plan: '', estado: null, director: false, fundidas: [], muertes: {}, cuarentena: {}, regresiones: {}, leido: 0 }
+const archivos: { plan: string; estado: Estado | null; director: boolean; fundidas: { capa: string; motivo: string }[]; muertes: Record<string, number>; cuarentena: Record<string, boolean>; regresiones: Record<string, string[]>; hotel: string; leido: number } = { plan: '', estado: null, director: false, fundidas: [], muertes: {}, cuarentena: {}, regresiones: {}, hotel: '', leido: 0 }
 
 const ahora = () => Date.now()
 
@@ -208,6 +218,8 @@ async function buscarProyecto($: Dollar) {
         if (cfg?.ciclo?.latidoSeg) latidoMs = Number(cfg.ciclo.latidoSeg) * 1000
         if (cfg?.fantasmas?.maxPasos) fantasmaTope.pasos = Number(cfg.fantasmas.maxPasos)
         if (cfg?.fantasmas?.maxSegundos) fantasmaTope.seg = Number(cfg.fantasmas.maxSegundos)
+        if (cfg?.hotel?.maxPasos) especialistaTope.pasos = Number(cfg.hotel.maxPasos)
+        if (cfg?.hotel?.maxSegundos) especialistaTope.seg = Number(cfg.hotel.maxSegundos)
       } catch {
         /* config inválida: el hook de neurodanza ya avisa */
       }
@@ -252,6 +264,11 @@ async function leerArchivos($: Dollar) {
     archivos.regresiones = JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/regresiones.json`))) ?? {}
   } catch {
     archivos.regresiones = {}
+  }
+  try {
+    archivos.hotel = hotelDe(JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/hotel/consultas.json`))))
+  } catch {
+    archivos.hotel = ''
   }
   // Cuarentena: solo de los subagentes que siguen corriendo (pocos archivos).
   const corriendo = (await read($, ciclo)).agentes.filter((a) => a.estado === 'corriendo')
@@ -484,7 +501,7 @@ export const register: Register = (on) => {
         {c.fases.map((f) => {
           const agentes = c.agentes.filter((a) => a.fase === f.n)
           const dura = f.inicio ? reloj((f.fin ?? t) - f.inicio) : ''
-          const info = f.n === 2 && estado?.pasos?.length ? estado.pasos.map((p) => `${p.repo} ${p.paso} ${p.ok ? '✔' : '✖'}${p.cache ? '(caché)' : ` ${reloj(p.ms)}`}`).join(' · ') : ''
+          const info = f.n === 1 && archivos.hotel ? archivos.hotel : f.n === 2 && estado?.pasos?.length ? estado.pasos.map((p) => `${p.repo} ${p.paso} ${p.ok ? '✔' : '✖'}${p.cache ? '(caché)' : ` ${reloj(p.ms)}`}`).join(' · ') : ''
           return (
             <Box flexDirection="column">
               <Text color={colorFase(f)} bold={f.estado === 'activa'}>
@@ -504,7 +521,7 @@ export const register: Register = (on) => {
                 <Button key={`nd-agente-${a.id}`} plain dimColor={a.estado !== 'corriendo' || (/fantasma/.test(a.tipo) && !a.veredicto?.startsWith('✔'))} onPress={() => void $.ui.view({ agentId: a.id })}>
                   <Text color={colorAgente(a)}>
                     {'   '}
-                    {i === agentes.length - 1 ? '└─' : '├─'} {iconoAgente(a)} {/fantasma/.test(a.tipo) ? `👻 ${corto(a.desc || 'fantasma', 20)}` : a.tipo === 'implementador' || a.desc.includes('↻') ? corto(a.desc || a.tipo, 24) : corto(a.tipo.replace(/^revisor-/, ''), 18)}
+                    {i === agentes.length - 1 ? '└─' : '├─'} {iconoAgente(a)} {/fantasma/.test(a.tipo) ? `👻 ${corto(a.desc || 'fantasma', 20)}` : /especialista-/.test(a.tipo) ? `🏨 ${a.tipo.replace(/^.*especialista-/, '')}` : a.tipo === 'implementador' || a.desc.includes('↻') ? corto(a.desc || a.tipo, 24) : corto(a.tipo.replace(/^revisor-/, ''), 18)}
                   </Text>
                   <Text dimColor>
                     {' '}
