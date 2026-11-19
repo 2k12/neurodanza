@@ -36,5 +36,7 @@ Entre 4 y 10 mensajes en total; nada de rutas técnicas ni JSON en los mensajes.
 { "persona": "<id>", "nota": 9.2, "estado": "Sin observaciones|Observaciones menores|Funciona con dificultad|Requiere ayuda|No funciona", "resumen": "una frase en primera persona", "hallazgos": ["qué falló o confunde, con ruta y captura"], "sugerencias": ["qué cambiarías"] }
 ```
 
-## Presupuesto de pasos
+## Presupuesto de pasos y de tiempo
 Tienes un máximo de pasos (te lo dicen en el mensaje; si no, 40). Si recibes el aviso de neurodanza de que te acercas o llegaste al tope, termina lo que estás probando, dilo en la ventana (si hay ronda) y entrega tu evaluación con lo que viste.
+
+También tienes un **tope de tiempo** (te lo dicen en el mensaje; si no, 7 min). Al 80 % recibes un aviso junto al resultado de una herramienta: desde ahí, no abras frentes nuevos. Al 100 %, neurodanza rechaza toda herramienta con «se acabó tu tiempo»: entrega YA tu respuesta en el formato pedido con lo que tienes y marca lo que no alcanzaste a revisar. No corras comandos que puedan no terminar (servidores, modo watch, suites completas) sin timeout: la barrera los rechaza y te dice cómo correrlos.

@@ -7,6 +7,7 @@ import { basename, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
 import { enWorktree, fueraDeContrato, leerModo, leerTareas } from "../lib/director.mjs";
+import { MENSAJE_CORTE, registrarPaso, revisarLatidos, terminar } from "../lib/agentes.mjs";
 
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
@@ -202,9 +203,37 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(0);
   }
   if (!cfg) process.exit(0);
+  // SubagentStop: el subagente terminó; ya no cuenta para latidos ni cortes.
+  if (process.argv[2] === "fin-agente") {
+    if (event.agent_id) terminar(cfg, event.agent_id);
+    process.exit(0);
+  }
+  const ahora = Date.now();
+  let aviso = "";
+  // Corte por tiempo (solo subagentes: el agente principal nunca queda bloqueado por esto).
+  if (event.agent_id) {
+    try {
+      const r = registrarPaso(cfg, event, ahora);
+      if (r.corte) {
+        process.stderr.write(`${MENSAJE_CORTE}\n`);
+        process.exit(2);
+      }
+      aviso = r.aviso ?? "";
+    } catch {
+      /* el registro es una ayuda: si falla, la barrera sigue */
+    }
+  }
+  try {
+    revisarLatidos(cfg, ahora, event.agent_id);
+  } catch {
+    /* idem */
+  }
   const why = check(event, cfg);
   if (why) {
     process.stderr.write(`Barrera (neurodanza): ${why}\n`);
     process.exit(2);
   }
+  // Aviso al 80 % del tiempo: contexto junto al resultado de la herramienta, sin decidir permisos
+  // (devolver "allow" se saltaría los permisos del usuario).
+  if (aviso) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: aviso } }));
 }

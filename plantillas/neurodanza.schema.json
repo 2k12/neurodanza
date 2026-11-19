@@ -259,6 +259,28 @@
             "segun-cambio",
             "todos"
           ]
+        },
+        "maxSegundos": {
+          "type": "object",
+          "description": "Tope de tiempo por tipo de subagente (s): aviso al 80 %, rechazo al 100 %.",
+          "properties": {
+            "revisor": {
+              "type": "number"
+            },
+            "persona": {
+              "type": "number"
+            },
+            "implementador": {
+              "type": "number"
+            },
+            "otro": {
+              "type": "number"
+            }
+          }
+        },
+        "latidoSeg": {
+          "type": "number",
+          "description": "Segundos sin un paso para marcar a un subagente sin latido."
         }
       }
     },

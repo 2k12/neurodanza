@@ -23,6 +23,7 @@ import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib
 import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
 import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
 import { correr } from "../lib/procesos.mjs";
+import { limpiarViejos } from "../lib/agentes.mjs";
 
 export { fingerprint, firmaActual, parseStatus };
 
@@ -404,6 +405,7 @@ function informeFondoInicio(cfg) {
 function inicio(cfg, event) {
   // Deja el proyecto listo (.gitignore, aviso de permisos) y carga los errores conocidos.
   const auto = autoconfigurar(cfg, event?.cwd ?? process.cwd());
+  limpiarViejos(cfg);
   const errores = cfg.errores?.activo === false ? "" : contextoErrores(top(loadErrores(archivoDe(cfg)), cfg.errores?.alIniciar ?? 5));
   const contexto = [auto.contexto, informeFondoInicio(cfg), errores].filter(Boolean).join("\n\n");
   const out = {};

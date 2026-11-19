@@ -91,6 +91,15 @@ export function huella(e: Llamada): string {
 export type Presupuesto = { revisor: number; persona: number; implementador: number; otro: number }
 export const PRESUPUESTO: Presupuesto = { revisor: 25, persona: 40, implementador: 60, otro: 40 }
 
+export type Tiempos = { revisor: number; persona: number; implementador: number; otro: number }
+export const TIEMPOS: Tiempos = { revisor: 300, persona: 420, implementador: 900, otro: 420 }
+
+/** Tope de tiempo (s) de un subagente según su tipo (`ciclo.maxSegundos`). */
+export const maxSegundos = (tipo: string, t: Tiempos) => (/revisor-/.test(tipo) ? t.revisor : /persona-evaluadora/.test(tipo) ? t.persona : /implementador/.test(tipo) ? t.implementador : t.otro)
+
+/** ¿Un subagente que sigue corriendo pasó `latidoMs` sin dar un paso? */
+export const sinLatido = (a: Agente, ahora: number, latidoMs: number) => a.estado === 'corriendo' && ahora - (a.ultimoPaso ?? a.inicio) > latidoMs
+
 export const maxPasos = (tipo: string, p: Presupuesto) => (/revisor-/.test(tipo) ? p.revisor : /persona-evaluadora/.test(tipo) ? p.persona : /implementador/.test(tipo) ? p.implementador : p.otro)
 
 /** Aviso que toca mandarle a un subagente tras un paso, o null. Cada aviso se manda una vez. */
@@ -134,6 +143,8 @@ type Estado = { at?: string; fase?: string; problemas?: number; ms?: number; pas
 let raiz = ''
 let planRel = '.neurodanza/plan.md'
 let presupuesto: Presupuesto = PRESUPUESTO
+let tiempos: Tiempos = TIEMPOS
+let latidoMs = 90_000
 let tick: { cancel: () => void } | undefined
 const archivos: { plan: string; estado: Estado | null; director: boolean; leido: number } = { plan: '', estado: null, director: false, leido: 0 }
 
@@ -149,6 +160,8 @@ async function buscarProyecto($: Dollar) {
         const cfg = JSON.parse(String(await $.fs.read(f)))
         if (cfg?.ciclo?.plan) planRel = cfg.ciclo.plan
         if (cfg?.ciclo?.maxPasos) presupuesto = { ...PRESUPUESTO, ...cfg.ciclo.maxPasos }
+        if (cfg?.ciclo?.maxSegundos) tiempos = { ...TIEMPOS, ...cfg.ciclo.maxSegundos }
+        if (cfg?.ciclo?.latidoSeg) latidoMs = Number(cfg.ciclo.latidoSeg) * 1000
       } catch {
         /* config inválida: el hook de neurodanza ya avisa */
       }
@@ -262,6 +275,8 @@ export const register: Register = (on) => {
         max: maxPasos(tipo, presupuesto),
         ultima: 'arrancando',
         inicio: ahora(),
+        maxSeg: maxSegundos(tipo, tiempos),
+        ultimoPaso: ahora(),
         huella: '',
         repetidas: 0,
         avisos: [],
@@ -287,7 +302,7 @@ export const register: Register = (on) => {
         const a = c.agentes[i]
         if (!a) return c
         const h = huella(llamada)
-        const nuevo: Agente = { ...a, pasos: a.pasos + 1, ultima: etiqueta(llamada), huella: h, repetidas: h === a.huella ? a.repetidas + 1 : 1 }
+        const nuevo: Agente = { ...a, pasos: a.pasos + 1, ultima: etiqueta(llamada), huella: h, repetidas: h === a.huella ? a.repetidas + 1 : 1, ultimoPaso: t }
         const av = avisoPara(nuevo)
         if (av) {
           nuevo.avisos = [...nuevo.avisos, av.clave]
@@ -359,8 +374,16 @@ export const register: Register = (on) => {
     const colorFase = (f: Fase) => (f.estado === 'hecha' ? 'success' : f.estado === 'activa' ? 'claude' : 'inactive')
     const colorAgente = (a: Agente) => (a.estado === 'hecho' ? (a.veredicto?.startsWith('✖') ? 'warning' : 'success') : a.estado === 'corriendo' ? 'claude' : 'error')
     const iconoAgente = (a: Agente) => (a.estado === 'hecho' ? '✔' : a.estado === 'corriendo' ? '▶' : '✖')
-    const alerta = (a: Agente) =>
-      a.estado !== 'corriendo' ? '' : a.repetidas >= 3 ? ' ⚠ bucle' : a.pasos >= a.max ? ' ⚠ tope' : a.pasos >= Math.ceil(a.max * 0.8) ? ' ⚠ cerca del tope' : ''
+    const alerta = (a: Agente) => {
+      if (a.estado !== 'corriendo') return ''
+      const usado = (t - a.inicio) / 1000
+      if (a.maxSeg && usado >= a.maxSeg) return ' ⚠ sin tiempo'
+      if (sinLatido(a, t, latidoMs)) return ' ⚠ sin latido'
+      if (a.repetidas >= 3) return ' ⚠ bucle'
+      if (a.pasos >= a.max) return ' ⚠ tope'
+      if (a.pasos >= Math.ceil(a.max * 0.8) || (a.maxSeg && usado >= a.maxSeg * 0.8)) return ' ⚠ cerca del tope'
+      return ''
+    }
 
     if (!c.activo) {
       return (
@@ -406,7 +429,7 @@ export const register: Register = (on) => {
                   </Text>
                   <Text dimColor>
                     {' '}
-                    {a.estado === 'corriendo' ? corto(a.ultima, Math.max(12, ancho - 52)) : a.veredicto ?? a.estado} · {a.pasos}/{a.max} pasos · {reloj((a.fin ?? t) - a.inicio)}
+                    {a.estado === 'corriendo' ? corto(a.ultima, Math.max(12, ancho - 52)) : a.veredicto ?? a.estado} · {a.pasos}/{a.max} pasos · {reloj((a.fin ?? t) - a.inicio)}{a.maxSeg ? `/${reloj(a.maxSeg * 1000)}` : ''}
                   </Text>
                   <Text color="warning">{alerta(a)}</Text>
                 </Button>
