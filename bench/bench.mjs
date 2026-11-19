@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // neurodanza · banco de pruebas de velocidad (sin dependencias).
 // Arma un proyecto de prueba (bench/fixture → carpeta temporal con dos repos git, api y web), corre los
-// hooks del plugin indicado con --plugin y mide 13 métricas con N corridas (mediana). Ver bench/README.md.
+// hooks del plugin indicado con --plugin y mide 18 métricas con N corridas (mediana). Ver bench/README.md.
 // --paso-ms: costo simulado de cada paso de un agente en las métricas de la parte 3 (300 por defecto).
 //
 //   node bench/bench.mjs [--plugin <carpeta del plugin>] [--salida bench/base.json] [--corridas 5] [--solo stop_normal,guardrails_ms]
@@ -964,7 +964,248 @@ async function stopYCicloTotal(root) {
   return { valor: mediana(xs), unidad: "s", corridas: xs, fases: { especialistas: fase("especialistas"), implementar: fase("implementar"), verificar: fase("verificar"), revisionPanel: fase("revisionPanel") }, modelo: { pasoMs: PASO_MS, pasosImplementador: pasosImpl, pasosPersona: persona.pasos, especialistas: hotel, fantasmas, orden: paralelo ? "revisión, panel y fantasmas en el mismo turno" : "revisores, después panel" } };
 }
 
-const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad, panel_pasos: panelPasos, regresion_ux: regresionUx, exploracion_implementador: exploracionImplementador, stop_y_ciclo_total: stopYCicloTotal };
+// ───────────────────────── parte 4: ODD, CLI de la app y comentarios ─────────────────────────
+
+/** Proyecto de prueba aparte para una métrica: copia del fixture con git y la configuración ajustada. */
+function proyectoCon(ajuste) {
+  const r = armarProyecto();
+  const f = join(r, "neurodanza.config.json");
+  const c = JSON.parse(readFileSync(f, "utf8"));
+  ajuste(c, r);
+  writeFileSync(f, JSON.stringify(c, null, 2));
+  return r;
+}
+const escribir = (root, rel, txt) => {
+  mkdirSync(dirname(join(root, rel)), { recursive: true });
+  writeFileSync(join(root, rel), txt);
+};
+const borrar = (root) => {
+  try {
+    rmSync(root, { recursive: true, force: true });
+  } catch {
+    /* Windows puede retener archivos */
+  }
+};
+
+// Tres cambios de distinto riesgo sobre el proyecto de prueba (api y web).
+const funcionesMedio = Array.from({ length: 12 }, (_, i) => `export function regla${i}(pedido) {\n  const total = pedido.items.reduce((s, x) => s + x.precio * x.cantidad, 0);\n  return total > ${100 + i} ? "revisar" : "ok";\n}\n`).join("");
+const CAMBIOS_RIESGO = {
+  chico: { "web/src/app.mjs": 'export const titulo = "Pedidos del día";\n' },
+  medio: { "api/src/modulos/m3.mjs": funcionesMedio },
+  alto: {
+    "api/src/modulos/auth-guard.mjs": 'export function puede(usuario, accion) {\n  return usuario.rol === "ADMIN" || (usuario.permisos ?? []).includes(accion);\n}\n',
+    "api/migraciones/002_roles.sql": "ALTER TABLE usuarios ADD COLUMN rol text NOT NULL DEFAULT 'VENDEDOR';\n",
+    "web/src/app.mjs": 'export const titulo = "Pedidos";\nexport const soloAdmin = true;\n',
+  },
+};
+
+/**
+ * Lo que lanza el harness para cada cambio y cuántos pasos de agente cuesta (proxy de tokens). Sin
+ * lib/riesgo.mjs, lo que fija el skill 1.0.0: los revisores de `ciclo.mjs revisores`, fantasmas si aplican,
+ * 3 personas con su recorrido si hay pantallas y 2 especialistas en modo director (2 repos). Con riesgo, su plan.
+ * Pasos: revisor 12, persona 14 + 8 del recorrido, fantasma 10, especialista 8 (los del banco de la parte 3).
+ */
+async function cicloPorRiesgo() {
+  const det = {};
+  let total = 0;
+  for (const [nombre, archivos] of Object.entries(CAMBIOS_RIESGO)) {
+    const root = proyectoCon((c) => {
+      c.retroalimentacion = { ...(c.retroalimentacion ?? {}), pantallas: ["web:src/**"], migraciones: "api:migraciones/**" };
+      c.repos[0].codigo = ["src/**", "migraciones/**"];
+    });
+    for (const [rel, txt] of Object.entries(archivos)) escribir(root, rel, txt);
+    const salida = libCli("ciclo", ["revisores"], root);
+    let j = {};
+    try {
+      j = JSON.parse(salida);
+    } catch {
+      // En la 1.0.0 `ciclo.mjs revisores` se colgaba (importación circular con fantasmas.mjs, salida 13): se
+      // calcula lo mismo llamando a sus funciones, que es lo que el skill pretendía.
+      log(`ciclo revisores no respondió JSON (${salida.trim().split("\n")[0].slice(0, 90)}): uso sus funciones`);
+      const ciclo = await libMod("ciclo");
+      const fan = await libMod("fantasmas");
+      const cfg = await configDe(root);
+      const cambios = ciclo.changesInBranch(cfg, "main");
+      const leer = (repo, f) => readFileSync(join(root, repo, f), "utf8");
+      j = { ...ciclo.revisoresPara(cfg, cambios), fantasmas: fan?.fantasmasPara ? fan.fantasmasPara(cfg, cambios, leer) : null, cliFalla: true };
+    }
+    const repos = new Set(Object.keys(archivos).map((f) => f.split("/")[0]));
+    const pantallas = Object.keys(archivos).some((f) => f.startsWith("web/"));
+    let plan;
+    if (j.riesgo?.plan) plan = { nivel: j.riesgo.nivel, ...j.riesgo.plan };
+    else plan = { nivel: "—", revisores: (j.lanzar ?? []).length, personas: pantallas ? 3 : 0, recorridos: pantallas, fantasmas: j.fantasmas?.lanzar ? 2 : 0, especialistas: repos.size >= 2 && hayLib("hotel") ? 2 : 0 };
+    const pasos = plan.revisores * 12 + plan.personas * (14 + (plan.recorridos ? 8 : 0)) + plan.fantasmas * 10 + plan.especialistas * 8;
+    const subagentes = plan.revisores + plan.personas + plan.fantasmas + plan.especialistas;
+    det[nombre] = { ...plan, subagentes, pasos, ...(j.cliFalla ? { cliFalla: true } : {}) };
+    total += pasos;
+    log(`ciclo_por_riesgo ${nombre}: nivel ${plan.nivel} · ${subagentes} subagentes · ${pasos} pasos`);
+    borrar(root);
+  }
+  return { valor: total, unidad: "pasos", detalle: det, texto: `chico ${det.chico.pasos} · medio ${det.medio.pasos} · alto ${det.alto.pasos} pasos (${total} en total)` };
+}
+
+const APP_CLI = join(PLUGIN, "lib", "app.mjs").replace(/\\/g, "/");
+/**
+ * Tareas repetitivas contra la app: a mano (lo que escribe un agente sin CLI: login, token y petición) y,
+ * si el plugin trae lib/app.mjs, con la CLI. Mide los caracteres que escribe el agente y si la tarea funcionó.
+ */
+async function comandosApp() {
+  const puerto = 47621;
+  const root = proyectoCon((c) => {
+    c.app = { ...(c.app ?? {}), urls: [`http://localhost:${puerto}`] };
+    c.panel = { ...(c.panel ?? {}), elenco: ".claude/personas/personas.json", usuarios: { login: { url: "/api/auth/login", cuerpo: { email: "${ND_ADMIN_EMAIL:-admin@ejemplo.com}", password: "${ND_ADMIN_PASSWORD:-Clave123!}" }, token: "accessToken" }, email: "persona.{id}@ejemplo.com", clave: "${ND_PERSONA_PASSWORD:-Clave123!}" } };
+  });
+  escribir(root, ".claude/personas/personas.json", JSON.stringify({ personas: [{ id: "vendedor", nombre: "Vera", rol: "VENDEDOR" }] }));
+  const app = await levantarUx(root, "v1", puerto);
+  const b = app.web;
+  const login = `const r=await fetch(b+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'persona.vendedor@ejemplo.com',password:'Clave123!'})});const {accessToken}=await r.json();`;
+  const tareas = [
+    {
+      id: "listar-pedidos",
+      mano: `node -e "const b='${b}';(async()=>{${login}const p=await fetch(b+'/api/pedidos',{headers:{Authorization:'Bearer '+accessToken}});console.log(p.status,(await p.text()).slice(0,500))})()"`,
+      cli: `node "${APP_CLI}" api GET /api/pedidos --como vendedor`,
+      ok: /200/,
+    },
+    {
+      id: "crear-pedido",
+      mano: `node -e "const b='${b}';(async()=>{${login}const p=await fetch(b+'/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+accessToken},body:JSON.stringify({cliente:'Bruno'})});console.log(p.status,(await p.text()).slice(0,500))})()"`,
+      cli: `node "${APP_CLI}" api POST /api/pedidos --como vendedor --cuerpo "{\\"cliente\\":\\"Bruno\\"}"`,
+      ok: /201/,
+    },
+    {
+      id: "verificar-api",
+      mano: "cd api && node ../herramientas/tarea.mjs --nombre lint --ms 400 src/index.mjs && node ../herramientas/tarea.mjs --nombre tipos --ms 900 && node ../herramientas/tarea.mjs --nombre pruebas --ms 1000 src/index.mjs",
+      cli: `node "${APP_CLI}" verificar --repo api --archivos src/index.mjs`,
+      ok: /./,
+    },
+  ];
+  const conCli = hayLib("app");
+  const correr = (cmd) => {
+    try {
+      return { ok: true, out: execSync(cmd, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 30_000 }) };
+    } catch (e) {
+      return { ok: false, out: String(e.stdout ?? "") + String(e.stderr ?? "") };
+    }
+  };
+  const det = [];
+  let chars = 0;
+  for (const t of tareas) {
+    const cmd = conCli ? t.cli : t.mano;
+    const r = correr(cmd);
+    const funciona = r.ok && t.ok.test(r.out);
+    det.push({ tarea: t.id, caracteres: cmd.length, funciona, salida: r.out.trim().slice(0, 160) });
+    chars += cmd.length;
+    log(`comandos_app ${t.id}: ${cmd.length} caracteres · ${funciona ? "funciona" : "FALLA"}`);
+  }
+  app.p.kill();
+  borrar(root);
+  const funcionan = det.filter((d) => d.funciona).length;
+  return { valor: chars, unidad: "caracteres", tokensEstimados: Math.round(chars / 4), funcionan, detalle: det, texto: `${chars} caracteres (≈ ${Math.round(chars / 4)} tokens) · ${funcionan} de ${det.length} funcionan` };
+}
+
+// Ediciones de código: comentarios que no deberían escribirse, permitidos, y código sin comentarios.
+const EDICIONES_COMENTARIOS = {
+  prohibidos: [
+    "// Calcula el total del pedido\nconst total = suma(items);\n",
+    "const iva = total * 0.15; // IVA de Ecuador\n",
+    "/* Recorremos los items para validar */\nfor (const it of items) validar(it);\n",
+    "function interna(x) {\n  // devolvemos el doble\n  return x * 2;\n}\n",
+    "/**\n * Ayuda interna, no exportada.\n */\nfunction ayuda() {\n  return 1;\n}\n",
+    "// Primero buscamos el usuario\nconst u = await buscar(id);\n// Luego validamos\nvalidar(u);\n",
+    "if (!u) {\n  // no existe: error\n  throw new Error('No existe');\n}\n",
+    "// Importamos lo necesario\nimport { a } from './a.mjs';\n",
+    "export const x = 1; /* valor inicial */\n",
+    "// Estado del formulario\nlet estado = 'inicial';\n",
+    "// Este bloque maneja el envío\nasync function enviar() {\n  await guardar();\n}\n",
+    "// Retorna la lista ordenada\nreturn lista.sort();\n",
+  ],
+  permitidos: [
+    "// eslint-disable-next-line no-console\nconsole.log(x);\n",
+    "/**\n * Total del pedido con impuestos.\n * @param {object} pedido\n */\nexport function totalDe(pedido) {\n  return pedido.total;\n}\n",
+    "// POR QUÉ: el SRI rechaza montos con más de 2 decimales.\nconst monto = Math.round(v * 100) / 100;\n",
+    "// @ts-expect-error la librería no trae tipos\nimport x from 'sin-tipos';\n",
+  ],
+  sinComentarios: ["const url = 'http://localhost:3000/api';\n", "const total = items.reduce((s, x) => s + x, 0);\n", 'export const titulo = "Pedidos // del día";\n', "const re = /\\/\\/ +x/;\n"],
+};
+
+/** Barrera de comentarios: cuántas ediciones con comentarios prohibidos se rechazan y cuántas buenas se dejan pasar. */
+async function comentariosBarrera() {
+  const root = proyectoCon((c) => {
+    c.barreras = { ...(c.barreras ?? {}), comentarios: "estricto" };
+  });
+  let rechazadas = 0;
+  let falsas = 0;
+  const ms = [];
+  let i = 0;
+  const correr = async (txt) => {
+    const r = await hook("guardrails.mjs", null, { cwd: root, session_id: "bench-com", tool_name: "Write", tool_input: { file_path: join(root, "api", "src", `nuevo${i++}.mjs`), content: txt } });
+    ms.push(r.ms);
+    return r.code === 2;
+  };
+  for (const t of EDICIONES_COMENTARIOS.prohibidos) if (await correr(t)) rechazadas++;
+  for (const t of [...EDICIONES_COMENTARIOS.permitidos, ...EDICIONES_COMENTARIOS.sinComentarios]) if (await correr(t)) falsas++;
+  borrar(root);
+  const n = EDICIONES_COMENTARIOS.prohibidos.length;
+  const buenas = EDICIONES_COMENTARIOS.permitidos.length + EDICIONES_COMENTARIOS.sinComentarios.length;
+  const pct = Math.round((rechazadas / n) * 1000) / 10;
+  log(`comentarios_barrera: ${rechazadas}/${n} rechazadas · ${falsas}/${buenas} falsos rechazos`);
+  return { valor: pct, unidad: "%", rechazadas, prohibidas: n, falsosRechazos: falsas, buenas, ms: mediana(ms), texto: `${rechazadas} de ${n} rechazadas (${String(pct).replace(".", ",")} %) · ${falsas} de ${buenas} buenas rechazadas por error` };
+}
+
+const PEDIDO_TEXTUAL = 'Agregar un filtro por estado en la pantalla de pedidos. El botón debe decir «Filtrar por estado», si no hay resultados mostrar «No hay pedidos con ese estado» y si el estado no existe responder "Estado inválido".';
+const FRASES_TEXTUALES = ["Filtrar por estado", "No hay pedidos con ese estado", "Estado inválido"];
+/** ¿El contrato del implementador lleva las frases exactas del pedido? (el objetivo lo resume el director) */
+async function pedidoTextual() {
+  const root = proyectoCon(() => {});
+  escribir(root, ".neurodanza/pedido.txt", PEDIDO_TEXTUAL);
+  const extra = [];
+  if (hayLib("funcionalidad")) {
+    libCli("funcionalidad", ["crear", "--tema", "filtro-estado", "--pedido", join(root, ".neurodanza", "pedido.txt")], root);
+    extra.push("--funcionalidad", "filtro-estado");
+  }
+  const salida = libCli("director", ["preparar", "--tarea", "filtro", "--repos", "web", "--archivos", "web:src/**", "--objetivo", "Filtro de pedidos por estado", "--terminado", "el filtro funciona", ...extra], root);
+  const presentes = FRASES_TEXTUALES.filter((f) => salida.includes(f));
+  libCli("director", ["descartar", "--tarea", "filtro"], root);
+  borrar(root);
+  log(`pedido_textual: ${presentes.length} de ${FRASES_TEXTUALES.length} frases en el contrato`);
+  return { valor: presentes.length, unidad: "frases", de: FRASES_TEXTUALES.length, presentes, texto: `${presentes.length} de ${FRASES_TEXTUALES.length} frases exactas en el contrato` };
+}
+
+/**
+ * Pruebas primero: dos implementaciones, una sin ver la prueba en rojo y otra con la prueba en rojo antes de
+ * implementar. Cuenta las que el harness clasifica bien (avisa en la primera, registra el rojo en la segunda).
+ */
+async function pruebaPrimero() {
+  const conLib = hayLib("pruebas");
+  const resultados = {};
+  for (const caso of ["sinRojo", "conRojo"]) {
+    const root = proyectoCon((c) => {
+      c.repos[0].relacionadas = "node --test {archivos}";
+      c.ciclo = { ...(c.ciclo ?? {}), pruebaPrimero: "avisar" };
+    });
+    const prueba = 'import { test } from "node:test";\nimport assert from "node:assert";\nimport { restar } from "./index.mjs";\ntest("restar", () => assert.equal(restar(5, 3), 2));\n';
+    const impl = "export const sumar = (a, b) => a + b;\nexport const restar = (a, b) => a - b;\n";
+    let registro = "";
+    if (caso === "sinRojo") {
+      escribir(root, "api/src/index.mjs", impl);
+      escribir(root, "api/src/index.test.mjs", prueba);
+    } else {
+      escribir(root, "api/src/index.test.mjs", prueba);
+      if (conLib) registro = libCli("pruebas", ["rojo", "--repo", "api", "--archivo", "src/index.test.mjs"], root);
+      escribir(root, "api/src/index.mjs", impl);
+    }
+    const stop = await hook("feedback.mjs", "stop", { cwd: root, session_id: `pp-${caso}-${Date.now()}` });
+    limpiarFondo(root);
+    const aviso = /no se vio (la|una) prueba en rojo/i.test(stop.salida);
+    resultados[caso] = caso === "sinRojo" ? aviso : !aviso && /rojo/i.test(registro);
+    log(`prueba_primero ${caso}: ${resultados[caso] ? "bien" : "no"}${aviso ? " (avisó)" : ""}`);
+    borrar(root);
+  }
+  const bien = Object.values(resultados).filter(Boolean).length;
+  return { valor: bien, unidad: "casos", de: 2, detalle: resultados, texto: `${bien} de 2 bien clasificados` };
+}
+
+const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad, panel_pasos: panelPasos, regresion_ux: regresionUx, exploracion_implementador: exploracionImplementador, stop_y_ciclo_total: stopYCicloTotal, ciclo_por_riesgo: cicloPorRiesgo, comandos_app: comandosApp, comentarios_barrera: comentariosBarrera, pedido_textual: pedidoTextual, prueba_primero: pruebaPrimero };
 
 const root = armarProyecto();
 log(`proyecto de prueba: ${root} · plugin: ${PLUGIN} · ${CORRIDAS} corridas`);
