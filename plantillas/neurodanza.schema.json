@@ -228,6 +228,23 @@
               "node_modules"
             ]
           }
+        },
+        "rebobinar": {
+          "type": "object",
+          "properties": {
+            "activo": {
+              "type": "boolean"
+            },
+            "umbralCorreccion": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Fracción del diff original a partir de la cual corregir encima deja de convenir."
+            },
+            "maxMuertes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },

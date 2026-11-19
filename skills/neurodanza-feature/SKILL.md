@@ -37,7 +37,9 @@ Tú diriges: planificas, delegas, integras y verificas. **No editas código** (l
 3. Por tarea: `<director> preparar --tarea <id> --repos <repos> --archivos "<repo:glob,…>" --objetivo "<una línea>" --terminado "<comprobación>" --constructo <implementador-área>`. Responde las rutas de sus worktrees y el **contrato** listo para pegar, con las **lecciones** que ese constructo aprendió en el proyecto. Usa siempre el mismo nombre de constructo para la misma área (`implementador-backend`, `implementador-frontend`, `implementador-migraciones`…): así acumula experiencia.
 4. Lanza en **un solo mensaje** un `implementador` por tarea independiente, con el contrato y solo el contexto que necesita (reglas que aplican, errores conocidos relevantes, archivos de referencia). No le pases tu razonamiento completo.
 5. Al volver cada uno, lee su JSON. Si `terminado` es `true`: `<director> integrar --tarea <id>`. Si responde `fuera del contrato`, decide si el archivo era necesario (`--forzar`) o si va en otra tarea; si responde `conflicto al aplicar`, crea una tarea de corrección sobre el estado actual. Si `terminado` es `false`, relánzalo con lo pendiente o divide la tarea.
-6. Integradas todas, sigue con el paso 2 (verificar) como siempre. Para corregir hallazgos de revisores o personas, crea tareas nuevas.
+6. Integradas todas, sigue con el paso 2 (verificar) como siempre. Para corregir hallazgos de revisores o personas, decide primero cómo:
+   - `<director> decidir --tarea <id> --hallazgos <json>` (los hallazgos de esa tarea, con `gravedad`, `archivo`, `problema` y, si sabes, `lineas`) responde **corregir** (algo puntual: crea una tarea de corrección encima) o **rebobinar** (hallazgos altos, de diseño, o una corrección que supera `director.rebobinar.umbralCorreccion` del diff).
+   - **Rebobinar con memoria:** `<director> rebobinar --tarea <id> --memoria <json>` (`{ "motivo", "hallazgos", "notas": [notas de personas], "constructo" }`). Guarda el intento fallido como muerte, vuelve el worktree a la **misma foto original** y deja un contrato con «Intentos anteriores y por qué fallaron». Lanza un implementador nuevo con ese contrato (descripción `<tarea> ✝ <n>`). Si responde con tope (`director.rebobinar.maxMuertes`), no rebobines más: informa al usuario con los intentos y sus hallazgos.
 7. Al cerrar el ciclo: `<director> desactivar` (y `<director> tareas` debe quedar vacío; descarta lo que sobre con `<director> descartar --tarea <id>`).
 
 ### Directo
@@ -83,6 +85,7 @@ Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, pe
 
 ## 5. Cerrar
 - **Pilas:** `<pilas> limpiar` al cerrar el ciclo (no van a git).
+- **Reflexión con las muertes:** cada rebobinado ya pasó como evidencia a los constructos; inclúyelo en el informe.
 - **Suite completa:** `<fondo> esperar` debe salir con 0 (la suite completa pasó para el cambio actual). Si sale con 1, corrige; si sale con 2 (sigue corriendo o es de otro cambio), espera o díselo al usuario. Los `Stop` intermedios no bloquean por esto; el cierre sí.
 - **Fusible:** si alguna capa quedó fundida (`<fusible> estado`), el informe dice «no se pudo verificar: <capa> (motivo)» y el panel queda pendiente: pregúntale al usuario cómo sigue.
 - **Reflexión (constructos).** Escribe `<scratchpad>/reflexion.json` con lo que encontraron los jueces en este ciclo y regístralo con `<constructos> reflexion --archivo <ese json>`:
