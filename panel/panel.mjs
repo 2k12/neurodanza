@@ -8,6 +8,7 @@
 //   node panel.mjs elegir --rutas /pedidos,/pedidos/[id]       personas para esas rutas (de min a max según roles)
 //   node panel.mjs usuarios                                     crea los usuarios de prueba de las personas
 //   node panel.mjs navegar --persona <id> --rutas <r1,r2> --salida <carpeta> [--acciones <json>] [--dispositivo tablet|celular]
+//   node panel.mjs navegar --persona <id> --recorrido <archivo o id> --salida <carpeta> [--rutas …]   primero el recorrido acordado
 //   node panel.mjs calificar --resultado <json>                 promedio y aprobación (reescribe el json)
 //   node panel.mjs en-vivo --ronda <carpeta> --personas a,b,c --titulo "…" --cambio "…"
 //   node panel.mjs decir --ronda <carpeta> --persona <id> --texto "…" [--estado "Probando"]   (estados: ESTADOS_RONDA)
@@ -25,6 +26,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
 import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
+import { ejecutarRecorrido, leerRecorrido, notaPorPasos, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -298,10 +300,102 @@ async function usuarios(ctx) {
   }
 }
 
+/**
+ * Navegador de Playwright con la interfaz que espera `ejecutarRecorrido` (lib/recorridos.mjs). `registro`
+ * acumula errores de consola y respuestas HTTP con error (≥ 400, salvo las de `app.ignorarConsola`).
+ */
+export function navegadorPlaywright(page, web, registro, { capturas = null } = {}) {
+  const scope = async () => {
+    const main = page.locator("main").first();
+    return (await main.count()) ? main : page;
+  };
+  const listo = () => page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+  const ruta = () => {
+    try {
+      return new URL(page.url()).pathname;
+    } catch {
+      return page.url();
+    }
+  };
+  return {
+    async ir(r) {
+      await page.goto(`${web}${r}`, { waitUntil: "networkidle" }).catch(() => null);
+    },
+    async click(nombre, { exacto = false } = {}) {
+      const s = await scope();
+      await s.getByRole("button", { name: nombre, exact: exacto }).or(s.getByRole("link", { name: nombre, exact: exacto })).or(s.getByRole("tab", { name: nombre })).first().click({ timeout: 5000 });
+      await listo();
+    },
+    async elegir(lista, opcion, { exacto = false } = {}) {
+      const s = await scope();
+      await s.getByRole("combobox", { name: new RegExp(lista, "i") }).first().click({ timeout: 5000 });
+      await page.getByRole("option", { name: opcion, exact: exacto }).first().click({ timeout: 5000 });
+    },
+    async llenar(etiqueta, valor) {
+      const s = await scope();
+      await s.getByLabel(etiqueta).first().fill(valor, { timeout: 5000 });
+    },
+    tecla: (k) => page.keyboard.press(k),
+    esperar: (ms) => page.waitForTimeout(ms),
+    async cumple(e = {}) {
+      try {
+        if (e.url) {
+          await page.waitForURL((u) => u.pathname.startsWith(e.url), { timeout: 5000 });
+          return { ok: true, encontrado: ruta() };
+        }
+        const t = e.elemento ?? e.texto ?? e.mensaje;
+        if (!t) return { ok: true, encontrado: "" };
+        const loc = e.elemento ? page.getByRole("button", { name: t }).or(page.getByRole("link", { name: t })).or(page.getByLabel(t)).or(page.getByText(t)) : page.getByText(t);
+        await loc.first().waitFor({ state: "visible", timeout: 5000 });
+        return { ok: true, encontrado: t };
+      } catch {
+        const h1 = ((await page.locator("h1").first().textContent({ timeout: 1000 }).catch(() => "")) ?? "").trim();
+        return { ok: false, encontrado: e.url ? ruta() : h1 ? `pantalla «${h1}» sin «${e.elemento ?? e.texto ?? e.mensaje}»` : "no apareció" };
+      }
+    },
+    errores: () => registro,
+    async despues(fila) {
+      if (!capturas) return;
+      const f = join(capturas, `recorrido-${String(fila.n).padStart(2, "0")}.png`);
+      await page.screenshot({ path: f, fullPage: true });
+      fila.captura = f;
+    },
+  };
+}
+
+/**
+ * Notas con detalle por paso (Tenet): un paso crítico que no cumple (según la persona o la ejecución mecánica)
+ * limita la nota a `panel.notaMaxSiFalla`. Guarda la nota de la persona en `notaPersona`. `leer(ruta)` → JSON|null.
+ */
+export function ajustarEvaluaciones(data, { notaMax = 6, leer = () => null } = {}) {
+  for (const e of data.evaluaciones ?? []) {
+    if (!e.pasos && !e.recorrido) continue;
+    const rec = e.recorrido?.archivo ? leer(e.recorrido.archivo) : null;
+    const ej = e.recorrido?.informe ? leer(e.recorrido.informe) : null;
+    const r = notaPorPasos({ ...e, nota: e.notaPersona ?? e.nota }, notaMax, rec, ej?.recorrido ?? ej);
+    if (r.limitada) Object.assign(e, { notaPersona: e.notaPersona ?? e.nota, nota: r.nota, limite: r.motivo });
+  }
+  return data;
+}
+
+const leerJsonSiExiste = (f) => {
+  try {
+    return JSON.parse(readFileSync(resolve(f), "utf8"));
+  } catch {
+    return null;
+  }
+};
+
 async function navegar(ctx, a) {
   const { cfg } = ctx;
   const p = ctx.cast.personas.find((x) => x.id === a.persona);
   if (!p) throw new Error(`persona desconocida: ${a.persona}`);
+  const recorrido = a.recorrido ? leerRecorrido(cfg, a.recorrido) : null;
+  if (a.recorrido && !recorrido) throw new Error(`no encontré el recorrido ${a.recorrido} (archivo o id de ${cfg.panel.recorridos})`);
+  if (recorrido) {
+    const errores = validarRecorrido(recorrido);
+    if (errores.length) throw new Error(`recorrido inválido:\n- ${errores.join("\n- ")}`);
+  }
   const web = await detectWeb(cfg);
   const out = resolve(a.salida ?? join(tmpdir(), `neurodanza-${p.id}`));
   mkdirSync(out, { recursive: true });
@@ -314,6 +408,10 @@ async function navegar(ctx, a) {
   const ignore = (cfg.app.ignorarConsola ?? ["status of 401"]).map((r) => new RegExp(r, "i"));
   page.on("console", (m) => m.type() === "error" && !ignore.some((re) => re.test(m.text())) && problemas.push(`consola: ${m.text().slice(0, 200)}`));
   page.on("response", (r) => r.status() >= 500 && problemas.push(`HTTP ${r.status()} ${r.url().replace(web, "")}`));
+  // Para el recorrido: errores de consola y toda respuesta HTTP con error (≥ 400) que no se ignore.
+  const registro = [];
+  page.on("console", (m) => m.type() === "error" && !ignore.some((re) => re.test(m.text())) && registro.push(`consola: ${m.text().slice(0, 200)}`));
+  page.on("response", (r) => r.status() >= 400 && !ignore.some((re) => re.test(`status of ${r.status()}`)) && registro.push(`HTTP ${r.status()} ${r.url().replace(web, "")}`));
   const informe = { persona: p.id, rol: p.rol, dispositivo: a.dispositivo ?? "escritorio", web, pantallas: [], problemas };
   const L = cfg.app.login;
   try {
@@ -331,6 +429,14 @@ async function navegar(ctx, a) {
       // El login no avanza: es la app (o sus usuarios) la que falla, no la persona.
       fallaFusible(cfg, "app", `el login de ${p.id} no avanza en 20 s`);
       throw e;
+    }
+    // Primero el recorrido acordado (Tenet): se ejecuta entero y se registra paso por paso.
+    if (recorrido) {
+      registro.length = 0;
+      informe.recorrido = await ejecutarRecorrido(navegadorPlaywright(page, web, registro, { capturas: out }), recorrido);
+      informe.recorrido.archivo = existsSync(a.recorrido) ? resolve(a.recorrido) : null;
+      informe.recorrido.congeladoOk = recorrido.congelado ? verificarCongelado(recorrido) : null;
+      writeFileSync(join(out, "recorrido.json"), JSON.stringify(informe.recorrido, null, 2));
     }
     let n = 0;
     for (const ruta of list(a.rutas)) {
@@ -379,17 +485,19 @@ async function navegar(ctx, a) {
     await browser.close();
   }
   writeFileSync(join(out, "informe.json"), JSON.stringify(informe, null, 2));
-  console.log(JSON.stringify({ informe: join(out, "informe.json"), pantallas: informe.pantallas.map((x) => ({ ruta: x.ruta, captura: x.captura, estado: x.estado })), problemas }, null, 2));
+  const rec = informe.recorrido;
+  console.log(JSON.stringify({ informe: join(out, "informe.json"), ...(rec ? { recorrido: { informe: join(out, "recorrido.json"), cumplidos: `${rec.totales.cumplidos}/${rec.totales.pasos}`, clics: rec.totales.clics, segundos: Math.round(rec.totales.ms / 100) / 10, dentroDeLimites: rec.totales.dentroDeLimites, pasos: rec.pasos.map((x) => `${x.n}. ${x.cumple ? "✔" : "✖"} ${x.paso} → esperaba ${x.esperado}${x.cumple ? "" : `, encontré ${x.encontrado}`}`) } } : {}), pantallas: informe.pantallas.map((x) => ({ ruta: x.ruta, captura: x.captura, estado: x.estado })), problemas }, null, 2));
 }
 
 function calificar(ctx, a) {
   const file = resolve(a.resultado);
-  const data = JSON.parse(readFileSync(file, "utf8"));
+  const data = ajustarEvaluaciones(JSON.parse(readFileSync(file, "utf8")), { notaMax: ctx.cfg.panel.notaMaxSiFalla ?? 6, leer: leerJsonSiExiste });
   const umbral = ctx.cfg.panel.umbral;
   const s = veredictoRonda(data, umbral, fundidas(ctx.cfg));
   Object.assign(data, s, { umbral, fecha: new Date().toISOString() });
   writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
   console.log(JSON.stringify(s));
+  for (const e of data.evaluaciones ?? []) if (e.limite) console.log(`✖ ${e.persona}: ${e.limite}`);
   // Si la ventana en vivo sigue abierta, se cierra aquí con las notas (aunque después nadie llame a `cerrar`).
   const cerrada = cerrarRondaActiva(ctx.cfg.root, "", data, umbral);
   if (cerrada) console.log(`ronda en vivo cerrada con las notas · ${cerrada}`);

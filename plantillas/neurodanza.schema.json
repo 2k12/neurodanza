@@ -191,6 +191,16 @@
             "windows",
             "ninguna"
           ]
+        },
+        "recorridos": {
+          "type": "string",
+          "description": "Carpeta de los recorridos permanentes (en git), con id estable."
+        },
+        "notaMaxSiFalla": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Nota máxima de una persona si un paso crítico de su recorrido no cumple."
         }
       }
     },

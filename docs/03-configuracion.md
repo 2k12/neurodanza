@@ -221,6 +221,8 @@ Ver [07-panel-personas.md](07-panel-personas.md).
 | `fotos` | `".claude/personas/fotos"` | Carpeta de fotos recortadas (fuera de git). |
 | `evaluaciones` | `"docs/evaluaciones"` | Carpeta de los resultados del panel (los lee el hook `Stop`). |
 | `usuarios` | `null` | Cómo se crean y cómo entran los usuarios de las personas. |
+| `recorridos` | `".claude/personas/recorridos"` | Carpeta de los recorridos **permanentes** (en git, con id estable), los que se comparan entre versiones. Ver [18-panel-con-recorridos.md](18-panel-con-recorridos.md). |
+| `notaMaxSiFalla` | `6` | Nota máxima de una persona si un paso **crítico** de su recorrido no cumple (según ella o según la ejecución). |
 
 ```json
 "panel": {

@@ -134,6 +134,43 @@
       "esperado": {
         "diferenciaMax": 1.5
       }
+    },
+    {
+      "id": "persona-recorrido-falla",
+      "persona": "<id de una persona que usa a diario la pantalla>",
+      "rutas": [
+        "/app/pedidos"
+      ],
+      "cambio": "Exporta los pedidos del mes a CSV siguiendo tu recorrido.",
+      "recorrido": {
+        "id": "eval-exportar-pedidos",
+        "persona": "<mismo id>",
+        "tarea": "Exportar los pedidos del mes a CSV",
+        "maxClics": 4,
+        "maxSegundos": 60,
+        "pasos": [
+          {
+            "ruta": "/app/pedidos",
+            "espera": {
+              "texto": "Pedidos"
+            },
+            "porQue": "es donde empiezo cada mañana"
+          },
+          {
+            "click": "Exportar a contabilidad",
+            "espera": {
+              "texto": "Exportación lista"
+            },
+            "porQue": "sin el archivo no cierro el mes",
+            "critico": true
+          }
+        ]
+      },
+      "esperado": {
+        "pasoNoCumple": 2,
+        "notaMax": 6
+      },
+      "nota": "El botón «Exportar a contabilidad» no existe en la app: el paso 2 no puede cumplirse. Mide que la persona lo marque «no cumple» con el motivo (esperaba X, encontré Y) en vez de dar por buena la tarea. /neurodanza-init adapta la ruta y elige un nombre de botón que no exista."
     }
   ],
   "fantasmas": [

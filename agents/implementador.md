@@ -15,7 +15,7 @@ Eres un **implementador especialista**. El director te entrega un **contrato** (
 
 ## Cómo trabajar
 1. Lee el contrato y solo los archivos necesarios para entender lo que vas a cambiar.
-2. Implementa el cambio más pequeño que cumpla la condición de terminado, con sus pruebas.
+2. Implementa el cambio más pequeño que cumpla la condición de terminado, con sus pruebas. Si el contrato trae **Recorridos acordados**, también son condición de terminado: cada paso (ruta, botón, campo, texto esperado) debe existir tal cual, porque las personas del panel lo ejecutan primero.
 3. **Verifica en tu worktree** con los comandos de `repos[]` de la configuración (lint con tus archivos, tipos, pruebas relacionadas). El lint al editar corre solo; corrige lo que marque.
 4. Entrega el informe.
 
