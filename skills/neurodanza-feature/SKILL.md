@@ -6,7 +6,7 @@ description: Ciclo automático para cada funcionalidad o corrección en un proye
 # /neurodanza-feature: ciclo automático de una funcionalidad
 
 Configuración: `neurodanza.config.json` en la raíz del proyecto (si no existe, corre `/neurodanza-init`).
-Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. Fusible: `<fusible>` = `node "<carpeta de este skill>/../../lib/fusible.mjs"`. Fondo: `<fondo>` = `node "<carpeta de este skill>/../../lib/fondo.mjs"`. Pilas: `<pilas>` = `node "<carpeta de este skill>/../../lib/pilas.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
+Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. Fusible: `<fusible>` = `node "<carpeta de este skill>/../../lib/fusible.mjs"`. Fondo: `<fondo>` = `node "<carpeta de este skill>/../../lib/fondo.mjs"`. Pilas: `<pilas>` = `node "<carpeta de este skill>/../../lib/pilas.mjs"`. Agentes: `<agentes>` = `node "<carpeta de este skill>/../../lib/agentes.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
 Nunca agregues coautoría ni firmas de IA en commits, PR o código.
 Si está instalado `neurodanza-mapa`, el usuario ve en un panel la fase y cada subagente en vivo; se abre solo (o con `/neurodanza-mapa`).
 
@@ -22,7 +22,7 @@ Trabajas en dos papeles: **planificas** (paso 0) y **ejecutas** el plan paso por
 - Delega solo tareas acotadas. Cada subagente tiene un presupuesto de pasos (`<ciclo> presupuesto`; revisores 25, personas 40, implementadores 60) y el mapa le avisa al 80 % y al llegar al tope. Díselo en el mensaje: «Presupuesto: N pasos; si llegas, entrega lo que tengas».
 
 ## 0. Entender y planificar (obligatorio)
-Empieza el ciclo con `<fusible> reiniciar` (las capas externas vuelven a cero fallos).
+Empieza el ciclo con `<fusible> reiniciar` y `<agentes> reiniciar` (capas externas, tiempos, rechazos y cuarentenas en cero).
 Si el contexto de inicio dice que la sesión está **dentro de un componente** (p. ej. `frontend/`), pídele al usuario `/add-dir` de la raíz antes de seguir (no lo hagas tú).
 Resume en pocas líneas qué entendiste (qué cambia, pantallas y roles afectados), escribe el plan en el archivo y **espera el visto bueno del usuario** antes de tocar código. Pregunta solo lo que cambia el resultado.
 Si el contexto de inicio trae **errores conocidos** del proyecto, tenlos presentes en el plan.
@@ -75,13 +75,14 @@ Con el diff verificado, lanza **en el mismo turno** los revisores que aplican y 
 3. **Si el panel no aprobó**: corrige con los hallazgos y sugerencias, vuelve al paso 2 y, si la app no recarga sola, levántala de nuevo. En la ronda siguiente (`ronda` + 1; conserva las anteriores en `"historial"`) **vuelve a evaluar solo a las personas con nota ≤ `panel.umbral`** y a las que usan una ruta que tocaste al corregir; las demás conservan su evaluación anterior (cópiala al JSON de la ronda nueva con `"reutilizada": true`). Máximo `panel.maxRondas`; si no llega, informa al usuario con los hallazgos y pregunta si autoriza otra ronda.
 4. **Si aprobó** (y los revisores también): el cambio cuenta como realizado. El hook de Stop no deja terminar un cambio de pantallas sin una evaluación aprobada de la versión actual, salvo que el panel haya quedado pendiente por el fusible (entonces lo informa y decide el usuario).
 
-## 4. Subagentes lentos o trabados: re-enfundar una sola vez
+## 4. Subagentes lentos, trabados o en cuarentena: re-enfundar una sola vez
 Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, personas 7 min, implementadores 15 min). Al 80 % recibe un aviso; al 100 % la barrera le rechaza toda herramienta y solo puede entregar su respuesta. Los hooks guardan su pila (qué leyó, editó y corrió) y cada 10 pasos él anota una línea de avance.
 
-**Re-enfundar** cuando un subagente vuelve cortado por tiempo o pasos, aparece **sin latido** en el mapa (o en `.neurodanza/agentes/`) sin un comando largo en curso o entrega con pendientes críticos:
+**Re-enfundar** cuando un subagente vuelve cortado por tiempo o pasos, aparece **sin latido** en el mapa (o en `.neurodanza/agentes/`) sin un comando largo en curso, entrega con pendientes críticos, o cae en **cuarentena**:
 1. `<pilas> reenfundar --agente <agent_id>` genera el mensaje completo: el contrato, lo que ya hizo, qué archivos leyó y siguen iguales (que no relea) y cuáles cambiaron, los comandos que fallaron, lo que falta y el presupuesto **restante**. En el modo director, el reemplazo trabaja en el **mismo worktree**.
 2. Lanza un agente nuevo del mismo tipo con ese mensaje y la descripción que sugiere (`<tarea> ↻ 2`).
-3. **Una sola vez por tarea** (`reenfundar` lo hace cumplir). Si el reemplazo también se corta, no relances: informa al usuario con `<pilas> resumen --agente <id>`.
+3. **En cuarentena** (`⛔`, tras `figuras.cuarentena` rechazos): en el mensaje, quita la acción que causó los bloqueos (los motivos están en su registro, `<agentes> ver`) y agrega una advertencia: «tu antecesor fue bloqueado por …; no lo intentes, entrega o pide al director».
+4. **Una sola vez por tarea** (`reenfundar` lo hace cumplir). Si el reemplazo también se corta o cae en cuarentena, no relances: informa al usuario con `<pilas> resumen --agente <id>`.
 
 Solo tú (el agente principal) lanzas subagentes: con las figuras activas, la barrera se lo rechaza a cualquier subagente.
 

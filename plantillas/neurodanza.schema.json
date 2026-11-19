@@ -369,6 +369,10 @@
         "activo": {
           "type": "boolean"
         },
+        "cuarentena": {
+          "type": "integer",
+          "minimum": 1
+        },
         "manos": {
           "type": "object",
           "additionalProperties": {
