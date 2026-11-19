@@ -124,7 +124,7 @@ node <plugin>/panel/panel.mjs navegar --persona ana --rutas /usuarios,/configura
 
 1. Abre Chromium sin ventana, con el idioma `app.idioma` (`es-EC` por defecto) y el tamaño del dispositivo: escritorio 1440 × 900, `tablet` 1024 × 768, `celular` 390 × 844.
 2. Entra con el usuario de la persona por la pantalla de login (`app.login`).
-3. Por cada ruta: la abre, espera a que la red quede quieta, toma una captura de página completa y anota título, botones, campos y texto visible.
+3. Por cada ruta: la abre, espera a que termine de cargar (red quieta, sin esqueletos, spinners ni `aria-busy` visibles y el DOM quieto; tope `panel.carga.maxSeg`, y si se cumple lo anota en `problemas`), toma una captura de página completa y anota título, botones, campos y texto visible.
 4. Ejecuta las acciones de esa ruta, si las hay.
 5. Registra como problemas los errores de consola (menos los de `app.ignorarConsola`) y las respuestas HTTP 5xx.
 

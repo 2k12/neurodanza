@@ -228,6 +228,15 @@
           "type": "integer",
           "minimum": 0,
           "description": "Pasos máximos de exploración libre de cada persona tras su recorrido, solo en pantallas del diff."
+        },
+        "carga": {
+          "type": "object",
+          "properties": {
+            "maxSeg": { "type": "number", "exclusiveMinimum": 0, "description": "Tope de espera antes de cada captura." },
+            "quietoMs": { "type": "integer", "minimum": 0, "description": "Milisegundos sin cambios en el DOM para dar la pantalla por cargada." },
+            "cargando": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Selectores CSS de carga propios de la app (se suman a los comunes)." }
+          },
+          "description": "Espera de carga antes de las capturas del panel."
         }
       }
     },

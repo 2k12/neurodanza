@@ -226,6 +226,7 @@ Ver [07-panel-personas.md](07-panel-personas.md).
 | `notaMaxSiFalla` | `6` | Nota máxima de una persona si un paso **crítico** de su recorrido no cumple (según ella o según la ejecución). |
 | `memoria` | `".claude/personas/memoria"` | Historial por versión de cada recorrido permanente (en git: la comparación es compartida). |
 | `exploracionPasos` | `10` | Exploración libre de cada persona **después** de su recorrido: máximo de pasos, y solo en pantallas que tocó el diff. |
+| `carga` | `{ "maxSeg": 15, "quietoMs": 400, "cargando": [] }` | Antes de cada captura: espera a la red quieta, a que no haya indicadores de carga visibles (`aria-busy`, esqueletos, spinners, `progressbar` sin valor) y a que el DOM no cambie en `quietoMs`. `cargando`: selectores CSS de carga propios de la app (se suman). Con el tope `maxSeg`, captura igual y lo anota. |
 | `regresion` | `{ "clics": 1, "tiempo": 0.3 }` | Regresión de experiencia frente a la última versión aprobada: `clics` o más clics, o `tiempo` (fracción: 0.3 = +30 %, y al menos 1 s) más de tiempo. También cuentan un paso que antes cumplía y ahora no, y errores nuevos. |
 
 ```json

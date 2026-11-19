@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.1.1 · 2026-11-19
+
+### Corregido
+- **El panel tomaba la captura sin esperar a que cargara la pantalla.** Esperaba a la red quieta y 600 ms fijos: si la app pinta un esqueleto o un spinner y luego los datos, la captura salía con el esqueleto (en el banco, 0 de 10 capturas completas en una pantalla que tarda 1,5 s). Ahora, antes de cada captura (rutas, pasos del recorrido y `captura` de las acciones), espera a la red quieta, a que no haya indicadores de carga visibles (`aria-busy`, `progressbar` sin valor, esqueletos, spinners, `.animate-pulse`/`.animate-spin`) y a que el DOM quede quieto (`panel.carga`). Si se cumple el tope, captura igual y el informe lo dice. Medido con Chromium, 10 veces por pantalla: la que tarda 1,5 s pasa de 0 de 10 a 10 de 10 capturas completas (mediana 1126 → 1960 ms); una pantalla sin carga diferida, de 1123 a 966 ms.
+- **`ciclo.mjs revisores` salía con 13 desde la 0.8.0** (importación circular con `fantasmas.mjs`). Ya estaba corregido en la 1.1.0 (`lib/cambios.mjs`); se anota aquí porque la 1.0.0 de `main` lo tiene.
+
+### Agregado
+- `panel.carga` (`maxSeg` 15, `quietoMs` 400, `cargando`: selectores CSS de carga propios del proyecto).
+
 ## 1.1.0 · 2026-11-19
 
 ODD en neurodanza, la app por comandos y comentarios. Ver `docs/20-odd-en-neurodanza.md`, `docs/21-cli-de-la-app.md` y `bench/`.

@@ -301,11 +301,65 @@ async function usuarios(ctx) {
   }
 }
 
+/** Indicadores de carga comunes; `panel.carga.cargando` agrega los del proyecto. */
+export const CARGANDO = [
+  '[aria-busy="true"]',
+  '[role="progressbar"]:not([aria-valuenow])',
+  '[data-loading="true"]',
+  ".animate-pulse",
+  ".animate-spin",
+  '[class*="skeleton" i]',
+  '[class*="spinner" i]',
+  '[class*="loading" i]',
+];
+
+/** Corre en la página: lista si no hay indicadores de carga visibles y el DOM no cambió en `quietoMs`. */
+function pantallaQuieta({ selectores, quietoMs }) {
+  const w = window;
+  if (!w.__ndCambio) {
+    w.__ndCambio = Date.now();
+    new MutationObserver(() => (w.__ndCambio = Date.now())).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+  }
+  if (document.readyState !== "complete") return false;
+  if (document.fonts && document.fonts.status !== "loaded") return false;
+  const visible = (el) => {
+    const r = el.getBoundingClientRect();
+    const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && Number(s.opacity) > 0;
+  };
+  for (const sel of selectores) {
+    let els = [];
+    try {
+      els = document.querySelectorAll(sel);
+    } catch {
+      continue;
+    }
+    for (const el of els) if (visible(el)) return false;
+  }
+  return Date.now() - w.__ndCambio >= quietoMs;
+}
+
+/**
+ * Espera a que la pantalla termine de cargar antes de una captura: red quieta, sin indicadores de carga visibles
+ * (esqueletos, spinners, `aria-busy`) y el DOM sin cambios en `quietoMs`. Tope `maxSeg`; devuelve false si se cumplió
+ * el tope (la captura se toma igual y el informe lo dice).
+ */
+export async function esperarPantalla(page, { maxSeg = 15, quietoMs = 400, cargando = [] } = {}) {
+  const fin = Date.now() + maxSeg * 1000;
+  await page.waitForLoadState?.("networkidle", { timeout: Math.min(5000, maxSeg * 1000) }).catch(() => {});
+  if (!page.waitForFunction) return true;
+  const resto = Math.max(500, fin - Date.now());
+  return page
+    .waitForFunction(pantallaQuieta, { selectores: [...CARGANDO, ...cargando], quietoMs }, { timeout: resto, polling: 100 })
+    .then(() => true)
+    .catch(() => false);
+}
+
 /**
  * Navegador de Playwright con la interfaz que espera `ejecutarRecorrido` (lib/recorridos.mjs). `registro`
  * acumula errores de consola y respuestas HTTP con error (≥ 400, salvo las de `app.ignorarConsola`).
  */
-export function navegadorPlaywright(page, web, registro, { capturas = null } = {}) {
+export function navegadorPlaywright(page, web, registro, { capturas = null, carga = {} } = {}) {
   const scope = async () => {
     const main = page.locator("main").first();
     return (await main.count()) ? main : page;
@@ -358,6 +412,7 @@ export function navegadorPlaywright(page, web, registro, { capturas = null } = {
     async despues(fila) {
       if (!capturas) return;
       const f = join(capturas, `recorrido-${String(fila.n).padStart(2, "0")}.png`);
+      if (!(await esperarPantalla(page, carga))) fila.cargaIncompleta = true;
       await page.screenshot({ path: f, fullPage: true });
       fila.captura = f;
     },
@@ -500,7 +555,7 @@ async function navegar(ctx, a) {
     // Primero el recorrido acordado (Tenet): se ejecuta entero y se registra paso por paso.
     if (recorrido) {
       registro.length = 0;
-      informe.recorrido = await ejecutarRecorrido(navegadorPlaywright(page, web, registro, { capturas: out }), recorrido);
+      informe.recorrido = await ejecutarRecorrido(navegadorPlaywright(page, web, registro, { capturas: out, carga: cfg.panel.carga }), recorrido);
       informe.recorrido.archivo = existsSync(a.recorrido) ? resolve(a.recorrido) : null;
       informe.recorrido.congeladoOk = recorrido.congelado ? verificarCongelado(recorrido) : null;
       writeFileSync(join(out, "recorrido.json"), JSON.stringify(informe.recorrido, null, 2));
@@ -509,8 +564,9 @@ async function navegar(ctx, a) {
     for (const ruta of list(a.rutas)) {
       n++;
       const slug = `${String(n).padStart(2, "0")}-${ruta.replace(/[^\w]+/g, "-").replace(/^-|-$/g, "") || "inicio"}`;
-      const res = await page.goto(`${web}${ruta}`, { waitUntil: "networkidle" }).catch(() => null);
-      await page.waitForTimeout(600);
+      const res = await page.goto(`${web}${ruta}`, { waitUntil: "load" }).catch(() => null);
+      const cargada = await esperarPantalla(page, cfg.panel.carga);
+      if (!cargada) problemas.push(`${ruta}: la pantalla no terminó de cargar en ${cfg.panel.carga.maxSeg} s (indicador de carga visible o cambiando)`);
       const shot = join(out, `${slug}.png`);
       await page.screenshot({ path: shot, fullPage: true });
       const pantalla = await page.evaluate(() => {
@@ -538,6 +594,7 @@ async function navegar(ctx, a) {
             else if (paso.esperar) await page.waitForTimeout(Number(paso.esperar));
             if (paso.captura) {
               const extra = join(out, `${slug}-${paso.captura}.png`);
+              await esperarPantalla(page, cfg.panel.carga);
               await page.screenshot({ path: extra, fullPage: true });
               entrada.pasos.push({ ...paso, ok: true, captura: extra });
             } else entrada.pasos.push({ ...paso, ok: true });
