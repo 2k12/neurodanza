@@ -261,6 +261,19 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   // La tabla de figuras y el registro de agentes no los escribe ningún agente.
   if (tocaProtegido(cfg, event)) rechazar("neurodanza: .neurodanza/figuras.json y .neurodanza/agentes/ los escriben solo el director y las barreras; ningún agente puede modificarlos.");
+  // CLI de la app: una macro se juzga por el comando que de verdad corre (barreras y figuras).
+  let evento = event;
+  let app = null;
+  if (SHELL_TOOLS.has(event.tool_name)) {
+    try {
+      app = await import("../lib/app.mjs");
+      const cmd = String(event.tool_input?.command ?? "");
+      const real = app.comandoDeMacro(cfg, cmd);
+      if (real) evento = { ...event, tool_input: { ...event.tool_input, command: `${cmd} ; ${real}` } };
+    } catch {
+      /* la CLI es una ayuda */
+    }
+  }
   // Figuras: la acción debe estar en la mano del agente; si no, ◇ y ✕ se preguntan al usuario y lo demás se rechaza.
   let pregunta = "";
   if (conFiguras) {
@@ -270,12 +283,23 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       const w = enWorktree(leerTareas(cfg), file);
       if (w) asociarAgente(cfg, event.agent_id, w.tarea.id);
     }
-    const d = decidirFigura(event, cfg, manoDe(cfg, event));
+    const d = decidirFigura(evento, cfg, manoDe(cfg, event));
     if (d?.decision === "deny") rechazar(d.motivo);
     if (d?.decision === "ask") pregunta = d.motivo;
   }
-  const why = check(event, cfg);
+  const why = check(evento, cfg);
   if (why) rechazar(why);
+  if (app) {
+    const cmd = String(event.tool_input?.command ?? "");
+    // Guardar o borrar una macro cambia lo que todo el equipo puede correr: lo decide el usuario.
+    if (/app\.mjs["']?\s+(aceptar|borrar)\b/.test(cmd)) pregunta = pregunta || `neurodanza: ${/\baceptar\b/.test(cmd) ? "guardar un comando como macro del proyecto (queda en git y cualquiera la puede correr)" : "borrar una macro del proyecto"}. ¿Lo apruebas?`;
+    try {
+      const extra = [app.contarRepetido(cfg, cmd), app.pistaApp(cfg, event)].filter(Boolean).join("\n");
+      if (extra) aviso = [aviso, extra].filter(Boolean).join("\n");
+    } catch {
+      /* la CLI es una ayuda */
+    }
+  }
   // Operador: la lección cuyos activadores coinciden con el archivo que el subagente lee o edita, una sola vez
   // por lección y agente (va como contexto junto al resultado de la herramienta).
   if (event.agent_id) {

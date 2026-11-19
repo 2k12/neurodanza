@@ -320,6 +320,21 @@ Ataques acotados contra la app local, en modo propuesta. Ver [17-seguridad.md](1
 | `maxPasos` · `maxSegundos` | `15` · `180` | Presupuesto de cada fantasma. |
 | `login` | — | Opcional: cómo entra una persona por API (`{ "url", "cuerpo": { …"{email}"…"{clave}" }, "token" }`). Si no está, se usa el de `panel.usuarios.login` con las credenciales de la persona. |
 
+## `cli`
+
+CLI de la app (`lib/app.mjs`). Ver [21-cli-de-la-app.md](21-cli-de-la-app.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, la barrera no cuenta comandos repetidos ni sugiere la CLI (la CLI sigue funcionando). |
+| `macros` | `".claude/neurodanza-macros.json"` | Macros del proyecto, en git: las usa todo el equipo. |
+| `repetidoMin` | `200` | Caracteres desde los que un comando de terminal cuenta como largo. |
+| `repetidoVeces` | `3` | Repeticiones de un comando largo (con los números normalizados) para proponerlo como macro. |
+| `podarDias` | `30` | Días sin uso para que `app.mjs podar` proponga borrar una macro. |
+| `sesionMin` | `10` | Minutos que vale una sesión guardada (`.neurodanza/app/sesiones.json`, local). Si la app la rechaza antes (401), entra de nuevo una vez. |
+
+Para entrar como una persona, la CLI usa `panel.usuarios` (o `fantasmas.login`): `--como admin` usa `panel.usuarios.login` tal cual; `--como <persona o ROL>`, el correo y la clave de esa persona.
+
 ## `indice`
 
 Índice pre-cocido por commit (`lib/indice.mjs`). Ver [19-menos-exploracion.md](19-menos-exploracion.md).

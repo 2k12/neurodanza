@@ -465,6 +465,18 @@
         }
       }
     },
+    "cli": {
+      "type": "object",
+      "description": "CLI de la app (lib/app.mjs): sesiones en caché y macros que nacen de los comandos repetidos.",
+      "properties": {
+        "activo": { "type": "boolean" },
+        "macros": { "type": "string", "description": "Archivo de las macros del proyecto (en git)." },
+        "repetidoMin": { "type": "integer", "minimum": 20, "description": "Caracteres desde los que un comando cuenta como largo." },
+        "repetidoVeces": { "type": "integer", "minimum": 2, "description": "Repeticiones para proponerlo como macro." },
+        "podarDias": { "type": "number", "description": "Días sin uso para proponer borrar una macro." },
+        "sesionMin": { "type": "number", "description": "Minutos que vale una sesión en caché." }
+      }
+    },
     "indice": {
       "type": "object",
       "description": "Índice pre-cocido por commit (lib/indice.mjs): resumen enfocado para contratos y mensajes de subagentes.",
