@@ -315,6 +315,23 @@
     "autoconfigurar": {
       "type": "boolean",
       "description": "Al iniciar la sesión: .gitignore de la raíz y aviso de permisos de los worktrees."
+    },
+    "fusible": {
+      "type": "object",
+      "properties": {
+        "maxFallos": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Fallos de una capa en el ciclo para fundirla."
+        },
+        "comprobaciones": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "{ capa: comando } que dice si la capa responde (p. ej. bd)."
+        }
+      }
     }
   }
 }

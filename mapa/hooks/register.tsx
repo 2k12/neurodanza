@@ -100,6 +100,14 @@ export const maxSegundos = (tipo: string, t: Tiempos) => (/revisor-/.test(tipo) 
 /** ¿Un subagente que sigue corriendo pasó `latidoMs` sin dar un paso? */
 export const sinLatido = (a: Agente, ahora: number, latidoMs: number) => a.estado === 'corriendo' && ahora - (a.ultimoPaso ?? a.inicio) > latidoMs
 
+/** Capas fundidas del fusible (`.neurodanza/fusible.json`): no se reintentan y dejan el panel pendiente. */
+export function fundidasDe(f: unknown): { capa: string; motivo: string }[] {
+  const capas = (f as { capas?: Record<string, { fundida?: boolean; motivo?: string }> } | null)?.capas ?? {}
+  return Object.entries(capas)
+    .filter(([, c]) => c?.fundida)
+    .map(([capa, c]) => ({ capa, motivo: String(c.motivo ?? '') }))
+}
+
 export const maxPasos = (tipo: string, p: Presupuesto) => (/revisor-/.test(tipo) ? p.revisor : /persona-evaluadora/.test(tipo) ? p.persona : /implementador/.test(tipo) ? p.implementador : p.otro)
 
 /** Aviso que toca mandarle a un subagente tras un paso, o null. Cada aviso se manda una vez. */
@@ -146,7 +154,7 @@ let presupuesto: Presupuesto = PRESUPUESTO
 let tiempos: Tiempos = TIEMPOS
 let latidoMs = 90_000
 let tick: { cancel: () => void } | undefined
-const archivos: { plan: string; estado: Estado | null; director: boolean; leido: number } = { plan: '', estado: null, director: false, leido: 0 }
+const archivos: { plan: string; estado: Estado | null; director: boolean; fundidas: { capa: string; motivo: string }[]; leido: number } = { plan: '', estado: null, director: false, fundidas: [], leido: 0 }
 
 const ahora = () => Date.now()
 
@@ -190,6 +198,12 @@ async function leerArchivos($: Dollar) {
     archivos.director = JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/director/modo.json`)))?.activo === true
   } catch {
     archivos.director = false
+  }
+  try {
+    const f = JSON.parse(String(await $.fs.read(`${raiz}/.neurodanza/fusible.json`)))
+    archivos.fundidas = fundidasDe(f)
+  } catch {
+    archivos.fundidas = []
   }
 }
 
@@ -400,6 +414,11 @@ export const register: Register = (on) => {
           {corto(c.titulo, ancho - 10)} <Text dimColor>⏱ {reloj(t - c.inicio)}</Text>
         </Text>
         {archivos.director && <Text color="claude">◆ modo director: el agente principal dirige; los implementadores trabajan en worktrees</Text>}
+        {archivos.fundidas.map((f) => (
+          <Text color="error" wrap="wrap">
+            ⚡ no se pudo verificar: {f.capa} ({corto(f.motivo, Math.max(20, ancho - 30))}) · no se reintenta{f.capa === 'app' || f.capa === 'chromium' ? ' · panel pendiente' : ''}
+          </Text>
+        ))}
         {c.esperando && <Text color="warning">⏸ esperando tu respuesta</Text>}
         <Text dimColor> </Text>
         {c.fases.map((f) => {

@@ -23,6 +23,7 @@ import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib
 import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
 import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
 import { correr } from "../lib/procesos.mjs";
+import { fundidas } from "../lib/fusible.mjs";
 import { limpiarViejos } from "../lib/agentes.mjs";
 
 export { fingerprint, firmaActual, parseStatus };
@@ -103,8 +104,12 @@ export function doneProblems(cfg, changes, ctx) {
     hard.push(`${m.repo}: cambió ${m.schema} sin una migración nueva.`);
   }
   const screens = changedMatching(changes, rf.pantallas);
+  // Con la app o el navegador fundidos (fusible), el panel no se pudo hacer: queda PENDIENTE, ni aprobado ni
+  // reprobado. No bloquea: lo decide el usuario.
+  const sinPanel = (ctx.fundidas ?? []).filter((f) => f.capa === "app" || f.capa === "chromium");
   if (screens.length > 0 && ctx.version && !ctx.panelApproved(ctx.version)) {
-    hard.push(`panel de personas: cambiaste pantallas y no hay una evaluación aprobada (promedio > ${cfg.panel.umbral}) de la versión ${ctx.version}. Sigue el paso 4 de /neurodanza-feature.`);
+    if (sinPanel.length) soft.push(`panel de personas PENDIENTE: no se pudo verificar ${sinPanel.map((f) => `${f.capa} (${f.motivo})`).join(", ")}. No cuenta como aprobado ni reprobado: pregúntale al usuario cómo sigue.`);
+    else hard.push(`panel de personas: cambiaste pantallas y no hay una evaluación aprobada (promedio > ${cfg.panel.umbral}) de la versión ${ctx.version}. Sigue el paso 4 de /neurodanza-feature.`);
   }
   if (screens.length > 0 && rf.guias && changedMatching(changes, [rf.guias]).length === 0) {
     soft.push(`cambiaste pantallas (${screens.slice(0, 3).join(", ")}${screens.length > 3 ? "…" : ""}) sin tocar su guía de usuario. Si cambió lo que ve o hace el usuario, actualízala; si no, ignora este aviso.`);
@@ -123,6 +128,12 @@ export function doneProblems(cfg, changes, ctx) {
   }
   return { hard, soft };
 }
+
+/**
+ * ¿Una evaluación del panel cuenta como aprobada? Promedio sobre el umbral, y además: no pendiente (capa
+ * fundida) y sin revisores que reprobaron durante la ronda (esa ronda se repite tras la corrección).
+ */
+export const panelCuenta = (umbral) => (e) => e.aprobado === true && Number(e.promedio) > umbral && e.pendiente !== true && e.revisores !== "reprobados";
 
 /** ¿El repo de docs tiene commits en la rama actual que no están en la rama base? */
 function docsCommittedInBranch(cfg) {
@@ -316,13 +327,16 @@ async function stop(cfg, event) {
 
   const { version, baseVersion } = versionContext(cfg);
   const umbral = cfg.panel.umbral;
+  const capasFundidas = fundidas(cfg);
+  for (const f of capasFundidas) notas.push(`no se pudo verificar: ${f.capa} (${f.motivo}). No se reintenta en este ciclo.`);
   const done = doneProblems(cfg, changes, {
     version,
     baseVersion,
     bitacoraExists: (name) => existsSync(join(cfg.abs(cfg.retroalimentacion.bitacora.ruta), name)),
-    panelApproved: (ver) => approvedFor(cfg.abs(cfg.panel.evaluaciones), ver, (e) => e.aprobado === true && Number(e.promedio) > umbral),
+    panelApproved: (ver) => approvedFor(cfg.abs(cfg.panel.evaluaciones), ver, panelCuenta(umbral)),
     evalsApproved: (ver) => approvedFor(cfg.abs(cfg.evals.informes), ver, (e) => e.informe?.aprobado === true),
     docsInBranch: docsCommittedInBranch(cfg),
+    fundidas: capasFundidas,
   });
   hard.push(...done.hard);
   writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, cortadas: cortadas.length, fondo: { firma, estado: ahora.estado, pendientes: ahora.pendientes.length }, ms: Date.now() - t0 });
