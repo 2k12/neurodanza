@@ -21,6 +21,7 @@ import { enWorktree, leerTareas } from "../lib/director.mjs";
 import { cerrarRondaActiva } from "../panel/panel.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
 import { riesgoEnRama } from "../lib/riesgo.mjs";
+import { leerRegistro as leerRegistroPruebas, sinRojo } from "../lib/pruebas.mjs";
 import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
 import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
 import { correr } from "../lib/procesos.mjs";
@@ -129,6 +130,15 @@ export function doneProblems(cfg, changes, ctx) {
   }
   if (screens.length > 0 && rf.guias && changedMatching(changes, [rf.guias]).length === 0) {
     soft.push(`cambiaste pantallas (${screens.slice(0, 3).join(", ")}${screens.length > 3 ? "…" : ""}) sin tocar su guía de usuario. Si cambió lo que ve o hace el usuario, actualízala; si no, ignora este aviso.`);
+  }
+  // Pruebas primero (ciclo.pruebaPrimero): una prueba nueva o cambiada que nunca se vio en rojo no demuestra nada.
+  const modoPrueba = cfg.ciclo?.pruebaPrimero;
+  if (modoPrueba && ctx.registroPruebas) {
+    const faltan = sinRojo(cfg, changes, ctx.registroPruebas);
+    if (faltan.length) {
+      const texto = `no se vio la prueba en rojo antes de implementar: ${faltan.slice(0, 3).join(", ")}${faltan.length > 3 ? "…" : ""}. Corre \`pruebas.mjs rojo --repo <repo> --archivo <prueba>\` con el código anterior (sin tu cambio) para ver que falla, y \`pruebas.mjs verde\` con el cambio.`;
+      (modoPrueba === "exigir" ? hard : soft).push(texto);
+    }
   }
   const tooling = changedMatching(changes, cfg.evals.vigilar ?? []);
   if (tooling.length > 0 && ctx.version && !ctx.evalsApproved(ctx.version)) {
@@ -354,6 +364,7 @@ async function stop(cfg, event) {
     docsInBranch: docsCommittedInBranch(cfg),
     fundidas: capasFundidas,
     riesgo: () => riesgoActual(cfg),
+    registroPruebas: leerRegistroPruebas(cfg),
   });
   hard.push(...done.hard);
   writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, cortadas: cortadas.length, fondo: { firma, estado: ahora.estado, pendientes: ahora.pendientes.length }, ms: Date.now() - t0 });

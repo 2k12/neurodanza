@@ -336,6 +336,10 @@
           "type": "number",
           "description": "Segundos sin un paso para marcar a un subagente sin latido."
         },
+        "pruebaPrimero": {
+          "enum": [false, "avisar", "exigir"],
+          "description": "Si una prueba nueva o cambiada no se vio en rojo antes de implementar: el Stop avisa o bloquea."
+        },
         "riesgo": {
           "type": "object",
           "description": "Proporcionalidad: bajo = lint, tipos y pruebas; medio = 1 revisor y 1 persona; alto = ciclo completo.",
