@@ -6,7 +6,7 @@ description: Ciclo automático para cada funcionalidad o corrección en un proye
 # /neurodanza-feature: ciclo automático de una funcionalidad
 
 Configuración: `neurodanza.config.json` en la raíz del proyecto (si no existe, corre `/neurodanza-init`).
-Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. Fusible: `<fusible>` = `node "<carpeta de este skill>/../../lib/fusible.mjs"`. Fondo: `<fondo>` = `node "<carpeta de este skill>/../../lib/fondo.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
+Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. Fusible: `<fusible>` = `node "<carpeta de este skill>/../../lib/fusible.mjs"`. Fondo: `<fondo>` = `node "<carpeta de este skill>/../../lib/fondo.mjs"`. Pilas: `<pilas>` = `node "<carpeta de este skill>/../../lib/pilas.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
 Nunca agregues coautoría ni firmas de IA en commits, PR o código.
 Si está instalado `neurodanza-mapa`, el usuario ve en un panel la fase y cada subagente en vivo; se abre solo (o con `/neurodanza-mapa`).
 
@@ -77,6 +77,7 @@ Con el diff verificado, lanza **en el mismo turno** los revisores que aplican y 
 Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, personas 7 min, implementadores 15 min). Al 80 % recibe un aviso; al 100 % la barrera le rechaza toda herramienta y solo puede entregar su respuesta. Si el mapa (o `.neurodanza/agentes/`) muestra a uno **sin latido** (`ciclo.latidoSeg` sin dar un paso), decide: espera si su último paso es un comando largo con timeout, o relánzalo con una tarea más chica.
 
 ## 5. Cerrar
+- **Pilas:** `<pilas> limpiar` al cerrar el ciclo (no van a git).
 - **Suite completa:** `<fondo> esperar` debe salir con 0 (la suite completa pasó para el cambio actual). Si sale con 1, corrige; si sale con 2 (sigue corriendo o es de otro cambio), espera o díselo al usuario. Los `Stop` intermedios no bloquean por esto; el cierre sí.
 - **Fusible:** si alguna capa quedó fundida (`<fusible> estado`), el informe dice «no se pudo verificar: <capa> (motivo)» y el panel queda pendiente: pregúntale al usuario cómo sigue.
 - **Reflexión (constructos).** Escribe `<scratchpad>/reflexion.json` con lo que encontraron los jueces en este ciclo y regístralo con `<constructos> reflexion --archivo <ese json>`:

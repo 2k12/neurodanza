@@ -9,6 +9,8 @@ import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
 import { enWorktree, fueraDeContrato, leerModo, leerTareas } from "../lib/director.mjs";
 import { MENSAJE_CORTE, registrarPaso, revisarLatidos, terminar } from "../lib/agentes.mjs";
 
+const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
+
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
 const AI_ATTRIBUTION = /co-authored-by:|generated with \[?claude|🤖 generated/i;
@@ -219,6 +221,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
         process.exit(2);
       }
       aviso = r.aviso ?? "";
+      // Línea de avance cada `pilas.avanceCada` pasos: se le pide al subagente, sin bloquear.
+      const cada = cfg.pilas?.activo === false ? 0 : cfg.pilas?.avanceCada ?? 10;
+      if (cada > 0 && r.agente.pasos % cada === 0) aviso = [aviso, `neurodanza: llevas ${r.agente.pasos} pasos. Anota tu avance en una línea (qué hiciste, qué falta): node "${PILAS_CLI}" avance --texto "<qué hice, qué falta>"`].filter(Boolean).join("\n");
     } catch {
       /* el registro es una ayuda: si falla, la barrera sigue */
     }

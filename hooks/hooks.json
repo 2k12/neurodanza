@@ -34,6 +34,17 @@
             "timeout": 60
           }
         ]
+      },
+      {
+        "matcher": "Read|Edit|Write|MultiEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pilas.mjs\"",
+            "timeout": 10,
+            "async": true
+          }
+        ]
       }
     ],
     "Stop": [

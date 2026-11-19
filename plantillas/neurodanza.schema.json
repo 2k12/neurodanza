@@ -332,6 +332,19 @@
           "description": "{ capa: comando } que dice si la capa responde (p. ej. bd)."
         }
       }
+    },
+    "pilas": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "avanceCada": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cada cuántos pasos se le pide al subagente su línea de avance (0 = nunca)."
+        }
+      }
     }
   }
 }
