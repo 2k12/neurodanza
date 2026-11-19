@@ -183,3 +183,23 @@ Lo que empeoró y por qué:
 4. Compara **medianas** y el rango intercuartil (P25–P75) de cada versión. Una diferencia es real si las medianas se separan más que el rango intercuartil de cada una; con menos de 10 ciclos por versión, la variación entre corridas de un modelo suele ser mayor que el efecto. Mira también la peor corrida: el harness existe sobre todo para acotarla.
 
 Datos completos: [`base3.json`](base3.json), [`base3-original.json`](base3-original.json), [`final.json`](final.json).
+
+### Parte 4: ODD, CLI de la app y comentarios
+
+Base: la 1.0.0 (`base4.json`); final: la 1.1.0 (`final4.json`). Mismas condiciones que la parte 3: agentes y app simulados, 5 corridas. Las cinco métricas nuevas no dependen del tiempo: miden decisiones del harness, caracteres y clasificaciones.
+
+| Métrica | 1.0.0 | 1.1.0 | Cambio |
+|---|---|---|---|
+| `ciclo_por_riesgo` | chico 102 · medio 24 · alto 150 pasos (276) | chico 0 · medio 12 · alto 150 pasos (162) | −41,3 % en total; lo alto, igual |
+| `comandos_app` | 1121 caracteres (≈ 280 tokens) · 3 de 3 funcionan | 327 caracteres (≈ 82 tokens) · 3 de 3 funcionan | −70,8 % |
+| `comentarios_barrera` | 0 de 12 rechazadas · 0 de 8 falsos rechazos | 12 de 12 rechazadas · 0 de 8 falsos rechazos | antes no se rechazaba ninguno |
+| `pedido_textual` | 0 de 3 frases exactas en el contrato | 3 de 3 | antes no llegaba ninguna |
+| `prueba_primero` | 0 de 2 bien clasificados | 2 de 2 | antes no se distinguía |
+
+**Latencia frente a la 1.0.0**, medida **intercalada** (base y nuevo alternados, 5 rondas, mediana): `guardrails_ms` 75,45 → 76,97 ms (**+2,0 %**, empeoró: la barrera carga el analizador de comentarios y, en comandos de terminal, la CLI para contar repetidos); `stop_normal` 1,40 → 1,41 s (+1,0 %: el riesgo solo se calcula si cambiaron pantallas sin panel aprobado); `bloqueos_seguridad` 78,63 → 81,09 ms (+3,1 %), con las mismas decisiones (98 permite, 12 rechaza, 90 pregunta).
+
+**En la 1.0.0, `ciclo.mjs revisores` no respondía** (salía con 13 por una importación circular con `fantasmas.mjs`, desde la 0.8.0). La base de `ciclo_por_riesgo` se calculó llamando a sus funciones, que es lo que el skill pretendía; en la práctica, el agente no recibía la lista de revisores.
+
+**Lo que el banco no mide:** si el pedido textual evita rondas de corrección, si las pruebas en rojo atrapan errores, ni cuántas macros nacen en un proyecto real. Los comandos a mano de `comandos_app` son más cortos que los que escribió el agente en un proyecto real (412 y 499 caracteres frente a promedios de 1131 y 1191; ver [docs/21](../docs/21-cli-de-la-app.md)).
+
+Datos: [`base4.json`](base4.json), [`final4.json`](final4.json).

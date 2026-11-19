@@ -2,6 +2,25 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.1.0 · 2026-11-19
+
+ODD en neurodanza, la app por comandos y comentarios. Ver `docs/20-odd-en-neurodanza.md`, `docs/21-cli-de-la-app.md` y `bench/`.
+
+### Agregado
+- **Proporcionalidad** (`lib/riesgo.mjs`, `ciclo.riesgo`): cada cambio es de riesgo bajo (lint, tipos y pruebas; sin revisores, panel, fantasmas ni especialistas), medio (1 revisor y 1 persona) o alto (el ciclo completo). `ciclo.mjs revisores` lo aplica y el hook `Stop` no exige el panel con riesgo bajo.
+- **CLI de la app** (`lib/app.mjs`, `cli`): `estado`, `login`, `api … --como <persona|ROL|admin>` con la sesión en caché, `abrir` y `verificar` (lint, tipos y pruebas en paralelo). Funciona en cualquier proyecto desde la configuración.
+- **Macros que nacen del uso**: la barrera cuenta los comandos largos repetidos y propone guardarlos (`sugeridas`, `aceptar`, `podar`); quedan en git. Una macro se juzga por el comando que corre, y guardarla o borrarla lo aprueba el usuario.
+- **Barrera de comentarios** (`lib/comentarios.mjs`, `barreras.comentarios`): rechaza al editar los comentarios nuevos que no van; en `"estricto"` solo pasan directivas, JSDoc con etiquetas de API de lo exportado y `// POR QUÉ: …`. La regla ESLint gana el modo estricto. Apagada por defecto; la plantilla la propone.
+- **Documento de la funcionalidad** (`lib/funcionalidad.mjs`): el pedido del usuario textual, specs `S#`, tareas con evidencia y registro; `director.mjs preparar --funcionalidad` lo lleva al contrato.
+- **Pruebas primero** (`lib/pruebas.mjs`, `ciclo.pruebaPrimero`): `rojo` antes de implementar y `verde` después; el hook `Stop` avisa (o bloquea con `"exigir"`) si una prueba nueva no se vio en rojo.
+- Banco: `ciclo_por_riesgo`, `comandos_app`, `comentarios_barrera`, `pedido_textual`, `prueba_primero`; la app simulada tiene login con token y `/api/pedidos`.
+
+### Corregido
+- `ciclo.mjs revisores` salía con 13 sin responder desde la 0.8.0 (importación circular con `fantasmas.mjs`): `changesInBranch` pasa a `lib/cambios.mjs`.
+
+### Medido (5 corridas, mediana; agentes y app simulados)
+Pasos de subagentes para tres cambios: 276 → 162 (−41,3 %; el chico pasa de 102 a 0 y el alto queda igual en 150). Tres tareas contra la app: 1121 → 327 caracteres (−70,8 %), todas funcionan. Comentarios que no van: 0 → 12 de 12 rechazados, sin falsos rechazos; sobre un proyecto real, el modo estricto rechazaría el 99,1 % y el 99,5 % de sus comentarios. Frases exactas del pedido en el contrato: 0 → 3 de 3. **Empeoró:** la barrera, +2,0 % (75,45 → 76,97 ms, intercalado), y el `Stop`, +1,0 %.
+
 ## 1.0.0 · 2026-11-19
 
 Panel mejor y más rápido, menos exploración. **Versión mayor: cambia el flujo de `/neurodanza-feature`** (las personas escriben su recorrido antes de implementar y el director consulta especialistas antes de delegar). Ver `docs/18-panel-con-recorridos.md`, `docs/19-menos-exploracion.md` y `bench/`.

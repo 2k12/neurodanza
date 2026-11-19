@@ -1,0 +1,133 @@
+{
+  "fecha": "2026-11-19T15:51:17.904Z",
+  "plugin": "C:\\Users\\jeipi\\Desktop\\JOAN\\neurodanza",
+  "version": "1.1.0",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "guardrails_ms": {
+      "valor": 76.86003919999997,
+      "unidad": "ms",
+      "corridas": [
+        79.95521220000006,
+        76.48991540000004,
+        76.86003919999997,
+        77.24731269999987,
+        76.772165
+      ],
+      "eventos": 1000
+    },
+    "ciclo_por_riesgo": {
+      "valor": 162,
+      "unidad": "pasos",
+      "detalle": {
+        "chico": {
+          "nivel": "bajo",
+          "revisores": 0,
+          "lanzar": [],
+          "personas": 0,
+          "recorridos": false,
+          "fantasmas": 0,
+          "especialistas": 0,
+          "director": false,
+          "funcionalidad": false,
+          "subagentes": 0,
+          "pasos": 0
+        },
+        "medio": {
+          "nivel": "medio",
+          "revisores": 1,
+          "lanzar": [
+            "revisor-permisos"
+          ],
+          "personas": 0,
+          "recorridos": false,
+          "fantasmas": 0,
+          "especialistas": 0,
+          "director": false,
+          "funcionalidad": false,
+          "subagentes": 1,
+          "pasos": 12
+        },
+        "alto": {
+          "nivel": "alto",
+          "revisores": 4,
+          "lanzar": [
+            "revisor-permisos",
+            "revisor-coherencia",
+            "revisor-ui",
+            "revisor-docs"
+          ],
+          "personas": 3,
+          "recorridos": true,
+          "fantasmas": 2,
+          "especialistas": 2,
+          "director": true,
+          "funcionalidad": true,
+          "subagentes": 11,
+          "pasos": 150
+        }
+      },
+      "texto": "chico 0 · medio 12 · alto 150 pasos (162 en total)"
+    },
+    "comandos_app": {
+      "valor": 327,
+      "unidad": "caracteres",
+      "tokensEstimados": 82,
+      "funcionan": 3,
+      "detalle": [
+        {
+          "tarea": "listar-pedidos",
+          "caracteres": 94,
+          "funciona": true,
+          "salida": "HTTP 200\n1 elemento\n{\"id\":1,\"cliente\":\"Ana\",\"estado\":\"pendiente\"}"
+        },
+        {
+          "tarea": "crear-pedido",
+          "caracteres": 130,
+          "funciona": true,
+          "salida": "HTTP 201\n{\"id\":2,\"estado\":\"pendiente\",\"cliente\":\"Bruno\"}"
+        },
+        {
+          "tarea": "verificar-api",
+          "caracteres": 103,
+          "funciona": true,
+          "salida": "✔ lint 0.5 s · ✔ tipos 1.0 s · ✔ pruebas 1.1 s"
+        }
+      ],
+      "texto": "327 caracteres (≈ 82 tokens) · 3 de 3 funcionan"
+    },
+    "comentarios_barrera": {
+      "valor": 100,
+      "unidad": "%",
+      "rechazadas": 12,
+      "prohibidas": 12,
+      "falsosRechazos": 0,
+      "buenas": 8,
+      "ms": 73.92415,
+      "texto": "12 de 12 rechazadas (100 %) · 0 de 8 buenas rechazadas por error"
+    },
+    "pedido_textual": {
+      "valor": 3,
+      "unidad": "frases",
+      "de": 3,
+      "presentes": [
+        "Filtrar por estado",
+        "No hay pedidos con ese estado",
+        "Estado inválido"
+      ],
+      "texto": "3 de 3 frases exactas en el contrato"
+    },
+    "prueba_primero": {
+      "valor": 2,
+      "unidad": "casos",
+      "de": 2,
+      "detalle": {
+        "sinRojo": true,
+        "conRojo": true
+      },
+      "texto": "2 de 2 bien clasificados"
+    }
+  }
+}

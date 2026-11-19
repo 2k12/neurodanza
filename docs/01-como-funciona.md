@@ -16,13 +16,15 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Seguridad | `lib/figuras.mjs`, `lib/fantasmas.mjs`, `agents/fantasma.md` | Figuras y manos, segunda llave (`ask`), cuarentena y fantasmas en modo propuesta. Ver [17-seguridad.md](17-seguridad.md). |
 | Panel con recorridos | `lib/recorridos.mjs`, `panel.mjs navegar --recorrido` / `comparar` | Recorridos acordados antes de implementar, memoria por versión y regresiones de experiencia. Ver [18-panel-con-recorridos.md](18-panel-con-recorridos.md). |
 | Menos exploración | `lib/indice.mjs`, `lib/hotel.mjs`, `lib/operador.mjs`, `agents/especialista-*.md` | Índice pre-cocido por commit, especialistas antes de delegar y lecciones que se recuerdan al tocar sus archivos. Ver [19-menos-exploracion.md](19-menos-exploracion.md). |
-| Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff y el presupuesto de pasos. |
+| Proporcionalidad y ODD | `lib/riesgo.mjs`, `lib/cambios.mjs`, `lib/funcionalidad.mjs`, `lib/pruebas.mjs` | Riesgo del cambio (bajo, medio, alto) y qué corre en cada uno; documento de la funcionalidad con el pedido textual; prueba en rojo antes de implementar. Ver [20-odd-en-neurodanza.md](20-odd-en-neurodanza.md). |
+| CLI de la app | `lib/app.mjs`, `lib/comentarios.mjs` | La app por comandos (sesiones en caché, peticiones, verificar), macros que nacen del uso y la barrera de comentarios. Ver [21-cli-de-la-app.md](21-cli-de-la-app.md). |
+| Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff, según su riesgo, y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
 | Agentes | `agents/*.md` | 4 revisores y la `persona-evaluadora`. |
 | Skills | `skills/*/SKILL.md` | `/neurodanza-init`, `/neurodanza-feature`, `/neurodanza-evals`. |
 | Panel | `panel/panel.mjs` y `panel/*.ps1`, `panel/*.vbs` | Elegir personas, crear usuarios, navegar, calificar y las ventanas de Windows. |
 | Evals | `evals/evals.mjs` | Arma las instrucciones de evaluación y califica. |
-| ESLint | `eslint/no-junk-comments.mjs` | Regla contra comentarios basura y firmas de IA. |
+| ESLint | `eslint/no-junk-comments.mjs` | Regla contra comentarios basura y firmas de IA (y modo estricto, con el criterio de la barrera). |
 
 ## Regla de oro: sin configuración, nada
 
@@ -33,10 +35,14 @@ Cada hook busca `neurodanza.config.json` subiendo desde la carpeta de trabajo (h
 ```mermaid
 flowchart TD
     A[Pedido del usuario] --> B["/neurodanza-feature<br/>0. Entender y planificar: plan.md"]
-    B --> RC["Recorridos acordados (Tenet)<br/>cada persona escribe qué espera poder hacer"]
+    B --> RZ{"Riesgo del cambio<br/>riesgo.mjs: bajo · medio · alto"}
+    RZ -- "bajo: sin plan, revisores ni panel" --> C
+    RZ -- "medio o alto" --> FD["Documento de la funcionalidad (alto)<br/>pedido textual + specs S#"]
+    FD --> RC["Recorridos acordados (Tenet)<br/>cada persona escribe qué espera poder hacer"]
     RC --> VB{"Visto bueno del usuario<br/>plan + recorridos (congelados con hash)"}
     VB --> HO["Especialistas antes de delegar<br/>datos · a11y · permisos · rendimiento<br/>(respuestas en caché)"]
-    HO --> C["1. Implementar<br/>contrato: recorridos + índice + lo que ya sabemos"]
+    HO --> C["1. Implementar, prueba primero (rojo → verde)<br/>contrato: pedido textual + recorridos + índice + lo que ya sabemos"]
+    CLI["app.mjs: la app por comandos<br/>api --como, verificar, macros"] -.menos tokens.-> C
     IX["Índice pre-cocido por commit<br/>.neurodanza/indice/"] -.resumen enfocado.-> C
     IX -.contexto.-> HO
     OP["Operador: lección con activadores<br/>se recuerda una vez al tocar su archivo"] -.aviso.-> G
@@ -48,7 +54,7 @@ flowchart TD
     L -- ok --> D["2. Verificar: lint, tipos y pruebas relacionadas<br/>(la suite completa corre en el fondo)"]
     D --> AP{"App levantada una vez<br/>panel.mjs app"}
     AP -- "2 fallos: capa fundida" --> PP["Panel PENDIENTE<br/>decide el usuario"]
-    AP -- responde --> T3["3. Mismo turno, en paralelo"]
+    AP -- responde --> T3["3. Mismo turno, en paralelo<br/>cuántos, según el riesgo"]
     PP --> T3
     T3 --> R["Revisores que aplican<br/>coherencia · permisos · ui · docs"]
     T3 --> N["persona-evaluadora × N, a la vez<br/>primero su recorrido (una llamada),<br/>después exploración corta en pantallas del diff"]
