@@ -1,7 +1,7 @@
 {
   "name": "neurodanza",
-  "version": "1.0.0",
-  "description": "Ciclo automático de calidad para proyectos JS/TS: barreras, retroalimentación, 4 revisores, panel de personas simuladas con ventana en vivo (Windows) y evals.",
+  "version": "1.1.1",
+  "description": "Ciclo automático de calidad para proyectos JS/TS: barreras, retroalimentación, revisores según el riesgo del cambio, panel de personas simuladas con ventana en vivo (Windows), la app por comandos y evals.",
   "author": { "name": "2k12" },
   "homepage": "https://github.com/2k12/neurodanza",
   "repository": "https://github.com/2k12/neurodanza",

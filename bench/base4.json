@@ -1,0 +1,116 @@
+{
+  "fecha": "2026-11-19T15:03:06.226Z",
+  "plugin": "C:\\Users\\jeipi\\Desktop\\JOAN\\neurodanza",
+  "version": "1.0.0",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "guardrails_ms": {
+      "valor": 75.86492419999996,
+      "unidad": "ms",
+      "corridas": [
+        75.4671538,
+        76.06725869999998,
+        75.92653449999995,
+        75.79222609999994,
+        75.86492419999996
+      ],
+      "eventos": 1000
+    },
+    "ciclo_por_riesgo": {
+      "valor": 276,
+      "unidad": "pasos",
+      "detalle": {
+        "chico": {
+          "nivel": "—",
+          "revisores": 3,
+          "personas": 3,
+          "recorridos": true,
+          "fantasmas": 0,
+          "especialistas": 0,
+          "subagentes": 6,
+          "pasos": 102,
+          "cliFalla": true
+        },
+        "medio": {
+          "nivel": "—",
+          "revisores": 2,
+          "personas": 0,
+          "recorridos": false,
+          "fantasmas": 0,
+          "especialistas": 0,
+          "subagentes": 2,
+          "pasos": 24,
+          "cliFalla": true
+        },
+        "alto": {
+          "nivel": "—",
+          "revisores": 4,
+          "personas": 3,
+          "recorridos": true,
+          "fantasmas": 2,
+          "especialistas": 2,
+          "subagentes": 11,
+          "pasos": 150,
+          "cliFalla": true
+        }
+      },
+      "texto": "chico 102 · medio 24 · alto 150 pasos (276 en total)"
+    },
+    "comandos_app": {
+      "valor": 1121,
+      "unidad": "caracteres",
+      "tokensEstimados": 280,
+      "funcionan": 3,
+      "detalle": [
+        {
+          "tarea": "listar-pedidos",
+          "caracteres": 412,
+          "funciona": true,
+          "salida": "200 [{\"id\":1,\"cliente\":\"Ana\",\"estado\":\"pendiente\"}]"
+        },
+        {
+          "tarea": "crear-pedido",
+          "caracteres": 499,
+          "funciona": true,
+          "salida": "201 {\"id\":2,\"estado\":\"pendiente\",\"cliente\":\"Bruno\"}"
+        },
+        {
+          "tarea": "verificar-api",
+          "caracteres": 210,
+          "funciona": true,
+          "salida": "lint: ok en 400 ms\ntipos: ok en 900 ms\npruebas: ok en 1000 ms"
+        }
+      ],
+      "texto": "1121 caracteres (≈ 280 tokens) · 3 de 3 funcionan"
+    },
+    "comentarios_barrera": {
+      "valor": 0,
+      "unidad": "%",
+      "rechazadas": 0,
+      "prohibidas": 12,
+      "falsosRechazos": 0,
+      "buenas": 8,
+      "ms": 72.39175,
+      "texto": "0 de 12 rechazadas (0 %) · 0 de 8 buenas rechazadas por error"
+    },
+    "pedido_textual": {
+      "valor": 0,
+      "unidad": "frases",
+      "de": 3,
+      "presentes": [],
+      "texto": "0 de 3 frases exactas en el contrato"
+    },
+    "prueba_primero": {
+      "valor": 0,
+      "unidad": "casos",
+      "de": 2,
+      "detalle": {
+        "sinRojo": false,
+        "conRojo": false
+      },
+      "texto": "0 de 2 bien clasificados"
+    }
+  }
+}

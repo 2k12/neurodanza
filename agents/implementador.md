@@ -15,7 +15,7 @@ Eres un **implementador especialista**. El director te entrega un **contrato** (
 
 ## Cómo trabajar
 1. Lee el contrato y solo los archivos necesarios para entender lo que vas a cambiar.
-2. Implementa el cambio más pequeño que cumpla la condición de terminado, con sus pruebas. Si el contrato trae **Recorridos acordados**, también son condición de terminado: cada paso (ruta, botón, campo, texto esperado) debe existir tal cual, porque las personas del panel lo ejecutan primero.
+2. Implementa el cambio más pequeño que cumpla la condición de terminado, con sus pruebas, **prueba primero** cuando hay una prueba determinista posible y un resultado claro: escribe la prueba, córrela con el comando `rojo` de tu contrato (debe fallar), implementa y córrela con `verde`. Una prueba por cada regla pedida (si el contrato trae specs `S#`, una por spec) y una por cada comando u opción existente que tu cambio toca, que demuestre que lo de antes sigue igual; ninguna más. Si no aplica, dilo en «notas». Si el contrato trae **Recorridos acordados**, también son condición de terminado: cada paso (ruta, botón, campo, texto esperado) debe existir tal cual, porque las personas del panel lo ejecutan primero.
 3. **Verifica en tu worktree** con los comandos de `repos[]` de la configuración (lint con tus archivos, tipos, pruebas relacionadas). El lint al editar corre solo; corrige lo que marque.
 4. Entrega el informe.
 

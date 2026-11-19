@@ -38,9 +38,34 @@ const P = {
   "/configuracion/empresa": `<h1>Empresa</h1>${a("/configuracion", "Volver")}`,
   "/configuracion/impuestos": `<h1>Impuestos</h1>${a("/configuracion", "Volver")}`,
 };
+const pedidos = [{ id: 1, cliente: "Ana", estado: "pendiente" }];
+const json = (res, status, body) => {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+};
+/** API con login por token (para la CLI de la app en el banco). */
+function api(req, res, ruta) {
+  let cuerpo = "";
+  req.on("data", (d) => (cuerpo += d));
+  req.on("end", () => {
+    if (ruta === "/api/auth/login" && req.method === "POST") {
+      const { email, password } = JSON.parse(cuerpo || "{}");
+      return email && password === "Clave123!" ? json(res, 200, { accessToken: `t-${email}` }) : json(res, 401, { message: "Credenciales inválidas" });
+    }
+    if (!String(req.headers.authorization ?? "").startsWith("Bearer t-")) return json(res, 401, { message: "Sin sesión" });
+    if (ruta === "/api/pedidos" && req.method === "GET") return json(res, 200, pedidos);
+    if (ruta === "/api/pedidos" && req.method === "POST") {
+      const p = { id: pedidos.length + 1, estado: "pendiente", ...JSON.parse(cuerpo || "{}") };
+      pedidos.push(p);
+      return json(res, 201, p);
+    }
+    json(res, 404, { message: "No existe" });
+  });
+}
 createServer((req, res) => {
   const mal = process.env.BENCH_APP === "500";
   const ruta = (req.url ?? "/").split("?")[0];
+  if (!mal && ruta.startsWith("/api/")) return api(req, res, ruta);
   const html = P[ruta];
   res.writeHead(mal ? 500 : html ? 200 : 404, { "Content-Type": "text/html; charset=utf-8" });
   res.end(mal ? "error" : html ?? "<h1>No existe</h1>");
