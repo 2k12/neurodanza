@@ -294,6 +294,12 @@ function Handle($ev) {
       $tower.caption.Text = "Agents  ·  $($script:people.Count)"
       Update-Tower
     }
+    'persona' {
+      # Se suma a la ronda (la dueña de un recorrido que se repitió mecánicamente).
+      foreach ($p in $ev.personas) { if (-not $script:people[$p.id]) { $script:people[$p.id] = @{ info = $p; ui = (New-Row $p); nota = $null } } }
+      $tower.caption.Text = "Agents  ·  $($script:people.Count)"
+      Update-Tower
+    }
     'msg' {
       $p = $script:people[$ev.persona]
       if ($ev.estado -and $p) {
