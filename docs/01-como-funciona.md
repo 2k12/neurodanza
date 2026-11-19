@@ -12,6 +12,10 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Director | `lib/director.mjs` y `agents/implementador.md` | Modo director: worktrees por tarea, contratos e integración del diff. |
 | Constructos | `lib/constructos.mjs` | Lecciones por agente: reflexión al cerrar, a prueba, aprobadas solo si mejoran. |
 | Velocidad | `lib/procesos.mjs`, `lib/firma.mjs`, `lib/fondo.mjs`, `lib/agentes.mjs`, `lib/fusible.mjs` | Comandos con tope que matan su árbol, firma del cambio, suite completa en segundo plano, tiempo y latido por subagente, fusible por capa externa. Ver [15-velocidad.md](15-velocidad.md). |
+| No perder trabajo | `lib/pilas.mjs`, `hooks/pilas.mjs`, `director.mjs decidir`/`rebobinar` | Pila de cada subagente, re-enfundar guiado y rebobinar con memoria. Ver [16-no-perder-trabajo.md](16-no-perder-trabajo.md). |
+| Seguridad | `lib/figuras.mjs`, `lib/fantasmas.mjs`, `agents/fantasma.md` | Figuras y manos, segunda llave (`ask`), cuarentena y fantasmas en modo propuesta. Ver [17-seguridad.md](17-seguridad.md). |
+| Panel con recorridos | `lib/recorridos.mjs`, `panel.mjs navegar --recorrido` / `comparar` | Recorridos acordados antes de implementar, memoria por versión y regresiones de experiencia. Ver [18-panel-con-recorridos.md](18-panel-con-recorridos.md). |
+| Menos exploración | `lib/indice.mjs`, `lib/hotel.mjs`, `lib/operador.mjs`, `agents/especialista-*.md` | Índice pre-cocido por commit, especialistas antes de delegar y lecciones que se recuerdan al tocar sus archivos. Ver [19-menos-exploracion.md](19-menos-exploracion.md). |
 | Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
 | Agentes | `agents/*.md` | 4 revisores y la `persona-evaluadora`. |
@@ -28,8 +32,14 @@ Cada hook busca `neurodanza.config.json` subiendo desde la carpeta de trabajo (h
 
 ```mermaid
 flowchart TD
-    A[Pedido del usuario] --> B["/neurodanza-feature<br/>0. Entender y planificar: plan.md y visto bueno"]
-    B --> C[1. Implementar en una rama]
+    A[Pedido del usuario] --> B["/neurodanza-feature<br/>0. Entender y planificar: plan.md"]
+    B --> RC["Recorridos acordados (Tenet)<br/>cada persona escribe qué espera poder hacer"]
+    RC --> VB{"Visto bueno del usuario<br/>plan + recorridos (congelados con hash)"}
+    VB --> HO["Especialistas antes de delegar<br/>datos · a11y · permisos · rendimiento<br/>(respuestas en caché)"]
+    HO --> C["1. Implementar<br/>contrato: recorridos + índice + lo que ya sabemos"]
+    IX["Índice pre-cocido por commit<br/>.neurodanza/indice/"] -.resumen enfocado.-> C
+    IX -.contexto.-> HO
+    OP["Operador: lección con activadores<br/>se recuerda una vez al tocar su archivo"] -.aviso.-> G
     C --> G{"Barreras<br/>PreToolUse"}
     G -- prohibido --> GX[Bloqueo con motivo<br/>el agente corrige la causa] --> C
     G -- permitido --> H["Herramienta se ejecuta"]
@@ -41,7 +51,8 @@ flowchart TD
     AP -- responde --> T3["3. Mismo turno, en paralelo"]
     PP --> T3
     T3 --> R["Revisores que aplican<br/>coherencia · permisos · ui · docs"]
-    T3 --> N["persona-evaluadora × N, a la vez<br/>cada una con su usuario y su navegador<br/>ventana Role Agents (Windows)"]
+    T3 --> N["persona-evaluadora × N, a la vez<br/>primero su recorrido (una llamada),<br/>después exploración corta en pantallas del diff"]
+    N --> WW["Memoria por recorrido (Westworld)<br/>regresiones: más clics, más tiempo,<br/>pasos que dejan de cumplir"]
     R --> J{"Juntar"}
     N --> J
     J -- "revisor reprobó (alto):<br/>la ronda no aprueba" --> C

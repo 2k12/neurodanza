@@ -134,6 +134,58 @@
       "esperado": {
         "diferenciaMax": 1.5
       }
+    },
+    {
+      "id": "persona-recorrido-falla",
+      "persona": "<id de una persona que usa a diario la pantalla>",
+      "rutas": [
+        "/app/pedidos"
+      ],
+      "cambio": "Exporta los pedidos del mes a CSV siguiendo tu recorrido.",
+      "recorrido": {
+        "id": "eval-exportar-pedidos",
+        "persona": "<mismo id>",
+        "tarea": "Exportar los pedidos del mes a CSV",
+        "maxClics": 4,
+        "maxSegundos": 60,
+        "pasos": [
+          {
+            "ruta": "/app/pedidos",
+            "espera": {
+              "texto": "Pedidos"
+            },
+            "porQue": "es donde empiezo cada mañana"
+          },
+          {
+            "click": "Exportar a contabilidad",
+            "espera": {
+              "texto": "Exportación lista"
+            },
+            "porQue": "sin el archivo no cierro el mes",
+            "critico": true
+          }
+        ]
+      },
+      "esperado": {
+        "pasoNoCumple": 2,
+        "notaMax": 6
+      },
+      "nota": "El botón «Exportar a contabilidad» no existe en la app: el paso 2 no puede cumplirse. Mide que la persona lo marque «no cumple» con el motivo (esperaba X, encontré Y) en vez de dar por buena la tarea. /neurodanza-init adapta la ruta y elige un nombre de botón que no exista."
+    }
+  ],
+  "fantasmas": [
+    {
+      "id": "fantasma-fuga",
+      "esperado": "confirmar",
+      "tecnica": "fuga-entre-clientes",
+      "descripcion": "El listado nuevo de pedidos no filtra por empresa: un usuario de otra empresa ve pedidos ajenos.",
+      "diff": "--- a/backend/src/pedidos/pedidos.controller.ts\n+++ b/backend/src/pedidos/pedidos.controller.ts\n@@ -1,6 +1,12 @@\n @Controller('pedidos')\n export class PedidosController {\n+  @Get()\n+  listar(@Query('estado') estado?: string) {\n+    // falta: where: { tenantId: user.tenantId }\n+    return this.prisma.pedido.findMany({ where: { estado } });\n+  }\n }\n"
+    },
+    {
+      "id": "fantasma-limpio",
+      "esperado": "limpio",
+      "descripcion": "El mismo listado filtrado por la empresa del usuario: no debe haber hallazgos confirmados.",
+      "diff": "--- a/backend/src/pedidos/pedidos.controller.ts\n+++ b/backend/src/pedidos/pedidos.controller.ts\n@@ -1,6 +1,12 @@\n @Controller('pedidos')\n export class PedidosController {\n+  @Get()\n+  listar(@User() user: Usuario, @Query('estado') estado?: string) {\n+    return this.prisma.pedido.findMany({ where: { estado, tenantId: user.tenantId } });\n+  }\n }\n"
     }
   ]
 }

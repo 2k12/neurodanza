@@ -12,6 +12,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
 import { cargar as cargarConstructos, playbookDe } from "../lib/constructos.mjs";
+import { notaPorPasos } from "../lib/recorridos.mjs";
 
 /** Casos del proyecto (o vacíos si no hay configuración: así el módulo se puede importar en pruebas). */
 function loadCases() {
@@ -67,11 +68,18 @@ export function calificar(resultados, casos = CASOS) {
   const personas = [];
   for (const p of casos.personas ?? []) {
     const r = resultados.personas?.[p.id];
-    const nota = Number(r?.nota);
+    // Con recorrido, la nota pasa por la misma regla que en el panel (un paso crítico que no cumple la limita).
+    const nota = p.recorrido && r?.pasos ? notaPorPasos(r, 6, p.recorrido).nota : Number(r?.nota);
     let ok = Number.isFinite(nota);
     let motivo = ok ? `nota ${nota}` : "sin nota";
     if (ok && p.esperado.notaMin !== undefined) ok = nota >= p.esperado.notaMin;
     if (ok && p.esperado.notaMax !== undefined) ok = nota <= p.esperado.notaMax;
+    // Recorrido con un paso que no puede cumplirse: la persona debe marcarlo «no cumple».
+    if (ok && p.esperado.pasoNoCumple !== undefined) {
+      const paso = (r?.pasos ?? []).find((x) => Number(x.n) === p.esperado.pasoNoCumple);
+      ok = paso?.resultado === "no cumple";
+      motivo = ok ? `nota ${nota}; detectó que el paso ${p.esperado.pasoNoCumple} no cumple` : `no marcó «no cumple» en el paso ${p.esperado.pasoNoCumple} (${paso?.resultado ?? "sin detalle por paso"})`;
+    }
     if (ok && p.repiteDe) {
       const base = Number(resultados.personas?.[p.repiteDe]?.nota);
       const dif = Math.abs(nota - base);
@@ -81,8 +89,17 @@ export function calificar(resultados, casos = CASOS) {
     personas.push({ caso: p.id, ok, motivo });
   }
 
-  const aprobado = deteccion >= u.deteccion && falsosPositivos <= u.falsosPositivos && personas.every((p) => p.ok);
-  return { aprobado, deteccion, falsosPositivos, personasOk: personas.filter((p) => p.ok).length, personasTotal: personas.length, detalle, personas };
+  // Fantasmas: el de la fuga sembrada debe confirmar algo; el limpio, nada (sin falsos positivos).
+  const fantasmas = [];
+  for (const f of casos.fantasmas ?? []) {
+    const r = resultados.fantasmas?.[f.id];
+    const conf = (r?.confirmados ?? []).filter((x) => x.confirmado !== false);
+    const ok = !!r && (f.esperado === "confirmar" ? conf.length > 0 && (!f.tecnica || conf.some((x) => !x.tecnica || x.tecnica === f.tecnica)) : conf.length === 0);
+    fantasmas.push({ caso: f.id, ok, motivo: !r ? "sin resultado" : f.esperado === "confirmar" ? (ok ? "confirmó la fuga" : "no la confirmó") : ok ? "sin falsos positivos" : `${conf.length} falso(s) positivo(s)` });
+  }
+
+  const aprobado = deteccion >= u.deteccion && falsosPositivos <= u.falsosPositivos && personas.every((p) => p.ok) && fantasmas.every((f) => f.ok);
+  return { aprobado, deteccion, falsosPositivos, personasOk: personas.filter((p) => p.ok).length, personasTotal: personas.length, detalle, personas, fantasmas };
 }
 
 function args() {
@@ -107,6 +124,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       console.log([promptRevisor(a.revisor), lecciones].filter(Boolean).join("\n\n"));
     }
   } else if (cmd === "personas") console.log(JSON.stringify(CASOS.personas, null, 2));
+  else if (cmd === "fantasmas") {
+    // Casos de fantasmas con las hipótesis que genera neurodanza para cada diff (para lanzar a los fantasmas).
+    const { hipotesisDeDiff } = await import("../lib/fantasmas.mjs");
+    console.log(JSON.stringify((CASOS.fantasmas ?? []).map((f) => ({ ...f, hipotesis: hipotesisDeDiff(f.diff, [{ rol: "ADMIN" }, { rol: "VIEWER", soloLectura: true }], 3) })), null, 2));
+  }
   else if (cmd === "calificar") {
     const file = resolve(a.resultados);
     const data = JSON.parse(readFileSync(file, "utf8"));
@@ -114,7 +136,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     Object.assign(data, { informe, umbrales: CASOS.umbrales, fecha: data.fecha ?? new Date().toISOString() });
     writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
     console.log(JSON.stringify({ aprobado: informe.aprobado, deteccion: informe.deteccion, falsosPositivos: informe.falsosPositivos, personas: `${informe.personasOk}/${informe.personasTotal}` }));
-    for (const d of [...informe.detalle, ...informe.personas].filter((x) => !x.ok)) console.log(`✖ ${d.caso}${d.revisor ? ` · ${d.revisor}` : ""}: ${d.motivo}`);
+    for (const d of [...informe.detalle, ...informe.personas, ...(informe.fantasmas ?? [])].filter((x) => !x.ok)) console.log(`✖ ${d.caso}${d.revisor ? ` · ${d.revisor}` : ""}: ${d.motivo}`);
     if (!informe.aprobado) process.exitCode = 1;
   } else console.log("comandos: prompt --revisor <revisor> | personas | calificar --resultados <json>");
 }

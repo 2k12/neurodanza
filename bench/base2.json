@@ -1,0 +1,195 @@
+{
+  "fecha": "2026-11-19T04:28:50.228Z",
+  "plugin": "C:\\Users\\jeipi\\AppData\\Local\\Temp\\claude\\4f573f375b2a9c90\\ec25cd63-ba72-4da4-a290-42d7d8118620\\scratchpad\\plugin-base2",
+  "version": "0.7.0",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "guardrails_ms": {
+      "valor": 126.35321519999998,
+      "unidad": "ms",
+      "corridas": [
+        127.26640120000012,
+        129.8521026999999,
+        122.96616529999994,
+        126.35321519999998,
+        125.44170600000021
+      ],
+      "eventos": 1000
+    },
+    "retomar_tras_corte": {
+      "valor": 16,
+      "unidad": "pasos",
+      "lecturas": 12,
+      "modo": "sin pila",
+      "corridas": [
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "detalle": [
+        {
+          "releidos": "todo",
+          "pasos": 16,
+          "lecturas": 12
+        },
+        {
+          "releidos": "todo",
+          "pasos": 16,
+          "lecturas": 12
+        },
+        {
+          "releidos": "todo",
+          "pasos": 16,
+          "lecturas": 12
+        },
+        {
+          "releidos": "todo",
+          "pasos": 16,
+          "lecturas": 12
+        },
+        {
+          "releidos": "todo",
+          "pasos": 16,
+          "lecturas": 12
+        }
+      ]
+    },
+    "reintento_fallido": {
+      "valor": 65,
+      "unidad": "líneas",
+      "pasos": 20,
+      "modo": "corregir",
+      "corridas": [
+        65,
+        65,
+        65,
+        65,
+        65
+      ],
+      "detalle": [
+        {
+          "decision": "corregir",
+          "lineas": 65,
+          "pasos": 20
+        },
+        {
+          "decision": "corregir",
+          "lineas": 65,
+          "pasos": 20
+        },
+        {
+          "decision": "corregir",
+          "lineas": 65,
+          "pasos": 20
+        },
+        {
+          "decision": "corregir",
+          "lineas": 65,
+          "pasos": 20
+        },
+        {
+          "decision": "corregir",
+          "lineas": 65,
+          "pasos": 20
+        }
+      ],
+      "modelo": "intento 1: 40 líneas, 12 pasos; encima: +25 líneas, 8 pasos; rebobinar: 30 líneas, 9 pasos"
+    },
+    "bloqueos_seguridad": {
+      "valor": 103.14527600000005,
+      "unidad": "ms",
+      "permite": 200,
+      "rechaza": 0,
+      "pregunta": 0,
+      "porFigura": {
+        "leer · rev": {
+          "permite": 18,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · rev": {
+          "permite": 12,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "verificar · rev": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · rev": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "destructivo · rev": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "leer · impl": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · impl": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "verificar · impl": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · impl": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "destructivo · impl": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "leer · principal": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · principal": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "verificar · principal": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · principal": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "destructivo · principal": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        }
+      },
+      "corridas": [
+        137.42363900000012,
+        132.51869649999998,
+        103.14527600000005,
+        77.0861175,
+        77.27452599999998
+      ],
+      "nota": "re-medida con ids que viven ~5 s: la primera medición mezclaba los cortes por tiempo del proyecto de prueba (20 s) con las decisiones de seguridad"
+    }
+  }
+}

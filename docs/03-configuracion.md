@@ -221,6 +221,11 @@ Ver [07-panel-personas.md](07-panel-personas.md).
 | `fotos` | `".claude/personas/fotos"` | Carpeta de fotos recortadas (fuera de git). |
 | `evaluaciones` | `"docs/evaluaciones"` | Carpeta de los resultados del panel (los lee el hook `Stop`). |
 | `usuarios` | `null` | Cómo se crean y cómo entran los usuarios de las personas. |
+| `recorridos` | `".claude/personas/recorridos"` | Carpeta de los recorridos **permanentes** (en git, con id estable), los que se comparan entre versiones. Ver [18-panel-con-recorridos.md](18-panel-con-recorridos.md). |
+| `notaMaxSiFalla` | `6` | Nota máxima de una persona si un paso **crítico** de su recorrido no cumple (según ella o según la ejecución). |
+| `memoria` | `".claude/personas/memoria"` | Historial por versión de cada recorrido permanente (en git: la comparación es compartida). |
+| `exploracionPasos` | `10` | Exploración libre de cada persona **después** de su recorrido: máximo de pasos, y solo en pantallas que tocó el diff. |
+| `regresion` | `{ "clics": 1, "tiempo": 0.3 }` | Regresión de experiencia frente a la última versión aprobada: `clics` o más clics, o `tiempo` (fracción: 0.3 = +30 %, y al menos 1 s) más de tiempo. También cuentan un paso que antes cumplía y ahora no, y errores nuevos. |
 
 ```json
 "panel": {
@@ -275,10 +280,61 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | Clave | Por defecto | Qué hace |
 |---|---|---|
 | `plan` | `".neurodanza/plan.md"` | Archivo del plan del ciclo (local, fuera de git). El mapa lo muestra. |
-| `maxPasos` | `{ "revisor": 25, "persona": 40, "implementador": 60, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
-| `maxSegundos` | `{ "revisor": 300, "persona": 420, "implementador": 900, "otro": 420 }` | Tope de tiempo por subagente: aviso al 80 % y rechazo de toda herramienta al 100 %. El agente principal no tiene tope. |
+| `maxPasos` | `{ "revisor": 25, "persona": 20, "implementador": 60, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
+| `maxSegundos` | `{ "revisor": 300, "persona": 210, "implementador": 900, "otro": 420 }` | Tope de tiempo por subagente: aviso al 80 % y rechazo de toda herramienta al 100 %. El agente principal no tiene tope. |
 | `latidoSeg` | `90` | Segundos sin un paso para marcar a un subagente «sin latido». |
 | `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
+
+## `pilas`
+
+Lo que hizo cada subagente, para retomar si se corta. Ver [16-no-perder-trabajo.md](16-no-perder-trabajo.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `activo` | `true` | Los hooks guardan la pila de cada subagente en `.neurodanza/pilas/` (no va a git). |
+| `avanceCada` | `10` | Cada cuántos pasos se le pide al subagente su línea de avance (sin bloquear). `0` = nunca. |
+
+## `figuras`
+
+Qué puede hacer cada tipo de agente: ◯ leer · △ editar · □ verificar · ◇ externo · ✕ destructivo. Ver [17-seguridad.md](17-seguridad.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `activo` | `false` (**`true`** en los proyectos que crea `/neurodanza-init`) | Prende la clasificación por figuras, la segunda llave (`ask`) y la cuarentena. Apagado en configuraciones existentes para no cambiar flujos. |
+| `manos` | `{}` | Manos por tipo (`revisor`, `persona`, `implementador`, `fantasma`, `principal`, `otro`): lista de `leer`, `editar`, `verificar`, `externo`, `destructivo`, `red-app`. Lo que no se ponga usa los valores por defecto. |
+| `cuarentena` | `3` | Rechazos de un subagente en el ciclo para dejarlo en cuarentena (mano vacía). |
+
+## `fantasmas`
+
+Ataques acotados contra la app local, en modo propuesta. Ver [17-seguridad.md](17-seguridad.md#3-fantasmas-en-modo-propuesta).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `activo` | `true` | Si el cambio toca endpoints, permisos, roles, consultas o pantallas que escriben, el skill lanza fantasmas en paralelo con revisores y panel. |
+| `hosts` | `["localhost", "127.0.0.1"]` | Únicos hosts a los que un fantasma puede pedir algo. Los de `app.urls` se agregan solos. |
+| `max` | `3` | Hipótesis (y fantasmas) por ciclo. |
+| `maxPasos` · `maxSegundos` | `15` · `180` | Presupuesto de cada fantasma. |
+| `login` | — | Opcional: cómo entra una persona por API (`{ "url", "cuerpo": { …"{email}"…"{clave}" }, "token" }`). Si no está, se usa el de `panel.usuarios.login` con las credenciales de la persona. |
+
+## `indice`
+
+Índice pre-cocido por commit (`lib/indice.mjs`). Ver [19-menos-exploracion.md](19-menos-exploracion.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, ni el contrato ni los mensajes llevan el resumen del índice. |
+| `maxLineas` | `60` | Líneas máximas del resumen que va en un contrato o mensaje. |
+
+## `hotel`
+
+Especialistas de solo lectura que el director consulta antes de delegar (`lib/hotel.mjs`). Ver [19-menos-exploracion.md](19-menos-exploracion.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, el contrato no lleva «Lo que ya sabemos de este proyecto». |
+| `maxPasos` | `8` | Presupuesto de pasos de cada especialista. |
+| `maxSegundos` | `120` | Tope de tiempo de cada especialista. |
+| `maxPorTarea` | `4` | Especialistas como máximo por tarea. |
 
 ## `fusible`
 
@@ -296,6 +352,7 @@ Modo director: el agente principal dirige y los implementadores trabajan en work
 | Clave | Por defecto | Qué hace |
 |---|---|---|
 | `worktrees` | `"auto"` | Dónde se crean los worktrees de las tareas. `"auto"`: si la raíz **no** es un repo (proyecto de varios repos), en `.neurodanza/wt` dentro del proyecto (ningún repo la ve y no pide permisos); si la raíz **es** un repo, en `../.neurodanza-wt/<proyecto>`, para que el lint y las pruebas del repo no los recorran. También acepta una ruta relativa a la raíz con `{proyecto}`. |
+| `rebobinar` | `{ "activo": true, "umbralCorreccion": 0.5, "maxMuertes": 2 }` | Rebobinar con memoria: cuándo conviene volver a la foto original en vez de corregir encima (`umbralCorreccion` = fracción del diff original), y cuántas veces como máximo por tarea antes de informar al usuario. Ver [16-no-perder-trabajo.md](16-no-perder-trabajo.md#3-rebobinar-con-memoria). |
 | `enlazar` | `["node_modules"]` | Qué se enlaza del repo real en cada worktree (las dependencias, para no instalarlas). `[]` no enlaza nada. |
 
 ## `constructos`

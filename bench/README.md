@@ -30,6 +30,13 @@ La base se midió contra una copia intacta de `main` (0.6.1) mientras se escrib�
 | `subagente_congelado` | Un subagente falso (revisor) da 3 pasos y se congela; otro sigue dando pasos (así corren los hooks). Se mide cuándo el harness lo marca «sin latido» y cuándo lo da por agotado (corte), y si al volver se le rechaza la herramienta. Sin corte se informa el tope de medición (45 s). |
 | `revision_y_panel` | Ciclo simulado desde «diff listo» hasta «veredicto»: revisores falsos 4 × 20 s (en paralelo entre ellos) y personas falsas 3 × 30 s, más levantar la app real del proyecto de prueba. El orden lo lee del `SKILL.md` del plugin medido: si dice que revisores y panel van **en el mismo turno**, corren a la vez; si no, uno después del otro. |
 | `fallo_externo` | La app no arranca. Se siguen las reglas del skill: hasta `panel.maxRondas` (3) rondas, en cada una se levanta la app y cada una de las 3 personas intenta entrar (3 s simulados por intento de persona + una petición HTTP real). Con `lib/fusible.mjs` en el plugin, cada fallo se registra y, con la capa fundida, el ciclo avanza con el panel pendiente. Se informan intentos y tiempo. |
+| `retomar_tras_corte` | Un implementador simulado lee 10 módulos, edita 4, corre las pruebas (falla una) y se corta. Se cuenta cuántos pasos y lecturas necesita el reemplazo para terminar: sin pila relee todo; con `lib/pilas.mjs` recibe el mensaje de `reenfundar` y solo relee lo que cambió. |
+| `reintento_fallido` | Un intento sale mal por diseño (40 líneas, 12 pasos) y los revisores lo reprueban con un hallazgo alto. Sin `director.mjs decidir` se corrige encima (+25 líneas, 8 pasos); con él, se rebobina a la foto original y se rehace con la memoria del fallo (30 líneas, 9 pasos). Se informa el diff final y los pasos totales. |
+| `bloqueos_seguridad` | 200 llamadas de herramienta reales a la barrera (13 acciones: leer, editar, verificar, externas como `npm install` o `curl` externo, destructivas como `rm -rf`, `git reset --hard`, `git push --force`), repartidas entre revisor, implementador y agente principal. Se cuenta cuántas se permiten, se rechazan o se preguntan al usuario, y la latencia media. |
+| `panel_pasos` | Una persona falsa evalúa «exportar pedidos» en la app simulada (`fixture/servidor.mjs`, pantallas con enlaces, campos y listas). **Sin guion** sigue el recorrido sistemático de `agents/persona-evaluadora.md`: en cada pantalla, `navegar`, mirar la captura y probar cada control, por todo lo que alcanza desde la ruta del diff, hasta su presupuesto (40 pasos). **Con recorrido** (`lib/recorridos.mjs`): una llamada que ejecuta el recorrido acordado, leer su informe y exploración libre acotada a `panel.exploracionPasos` en pantallas del diff. Ambas con 6 mensajes en la ventana. Se cuentan pasos y tiempo (cada paso cuesta `--paso-ms`, 300 ms) y si la tarea quedó verificada. |
+| `regresion_ux` | La misma tarea en la v1 de la app y en la v2 (`BENCH_UX=v2`), que pide 2 clics más. Con memoria por recorrido, la v1 queda aprobada y se compara la v2: ¿se marca la regresión? Se informa en cuántas de las corridas se detectó. |
+| `exploracion_implementador` | Repo generado estilo NestJS + Next (30 entidades, ~300 archivos con referencias cruzadas). Tarea: «agregar el campo descuento al crear pedidos». **Sin índice**: un Glob y un Grep del tema y la lectura de cada archivo que coincide. **Con índice** (`lib/indice.mjs`): solo los archivos que marca `resumen --foco`. Se cuentan lecturas y búsquedas y si se encontraron los 4 archivos que hay que tocar. Con índice, también el tiempo de generarlo en frío y en caché (proyecto de prueba, repo mediano y uno de ~3000 archivos). |
+| `stop_y_ciclo_total` | El ciclo simulado completo como lo indica el skill del plugin medido: especialistas (si hay `lib/hotel.mjs`), implementar (los pasos de `exploracion_implementador` + 8), verificar (el hook `Stop` real), revisión + panel + fantasmas (4 revisores × 12 pasos, 3 personas × los pasos de `panel_pasos`, 2 fantasmas × 10 pasos si hay `lib/fantasmas.mjs`; a la vez si el skill lo dice) y cerrar. Cada paso cuesta `--paso-ms`. |
 
 Los subagentes, revisores y personas son simulados (procesos con demoras controladas y eventos de hook reales): miden la orquestación y los hooks, no la velocidad de un modelo.
 
@@ -71,3 +78,103 @@ Notas para leer los números:
 - `subagente_congelado` usa los topes cortos del proyecto de prueba (revisor 20 s, latido 8 s): el corte llega cuando vence el tope configurado. Con los valores por defecto sería a los 300 s (revisor) y el latido a los 90 s.
 - `stop_colgado` ahora corta a los 85 s (tope de 90 s menos el margen 5 s): la prueba colgada se corta, se informa «no alcanzó a correr» y pasa al fondo. 0 huérfanos en ambas versiones.
 - `revision_y_panel` y `fallo_externo` miden la orquestación que indica el skill con agentes simulados: el ahorro real depende de cuánto tarden los revisores y las personas de verdad.
+
+### Parte 2 (0.8.0, mismas condiciones)
+
+Base nueva medida antes de programar (`base2.json`, código de la Parte 1) y resultado (`parte2.json`):
+
+| Métrica | Base 2 | Ahora | Mejora |
+|---|---|---|---|
+| `retomar_tras_corte` | 16 pasos · 12 lecturas (relee todo) | 5 pasos · 1 lectura | 68,8 % en pasos; 91,7 % en lecturas |
+| `reintento_fallido` | 65 líneas · 20 pasos (corrige encima) | 30 líneas · 21 pasos (rebobina) | 53,8 % en líneas; +1 paso (empeoró) |
+| `bloqueos_seguridad` | permite 200 · rechaza 0 · pregunta 0 | permite 98 · rechaza 12 · pregunta 90 | antes se permitía todo |
+| `guardrails_ms` | 126,4 ms | 68,2 ms | ver nota |
+
+Las 5 corridas de cada métrica nueva dieron el mismo valor (son conteos deterministas). Las otras métricas de la Parte 1, contra `parte1.json`: `stop_normal` 1,61 → 1,39 s, `stop_colgado` 85,5 → 85,4 s, `subagente_congelado` corte a los 20,9 → 21,8 s (+4 %, el tope del proyecto de prueba es 20 s), `revision_y_panel` 30,4 → 30,3 s, `fallo_externo` 3,8 → 3,4 s con 2 intentos.
+
+Qué se permite, rechaza y pregunta (`bloqueos_seguridad`, con `figuras.activo`):
+
+| Figura | Revisor | Implementador | Principal |
+|---|---|---|---|
+| ◯ leer | permite | permite | permite |
+| △ editar | **rechaza** | permite | permite |
+| □ verificar | permite | permite | permite |
+| ◇ externo | **pregunta** | **pregunta** | **pregunta** |
+| ✕ destructivo | **pregunta** | **pregunta** | **pregunta** |
+
+**Latencia de la barrera (límite: +25 %).** La máquina varía mucho entre sesiones: el mismo código de la Parte 1 midió 85,9 ms en `parte1.json` y 126,4 ms en `base2.json`. Por eso se midió además **intercalado** (base y nuevo alternados, 5 rondas cada uno, mediana), que es la comparación válida:
+
+| Métrica | Parte 1 | Parte 2 | Cambio |
+|---|---|---|---|
+| `guardrails_ms` | 69,0 ms | 69,9 ms | +1,3 % (empeoró, bajo el límite) |
+| `bloqueos_seguridad` (latencia) | 76,1 ms | 72,1 ms | −5,2 % |
+
+La barrera ahora clasifica cada llamada y registra rechazos, pero revisa los latidos como mucho cada 2 s (antes en cada llamada): por eso queda igual. Contra `parte1.json` sin intercalar daría 85,9 → 68,2 ms (−20,6 %), pero esa diferencia es de la máquina, no del código.
+
+Lo que empeoró y por qué:
+
+- **`reintento_fallido`, +1 paso (20 → 21):** rebobinar rehace el trabajo desde la foto original (9 pasos) en vez de agregar una corrección (8 pasos). A cambio el diff final queda en 30 líneas en vez de 65, sin el código del intento equivocado.
+- **`guardrails_ms`, +1,3 %** (intercalado): clasificar la figura cuesta poco más que el arranque de Node.
+
+Notas:
+
+- `retomar_tras_corte` y `reintento_fallido` siguen un modelo de agente simulado (cuántas lecturas y pasos hace): miden que el mecanismo entregue lo necesario, no cuánto ahorra un modelo real.
+- `bloqueos_seguridad` mide la decisión de la barrera, no lo que el usuario responde: las 90 preguntas aparecen en la ventana de permisos de Claude Code.
+
+Datos completos: [`base2.json`](base2.json), [`parte2.json`](parte2.json).
+
+### Parte 3 y tabla final
+
+**Qué mide el banco.** Agentes, revisores, personas y la app son **simulados** (procesos con demoras controladas, eventos de hook reales y una app HTTP con pantallas falsas). Mide el **harness**: hooks, scripts, orden del ciclo y cuántos pasos fija. **No mide la velocidad ni la calidad de un modelo.** Todos los números son medianas de 5 corridas en la misma máquina (Windows 11, Node 26); las métricas de la parte 3 usan un costo de 300 ms por paso de agente (`--paso-ms`), igual en la base y en el final.
+
+Una sola tabla con las 13 métricas: cada una contra **su** base original (la que se midió antes de programar la parte que la ataca) y el final (`final.json`, 1.0.0). Mejora = (base − final) / base × 100.
+
+| Métrica | Base | Base original | Final (1.0.0) | Mejora |
+|---|---|---|---|---|
+| `stop_normal` | base.json (0.6.1) | 1,5 s | 1,4 s | 10,5 % |
+| `stop_colgado` | base.json (0.6.1) | 300,4 s | 85,3 s | 71,6 % |
+| `guardrails_ms` | base.json (0.6.1) | 76,5 ms | 72,9 ms | 4,7 % |
+| `subagente_congelado` | base.json (0.6.1) | sin corte (tope de medición 45 s) | 21,8 s | antes no se cortaba |
+| `revision_y_panel` | base.json (0.6.1) | 50,4 s | 30,2 s | 40,0 % |
+| `fallo_externo` | base.json (0.6.1) | 28,5 s · 12 intentos | 3,4 s · 2 intentos | 88,0 % |
+| `retomar_tras_corte` | base2.json (0.7.0) | 16 pasos · 12 lecturas | 5 pasos · 1 lecturas | 68,8 % en pasos; 91,7 % en lecturas |
+| `reintento_fallido` | base2.json (0.7.0) | 65 líneas · 20 pasos | 30 líneas · 21 pasos | 53,8 % en líneas; -5,0 % en pasos |
+| `bloqueos_seguridad` | base2.json (0.7.0) | permite 200 · rechaza 0 · pregunta 0 · 103,1 ms | permite 98 · rechaza 12 · pregunta 90 · 74,8 ms | antes se permitían las 200; latencia 27,5 % |
+| `panel_pasos` | base3.json (0.8.0) | 40 pasos · 12,4 s | 14 pasos · 4,4 s | 65,0 % en pasos; 64,4 % en tiempo |
+| `regresion_ux` | base3.json (0.8.0) | 0 de 5 detectadas | 5 de 5 detectadas (clics 4 → 6) | antes no se detectaba |
+| `exploracion_implementador` | base3.json (0.8.0) | 17 (15 lecturas · 2 búsquedas) | 10 (10 lecturas · 0 búsquedas) | 41,2 % |
+| `stop_y_ciclo_total` | base3.json (0.8.0) | 21,5 s | 14,0 s | 34,8 % |
+
+**Ciclo simulado completo** (`stop_y_ciclo_total`, del diff pedido al veredicto, con el orden y los pasos que fija el skill de cada versión):
+
+| Versión | Total | Especialistas | Implementar | Verificar | Revisión + panel + fantasmas |
+|---|---|---|---|---|---|
+| 0.6.1 (base original, `base3-original.json`) | 25,0 s | — | 7,6 s (25 pasos) | 1,7 s | 15,8 s (revisores, después panel; personas de 40 pasos) |
+| 0.8.0 (`base3.json`) | 21,5 s | — | 7,6 s (25 pasos) | 1,8 s | 12,1 s (en el mismo turno; personas de 40 pasos) |
+| 1.0.0 (`final.json`) | 14,0 s | 2,5 s (2 en paralelo) | 5,5 s (18 pasos) | 1,8 s | 4,3 s (en el mismo turno; personas de 14 pasos) |
+
+**Mejora del ciclo simulado completo: 44,0 % frente a la 0.6.1** (25,0 → 14,0 s) y 34,8 % frente a la 0.8.0.
+
+**Peor espera bloqueante** (el agente principal esperando un hook): el `Stop` con una prueba colgada, **300,4 s → 85,3 s**.
+
+**Tiempo máximo que puede quedar colgado un subagente:** antes, **sin límite** (el banco cortó la medición a los 45 s sin que el harness lo cortara); ahora, su tope de tiempo: en el banco, 21,8 s con el tope del proyecto de prueba (20 s); con los valores por defecto, 210 s para una persona, 300 s para un revisor, 120 s para un especialista y 900 s para un implementador.
+
+**Índice** (dentro de `exploracion_implementador`, una llamada a `indice.mjs generar` incluido el arranque de Node): proyecto de prueba 257 ms; repo mediano de 303 archivos 226 ms en frío y 198 ms en caché; repo de 3003 archivos 630 ms en frío. Todo bajo el límite de 5 s.
+
+**Latencia de la barrera frente a la parte 2**, medida **intercalada** (base y nuevo alternados, 5 rondas, mediana): `guardrails_ms` 70,7 → 77,6 ms (**+9,8 %**, empeoró, bajo el límite del 25 %); `bloqueos_seguridad` 74,3 → 77,2 ms (+3,9 %).
+
+Lo que empeoró y por qué:
+
+- **Latencia de la barrera, +9,8 %:** la barrera ahora también busca la lección que corresponde recordar (operador) en cada llamada de un subagente que lee o edita. Cuesta menos de 5 ms por evento según la prueba; el resto es cargar un módulo más. La tabla contra la 0.6.1 sale con mejora (−4,7 %) porque la máquina variaba entre sesiones; la comparación válida es la intercalada.
+- **Especialistas, +2,5 s** en el ciclo simulado y **tokens**: son subagentes (2 × 8 pasos en el banco) que antes no existían. Valen la pena si sus respuestas evitan exploración: en el banco el implementador pasó de 25 a 18 pasos, pero ese ahorro viene del índice; el de los especialistas (no redescubrir convenciones) **no lo mide el banco**. La caché los evita mientras su área no cambie.
+- **Fantasmas** (parte 2): 2 × 10 pasos más de tokens en paralelo; no alargan el ciclo simulado porque corren con las personas.
+- **`reintento_fallido`, +1 paso** (parte 2): rebobinar rehace desde la foto original.
+
+**Cómo medir el efecto real** en un proyecto (lo que el banco no puede):
+
+1. En `ejemplos/nest-next` (o un proyecto propio), elige 3 cambios típicos (una pantalla nueva, un campo en un formulario con su endpoint, una corrección de permisos).
+2. Corre **N = 10 ciclos** de `/neurodanza-feature` con la versión anterior y 10 con la nueva, alternando versión en cada ciclo (para que el día, la red y la carga del servicio afecten a ambas) y desde el mismo commit de partida (`git worktree`).
+3. Registra por ciclo, desde el mapa: tiempo total, pasos por subagente y tokens (`/cost` al cerrar), más el veredicto del panel y si hubo rondas extra.
+4. Compara **medianas** y el rango intercuartil (P25–P75) de cada versión. Una diferencia es real si las medianas se separan más que el rango intercuartil de cada una; con menos de 10 ciclos por versión, la variación entre corridas de un modelo suele ser mayor que el efecto. Mira también la peor corrida: el harness existe sobre todo para acotarla.
+
+Datos completos: [`base3.json`](base3.json), [`base3-original.json`](base3-original.json), [`final.json`](final.json).

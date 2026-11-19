@@ -2,6 +2,46 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.0.0 · 2026-11-19
+
+Panel mejor y más rápido, menos exploración. **Versión mayor: cambia el flujo de `/neurodanza-feature`** (las personas escriben su recorrido antes de implementar y el director consulta especialistas antes de delegar). Ver `docs/18-panel-con-recorridos.md`, `docs/19-menos-exploracion.md` y `bench/`.
+
+### Agregado
+- **Recorridos acordados (Tenet)** (`lib/recorridos.mjs`, `panel.recorridos`, `panel.notaMaxSiFalla`): antes del visto bueno, cada persona escribe su recorrido futuro (pasos verificables con lo que espera ver, `maxClics`, `maxSegundos` y `porQue`); el usuario lo aprueba con el plan y queda congelado con su hash; los permanentes van a git. Entra en el contrato del implementador como criterio de terminado. En el panel, `panel.mjs navegar --recorrido` lo ejecuta entero y la persona califica paso por paso; un paso crítico que no cumple limita su nota a 6. Caso de calibración en las evals.
+- **Memoria por recorrido (Westworld)** (`panel.memoria`, `panel.regresion`, `panel.mjs comparar`): historial por versión de cada recorrido permanente; regresiones de experiencia frente a la última versión aprobada (más clics, más tiempo, pasos que dejan de cumplir, errores nuevos), dichas por la persona en su voz, descontadas con una regla documentada y marcadas en el chat y el mapa.
+- **Índice pre-cocido por commit** (`lib/indice.mjs`, `indice.*`): sin modelo, por repo: carpetas, exportaciones, imports, rutas de API (NestJS, Express, Next), pantallas, modelos, migraciones y pruebas; caché por commit + cambios sin commit; `resumen --foco` y `buscar --que`. Va en el contrato y en los mensajes de revisores y personas.
+- **Especialistas** (`agents/especialista-{datos,a11y,permisos,rendimiento}.md`, `lib/hotel.mjs`, `hotel.*`): el director los consulta en paralelo antes de delegar; solo lectura, 8 pasos y 120 s; contexto pre-cocido desde el índice; respuestas en caché por firma del área + pregunta; el contrato trae «Lo que ya sabemos de este proyecto».
+- **Operador** (`lib/operador.mjs`): las lecciones aceptan `activadores` (globs y patrones); la barrera recuerda la lección una vez por agente cuando su constructo lee o edita un archivo que coincide (< 5 ms por evento); se cuenta cada recuerdo y el juicio de la lección lo menciona.
+- Banco: `panel_pasos`, `regresion_ux`, `exploracion_implementador`, `stop_y_ciclo_total`; app simulada con pantallas (`BENCH_UX=v1|v2`) y repos generados.
+
+### Cambiado
+- **Presupuesto de las personas: 20 pasos y 210 s (antes 40 y 420).** No se bajó a ciegas: `panel_pasos` midió 14 pasos con recorrido y exploración acotada frente a 40 sin guion (35 %); se aplicó esa proporción con un margen del 40 % para pantallas con más controles que las del banco (40 × 0,35 × 1,4 ≈ 20; 420 × 0,35 × 1,4 ≈ 210).
+- La persona explora como máximo `panel.exploracionPasos` (10) pasos tras su recorrido, solo en pantallas del diff.
+- Mapa 1.0.0: regresiones por persona (`⚠ n`), consultas a especialistas (`🏨 datos ✔ (caché)`); las personas que escriben su recorrido siguen en la fase de planificar.
+
+### Medido (5 corridas, mediana; agentes y app simulados)
+Panel: 40 → 14 pasos y 12,4 → 4,4 s (65,0 %); regresión de 2 clics más: antes no se detectaba, ahora en 5 de 5; implementador ubicando los archivos de una tarea: 17 → 10 lecturas y búsquedas (41,2 %), encontrando los 4 archivos en ambos casos; ciclo simulado completo: 25,0 s en la 0.6.1 → 21,5 s en la 0.8.0 → 14,0 s (44,0 % frente a la 0.6.1). Índice de 3003 archivos en 630 ms. **Empeoró:** la latencia de la barrera, +9,8 % frente a la 0.8.0 (intercalado; límite 25 %), y el ciclo suma 2,5 s y tokens de especialistas que el banco no puede compensar con su ahorro real.
+
+## 0.8.0 · 2026-11-19
+
+No perder trabajo y seguridad práctica. Ver `docs/16-no-perder-trabajo.md`, `docs/17-seguridad.md` y `bench/`.
+
+### Agregado
+- **Pilas** (`lib/pilas.mjs`, `hooks/pilas.mjs`, `pilas.*`): un `PostToolUse` asíncrono guarda lo que lee (con hash), edita y corre cada subagente, en archivos atómicos por paso; cada `pilas.avanceCada` pasos la barrera le pide una línea de avance.
+- **Re-enfundar guiado** (`pilas.mjs reenfundar`): el reemplazo de un agente cortado recibe el contrato, lo hecho, qué no releer, qué cambió, lo que falta y el presupuesto restante; mismo worktree; una sola vez por tarea.
+- **Rebobinar con memoria** (`director.mjs decidir` / `rebobinar`, `director.rebobinar.*`): corregir encima lo puntual o volver a la foto original con un contrato que cuenta los intentos fallidos; cada muerte va a `.neurodanza/muertes.json` y a los constructos como evidencia.
+- **Figuras** (`lib/figuras.mjs`, `figuras.*`): ◯ leer △ editar □ verificar ◇ externo ✕ destructivo y una mano por tipo de agente; fuera de la mano, ◇ y ✕ se preguntan al usuario (`ask`) y lo demás se rechaza. La tabla y el registro de agentes no los escribe ningún agente; un subagente no lanza subagentes. Apagadas en configuraciones existentes, prendidas por `/neurodanza-init`.
+- **Cuarentena** (`figuras.cuarentena`): 3 rechazos dejan al subagente sin herramientas; queda en errores conocidos; `agentes.mjs reiniciar` al empezar el ciclo.
+- **Fantasmas en modo propuesta** (`lib/fantasmas.mjs`, `agents/fantasma.md`, `fantasmas.*`): hipótesis de recurso ajeno, escalada de rol, fuga entre clientes, acción oculta y entrada no validada, probadas contra la app local; nunca editan; un confirmado alto cuenta como hallazgo alto y trae una prueba de regresión propuesta. Casos de evals.
+- Banco: `retomar_tras_corte`, `reintento_fallido`, `bloqueos_seguridad`.
+
+### Cambiado
+- Mapa 0.4.0: reemplazos `↻`, muertes `✝`, cuarentena `⛔`, fantasmas `👻`.
+- La barrera revisa latidos como mucho cada 2 s.
+
+### Medido (5 corridas, mediana)
+Retomar tras un corte 16 pasos y 12 lecturas → 5 y 1 (68,8 %); reintento tras un fallo de diseño 65 → 30 líneas de diff (53,8 %), con un paso más (20 → 21); de 200 acciones de seguridad antes se permitían todas, ahora 98 se permiten, 12 se rechazan y 90 se preguntan. Latencia de la barrera, medida intercalada contra la Parte 1: +1,3 % (límite 25 %).
+
 ## 0.7.0 · 2026-11-19
 
 Velocidad: que el harness nunca se quede colgado. Ver `docs/15-velocidad.md` y `bench/`.

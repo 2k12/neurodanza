@@ -191,6 +191,39 @@
             "windows",
             "ninguna"
           ]
+        },
+        "recorridos": {
+          "type": "string",
+          "description": "Carpeta de los recorridos permanentes (en git), con id estable."
+        },
+        "notaMaxSiFalla": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Nota máxima de una persona si un paso crítico de su recorrido no cumple."
+        },
+        "memoria": {
+          "type": "string",
+          "description": "Carpeta de la memoria por recorrido (historial por versión, en git)."
+        },
+        "regresion": {
+          "type": "object",
+          "properties": {
+            "clics": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "tiempo": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "description": "Umbrales de regresión de experiencia contra la última versión aprobada."
+        },
+        "exploracionPasos": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pasos máximos de exploración libre de cada persona tras su recorrido, solo en pantallas del diff."
         }
       }
     },
@@ -227,6 +260,23 @@
             "enum": [
               "node_modules"
             ]
+          }
+        },
+        "rebobinar": {
+          "type": "object",
+          "properties": {
+            "activo": {
+              "type": "boolean"
+            },
+            "umbralCorreccion": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Fracción del diff original a partir de la cual corregir encima deja de convenir."
+            },
+            "maxMuertes": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         }
       }
@@ -330,6 +380,112 @@
             "type": "string"
           },
           "description": "{ capa: comando } que dice si la capa responde (p. ej. bd)."
+        }
+      }
+    },
+    "pilas": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "avanceCada": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cada cuántos pasos se le pide al subagente su línea de avance (0 = nunca)."
+        }
+      }
+    },
+    "figuras": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "cuarentena": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "manos": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "leer",
+                "editar",
+                "verificar",
+                "externo",
+                "destructivo",
+                "red-app"
+              ]
+            }
+          },
+          "description": "Manos por tipo de agente (revisor, persona, implementador, fantasma, principal, otro)."
+        }
+      }
+    },
+    "fantasmas": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxPasos": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSegundos": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "login": {
+          "type": "object",
+          "description": "Cómo entra una persona por API (url, cuerpo con {email} y {clave}, token)."
+        }
+      }
+    },
+    "indice": {
+      "type": "object",
+      "description": "Índice pre-cocido por commit (lib/indice.mjs): resumen enfocado para contratos y mensajes de subagentes.",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "maxLineas": {
+          "type": "integer",
+          "minimum": 5
+        }
+      }
+    },
+    "hotel": {
+      "type": "object",
+      "description": "Especialistas que el director consulta antes de delegar (lib/hotel.mjs).",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "maxPasos": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSegundos": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "maxPorTarea": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     }
