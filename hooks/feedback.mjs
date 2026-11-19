@@ -27,6 +27,7 @@ import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from
 import { correr } from "../lib/procesos.mjs";
 import { fundidas } from "../lib/fusible.mjs";
 import { limpiarViejos } from "../lib/agentes.mjs";
+import { textoInicio } from "../lib/autoajuste.mjs";
 
 export { fingerprint, firmaActual, parseStatus };
 
@@ -421,6 +422,20 @@ export function contextoErrores(list) {
   return ["neurodanza · errores conocidos de este proyecto (si aparece uno, aplica su solución antes de investigar de cero):", ...lines].join("\n");
 }
 
+/**
+ * Lecciones activas (a prueba o aprobadas) del agente principal, que nacen de la telemetría (autoajuste): los
+ * subagentes las reciben por el operador; el principal, al iniciar.
+ */
+export function leccionesPrincipal(cfg) {
+  try {
+    const data = JSON.parse(readFileSync(cfg.abs(join(cfg.constructos?.carpeta ?? ".neurodanza/constructos", "constructos.json")), "utf8"));
+    const ls = (data.constructos?.principal?.lecciones ?? []).filter((l) => l.estado === "a prueba" || l.estado === "aprobada").slice(0, 5);
+    return ls.length ? ["neurodanza · lecciones de este proyecto (salen de lo que pasó en sesiones anteriores):", ...ls.map((l) => `- ${l.texto}`)].join("\n") : "";
+  } catch {
+    return "";
+  }
+}
+
 /** Fin de la sesión (SessionEnd): una ronda del panel que quedó abierta ya no la sigue nadie. */
 function fin(cfg) {
   try {
@@ -449,7 +464,14 @@ function inicio(cfg, event) {
   const auto = autoconfigurar(cfg, event?.cwd ?? process.cwd());
   limpiarViejos(cfg);
   const errores = cfg.errores?.activo === false ? "" : contextoErrores(top(loadErrores(archivoDe(cfg)), cfg.errores?.alIniciar ?? 5));
-  const contexto = [auto.contexto, informeFondoInicio(cfg), errores].filter(Boolean).join("\n\n");
+  // Autoajuste: la pasada del día corre en segundo plano (no demora el inicio); aquí solo se leen sus propuestas.
+  let ajuste = "";
+  try {
+    ajuste = textoInicio(cfg);
+  } catch {
+    /* el autoajuste es una ayuda */
+  }
+  const contexto = [auto.contexto, informeFondoInicio(cfg), errores, leccionesPrincipal(cfg), ajuste].filter(Boolean).join("\n\n");
   const out = {};
   if (auto.mensaje) out.systemMessage = auto.mensaje;
   if (contexto) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: contexto };

@@ -1205,7 +1205,88 @@ async function pruebaPrimero() {
   return { valor: bien, unidad: "casos", de: 2, detalle: resultados, texto: `${bien} de 2 bien clasificados` };
 }
 
-const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad, panel_pasos: panelPasos, regresion_ux: regresionUx, exploracion_implementador: exploracionImplementador, stop_y_ciclo_total: stopYCicloTotal, ciclo_por_riesgo: cicloPorRiesgo, comandos_app: comandosApp, comentarios_barrera: comentariosBarrera, pedido_textual: pedidoTextual, prueba_primero: pruebaPrimero };
+// ───────────────────────── parte 5: autoajuste ─────────────────────────
+
+/**
+ * Autoajuste: sesiones sembradas (bench/transcripts.mjs) con lo que un harness que se mide debería aprender.
+ * Primero, como hoy, cada comando pasa por la barrera mientras se trabaja (lo que el plugin ve en vivo); después,
+ * si el plugin tiene lib/autoajuste.mjs, la pasada diaria sobre los transcripts. Se cuenta:
+ *  - aprendido (6): la lección del rechazo repetido, los 2 errores repetidos en el catálogo, la macro sugerida y
+ *    las 2 propuestas (presupuesto del revisor y el lint del repo api);
+ *  - falsos: propuestas o lecciones que no estaban sembradas (el ruido);
+ *  - evaluación (2): tras aplicar el presupuesto, ¿mantiene si los cortes bajan y propone revertir si no?
+ */
+async function autoajusteMetrica() {
+  const { escenarioAutoajuste, despuesDelAjuste, escribirTranscripts } = await import(pathToFileURL(join(AQUI, "transcripts.mjs")).href);
+  const auto = hayLib("autoajuste") ? await import(pathToFileURL(join(PLUGIN, "lib", "autoajuste.mjs")).href) : null;
+  const hoy = Date.now();
+  const leer = (root, rel, d) => {
+    try {
+      return JSON.parse(readFileSync(join(root, rel), "utf8"));
+    } catch {
+      return d;
+    }
+  };
+  const armar = async () => {
+    const esc = escenarioAutoajuste(hoy);
+    const root = proyectoCon((c) => {
+      c.repos.find((r) => r.nombre === "api").lint = "npx eslint src";
+    });
+    const trans = join(root, ".transcripts");
+    escribirTranscripts(trans, esc.sesiones);
+    for (const s of esc.sesiones) for (const e of s.eventos) if (e.cmd !== undefined) await hook("guardrails.mjs", "", { cwd: root, session_id: s.sesion, tool_name: "Bash", tool_input: { command: e.cmd } });
+    return { esc, root, trans };
+  };
+  const { esc, root, trans } = await armar();
+  const t0 = Date.now();
+  const inf = auto ? await auto.diario(await configDe(root), { carpetas: [trans], ahora: hoy }) : null;
+  const ms = Date.now() - t0;
+  const cons = leer(root, ".neurodanza/constructos/constructos.json", { constructos: {} });
+  const leccion = (cons.constructos.principal?.lecciones ?? []).some((l) => /push directo a main/.test(l.texto) && l.estado !== "descartada");
+  const errores = Object.values(leer(root, ".neurodanza/errores.json", { errores: {} }).errores ?? {});
+  const erroresBien = ["unexpected EOF", "eslint"].filter((x) => errores.some((e) => String(e.ejemplo).includes(x))).length;
+  const rep = leer(root, ".neurodanza/app/repetidos.json", { comandos: {} });
+  const macro = Object.values(rep.comandos ?? {}).some((e) => e.veces >= 3 && /PrismaClient/.test(e.ejemplo));
+  const ids = (inf?.propuestas ?? []).map((p) => p.id);
+  const propBien = esc.esperado.propuestas.filter((p) => ids.includes(p)).length;
+  const falsos = ids.filter((p) => !esc.esperado.propuestas.includes(p)).length + Object.keys(cons.constructos).filter((k) => !esc.esperado.lecciones.includes(k)).length + errores.filter((e) => !["unexpected EOF", "eslint"].some((x) => String(e.ejemplo).includes(x))).length;
+  const aprendido = Number(leccion) + erroresBien + Number(macro) + propBien;
+  borrar(root);
+  // Evaluación de un ajuste aplicado: con y sin cortes después.
+  let evalBien = 0;
+  if (auto) {
+    for (const cortes of [false, true]) {
+      const x = await armar();
+      await auto.diario(await configDe(x.root), { carpetas: [x.trans], ahora: hoy });
+      try {
+        auto.aplicar(await configDe(x.root), "presupuesto:revisor", { ahora: hoy - 2.5 * 86_400_000 });
+        escribirTranscripts(x.trans, despuesDelAjuste(hoy, { cortes }));
+        const i2 = await auto.diario(await configDe(x.root), { carpetas: [x.trans], ahora: hoy });
+        const ev = i2.evaluaciones.find((e) => e.id === "presupuesto:revisor");
+        if (ev?.decision === (cortes ? "revertir" : "mantener")) evalBien++;
+      } catch (e) {
+        log(`autoajuste evaluación: ${e.message}`);
+      }
+      borrar(x.root);
+    }
+  }
+  const texto = `aprendido ${aprendido} de 6 · falsos ${falsos} · evaluación ${evalBien} de 2${auto ? ` · pasada ${ms} ms` : ""}`;
+  log(`autoajuste: ${texto} (lección ${leccion ? "sí" : "no"}, errores ${erroresBien}/2, macro ${macro ? "sí" : "no"}, propuestas ${propBien}/2)`);
+  return { valor: aprendido, unidad: "de 6", falsos, evaluacion: evalBien, ms: auto ? ms : null, detalle: { leccion, errores: erroresBien, macro, propuestas: ids }, texto };
+}
+
+/** Latencia del hook de inicio de sesión (SessionStart), N veces sobre el mismo proyecto. */
+async function inicioMs(root) {
+  const xs = [];
+  for (let i = 0; i < Math.max(CORRIDAS, 5) * 4; i++) {
+    const r = await hook("feedback.mjs", "inicio", { cwd: root, session_id: `ini-${i}` });
+    xs.push(r.ms);
+  }
+  log(`inicio_ms: mediana ${mediana(xs).toFixed(1)} ms`);
+  return { valor: mediana(xs), unidad: "ms", corridas: xs };
+}
+
+const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad, panel_pasos: panelPasos, regresion_ux: regresionUx, exploracion_implementador: exploracionImplementador, stop_y_ciclo_total: stopYCicloTotal, ciclo_por_riesgo: cicloPorRiesgo, comandos_app: comandosApp, comentarios_barrera: comentariosBarrera, pedido_textual: pedidoTextual, prueba_primero: pruebaPrimero, autoajuste: autoajusteMetrica, inicio_ms: inicioMs };
 
 const root = armarProyecto();
 log(`proyecto de prueba: ${root} · plugin: ${PLUGIN} · ${CORRIDAS} corridas`);

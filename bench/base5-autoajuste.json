@@ -1,0 +1,50 @@
+{
+  "fecha": "2026-11-19T20:46:11.352Z",
+  "plugin": "C:\\Users\\jeipi\\AppData\\Local\\Temp\\nd-main",
+  "version": "1.1.2",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "autoajuste": {
+      "valor": 1,
+      "unidad": "de 6",
+      "falsos": 0,
+      "evaluacion": 0,
+      "ms": null,
+      "detalle": {
+        "leccion": false,
+        "errores": 0,
+        "macro": true,
+        "propuestas": []
+      },
+      "texto": "aprendido 1 de 6 · falsos 0 · evaluación 0 de 2"
+    },
+    "inicio_ms": {
+      "valor": 78.0741,
+      "unidad": "ms",
+      "corridas": [
+        198.9194,
+        110.7605,
+        87.1529,
+        80.2675,
+        81.6711,
+        81.3537,
+        78.9108,
+        79.2949,
+        78.3081,
+        76.8322,
+        76.7406,
+        76.7994,
+        75.9612,
+        77.8766,
+        77.3454,
+        74.9576,
+        76.2841,
+        77.6413,
+        75.6914,
+        78.2716
+      ]
+    }
+  }
+}
