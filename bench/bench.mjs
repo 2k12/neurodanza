@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // neurodanza · banco de pruebas de velocidad (sin dependencias).
 // Arma un proyecto de prueba (bench/fixture → carpeta temporal con dos repos git, api y web), corre los
-// hooks del plugin indicado con --plugin y mide 18 métricas con N corridas (mediana). Ver bench/README.md.
+// hooks del plugin indicado con --plugin y mide 21 métricas con N corridas (mediana). Ver bench/README.md.
 // --paso-ms: costo simulado de cada paso de un agente en las métricas de la parte 3 (300 por defecto).
 //
 //   node bench/bench.mjs [--plugin <carpeta del plugin>] [--salida bench/base.json] [--corridas 5] [--solo stop_normal,guardrails_ms]
