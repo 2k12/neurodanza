@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.1.2 · 2026-11-19
+
+### Corregido
+- **El riesgo contaba líneas que no eran del cambio.** En un proyecto real, un cambio de ~25 líneas de código en el frontend salió como riesgo alto con 2562 líneas: sumaba el repo de docs, que estaba en una rama larga con cambios de varias versiones (2578 líneas), y las líneas de pruebas. Ahora los topes `lineasBajo` y `lineasAlto` cuentan solo código (`repos[].codigo`, sin documentación, pruebas ni el repo de docs), por archivo (`lineasPorArchivo`).
+- **Un nombre «sensible» fuera del código subía a alto.** La evaluación `docs/evaluaciones/v0.28.2-permisos-lectura.json` del repo de docs coincidía con `*permis*`. Los globs de `ciclo.riesgo.altos` ya no aplican al repo de docs, a la documentación ni a las pruebas.
+
+### Agregado
+- **Permisos en el contenido** (`ciclo.riesgo.permisosEnCodigo`): si las líneas cambiadas del código tocan permisos (`useCan`, `hasRole`, `permission`, `NoAccess`, `can(`…), el cambio es al menos medio y entra el revisor de permisos, aunque ningún nombre de archivo lo diga. Sin esto, el arreglo de arriba dejaba ese cambio real (permisos de Embarques y Facturas) en riesgo bajo y sin revisores; ahora sale medio con el revisor de permisos y una persona, lo que la sesión eligió a mano.
+- Medido: `ciclo_por_riesgo` igual (162 pasos); `stop_normal` intercalado 4 veces, 1,447 s → 1,439 s (igual).
+
 ## 1.1.1 · 2026-11-19
 
 ### Corregido

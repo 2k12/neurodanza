@@ -26,9 +26,11 @@ node lib/riesgo.mjs                                                             
 
 | Nivel | Cuándo | Qué corre |
 |---|---|---|
-| **Bajo** | Solo docs o pruebas, o hasta `ciclo.riesgo.lineasBajo` (40) líneas en un repo, sin contratos (DTO, esquemas, validaciones, entidades) ni archivos sensibles | Lint, tipos y pruebas. Sin plan en archivo, recorridos, especialistas, revisores, panel ni fantasmas. Si el pedido es claro, el agente lo dice en una línea y lo hace |
+| **Bajo** | Solo docs o pruebas, o hasta `ciclo.riesgo.lineasBajo` (40) líneas **de código** en un repo, sin contratos (DTO, esquemas, validaciones, entidades), sin archivos sensibles y sin tocar permisos en las líneas cambiadas (`ciclo.riesgo.permisosEnCodigo`: `useCan`, `hasRole`, `permission`…) | Lint, tipos y pruebas. Sin plan en archivo, recorridos, especialistas, revisores, panel ni fantasmas. Si el pedido es claro, el agente lo dice en una línea y lo hace |
 | **Medio** | Lo demás | Plan corto; **un** revisor (el de más prioridad que aplica: permisos, coherencia, ui, docs); **una** persona si hay pantallas, con su recorrido; un fantasma si aplica |
 | **Alto** | Un archivo de `ciclo.riesgo.altos` (migraciones, `*.sql`, `*auth*`, `*guard*`, `*polic*`, `*permis*`, `*acl*`, `*casl*`, `middleware*`), migraciones de `retroalimentacion.migraciones`, código en 2 repos o más de `ciclo.riesgo.lineasAlto` (400) líneas | El ciclo completo: todos los revisores que aplican, de `panel.min` a `panel.max` personas, fantasmas, especialistas, documento de la funcionalidad |
+
+Las líneas que cuentan son las de **código**: no las de documentación, pruebas, archivos fuera de `repos[].codigo` ni las del repo de docs (que puede estar en una rama larga con cambios de varias versiones). Los globs sensibles tampoco aplican ahí: una evaluación `v1-permisos.json` en el repo de docs no es un cambio de permisos.
 
 El nivel previsto (con los archivos del plan) guía el paso 0; el real sale del diff en el paso 3 (`ciclo.mjs revisores` lo devuelve en `riesgo`) y, si sube, manda el plan del nivel nuevo. Con `ciclo.revisores: "todos"` corren siempre los 4 revisores; con `ciclo.riesgo.activo: false`, todo cambio es alto (el ciclo de antes).
 
@@ -74,4 +76,4 @@ La regla de cuántas pruebas es la de ODD: una por cada regla pedida (una por sp
 
 ## Configuración
 
-`ciclo.riesgo` (`activo`, `lineasBajo`, `lineasAlto`, `altos`) y `ciclo.pruebaPrimero`: ver [03-configuracion.md](03-configuracion.md#ciclo).
+`ciclo.riesgo` (`activo`, `lineasBajo`, `lineasAlto`, `altos`, `permisosEnCodigo`) y `ciclo.pruebaPrimero`: ver [03-configuracion.md](03-configuracion.md#ciclo).
