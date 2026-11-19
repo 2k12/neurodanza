@@ -108,9 +108,11 @@ Solo tú (el agente principal) lanzas subagentes: con las figuras activas, la ba
     "agentes": [{ "constructo": "implementador-frontend", "pasos": 34, "terminado": true }, { "constructo": "revisor-ui" }],
     "problemas": [{ "constructo": "implementador-frontend", "etiqueta": "ui:aria-label-icono", "fuente": "revisor-ui",
                     "detalle": "botón de solo icono sin aria-label en pedidos/filtros.tsx",
-                    "leccion": "Todo botón de solo icono lleva aria-label en el idioma del producto." }] }
+                    "leccion": "Todo botón de solo icono lleva aria-label en el idioma del producto.",
+                    "activadores": { "archivos": ["**/*.tsx"], "texto": ["<button"] } }] }
   ```
   - Un problema por cada hallazgo **alto o medio** de un revisor, cada queja de una persona que bajó su nota y cada error que se repitió (`<errores> listar`). Anótalo al constructo que lo **causó** (el implementador de esa área, o tú como `implementador` si trabajaste directo); si un revisor dejó pasar algo que encontró otro juez, anótale el problema también al revisor.
+  - `activadores` (opcional): globs de archivos y patrones de texto (`/regex/` o literal) que indican cuándo hace falta la lección. Cuando un subagente de ese constructo lee o edita un archivo que coincide, la barrera le recuerda la lección una sola vez. Si no los pones, se sugieren desde los archivos del `detalle` (por extensión) y quedan a la vista en `aprendido/<constructo>.md` del PR, donde se pueden corregir.
   - `etiqueta` = `area:tema` en minúsculas, **estable**: reutiliza la misma para el mismo problema (`<constructos> estado` muestra las que existen). `leccion` = una regla accionable, no un relato.
   - Si no hubo problemas, regístralo igual con `"problemas": []`: los ciclos limpios también cuentan para medir.
   - La respuesta dice qué lecciones pasaron a prueba, se aprobaron o se descartaron. Inclúyelo en el informe. Una aprobada aparece como línea nueva en `<repo>/.neurodanza/aprendido/<constructo>.md` (lo versionado): inclúyela en el commit si el usuario pidió commit. Si alguna lección de un revisor está a prueba, recomienda correr `/neurodanza-evals`.

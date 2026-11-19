@@ -9,6 +9,7 @@ import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
 import { enWorktree, fueraDeContrato, leerModo, leerTareas } from "../lib/director.mjs";
 import { MENSAJE_CORTE, mensajeCuarentena, registrarPaso, registrarRechazo, revisarLatidos, terminar, tocaRevisar } from "../lib/agentes.mjs";
 import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
+import { recordar } from "../lib/operador.mjs";
 import { registrarEnProyecto } from "../lib/errores.mjs";
 
 const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
@@ -275,6 +276,16 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const why = check(event, cfg);
   if (why) rechazar(why);
+  // Operador: la lección cuyos activadores coinciden con el archivo que el subagente lee o edita, una sola vez
+  // por lección y agente (va como contexto junto al resultado de la herramienta).
+  if (event.agent_id) {
+    try {
+      const recuerdo = recordar(cfg, event);
+      if (recuerdo) aviso = [aviso, recuerdo].filter(Boolean).join("\n");
+    } catch {
+      /* el operador es una ayuda */
+    }
+  }
   // Segunda llave: el usuario aprueba en la ventana de permisos. El aviso, si hay, va como contexto.
   if (pregunta) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: pregunta, ...(aviso ? { additionalContext: aviso } : {}) } }));
   // Aviso al 80 % del tiempo: contexto junto al resultado de la herramienta, sin decidir permisos
