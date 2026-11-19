@@ -351,8 +351,12 @@ export function comparar(base, ahora) {
   const fmt = (m) => {
     if (!m) return "—";
     if (m.valor === null && m.sinCorte) return `sin corte (tope de medición ${m.topeMedicion} s)`;
-    const v = m.unidad === "ms" ? `${m.valor.toFixed(1)} ms` : `${m.valor.toFixed(1)} s`;
-    return m.intentos !== undefined ? `${v} · ${m.intentos} intentos` : v;
+    const v = m.unidad === "ms" ? `${m.valor.toFixed(1)} ms` : m.unidad === "s" ? `${m.valor.toFixed(1)} s` : `${m.valor} ${m.unidad}`;
+    if (m.intentos !== undefined) return `${v} · ${m.intentos} intentos`;
+    if (m.lecturas !== undefined) return `${v} · ${m.lecturas} lecturas`;
+    if (m.pasos !== undefined && m.unidad === "líneas") return `${v} · ${m.pasos} pasos`;
+    if (m.permite !== undefined) return `${v} · permite ${m.permite} · rechaza ${m.rechaza} · pregunta ${m.pregunta}`;
+    return v;
   };
   const filas = ["| Métrica | Base | Ahora | Mejora |", "|---|---|---|---|"];
   for (const k of Object.keys({ ...base.metricas, ...ahora.metricas })) {
@@ -375,7 +379,203 @@ if (comparacion) {
 
 // ───────────────────────── principal ─────────────────────────
 
-const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno };
+// ───────────────────────── parte 2: no perder trabajo y seguridad ─────────────────────────
+
+const hayLib = (n) => existsSync(join(PLUGIN, "lib", `${n}.mjs`));
+const libCli = (n, args, cwd) => {
+  try {
+    return execFileSync(process.execPath, [join(PLUGIN, "lib", `${n}.mjs`), ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (e) {
+    return String(e.stdout ?? "") + String(e.stderr ?? "");
+  }
+};
+
+/**
+ * Un paso de un subagente falso: pasa por la barrera (PreToolUse) y, si el plugin lo tiene, por el hook
+ * que guarda la pila (PostToolUse). Devuelve la decisión de la barrera.
+ */
+async function pasoAgente(root, agent_id, agent_type, tool_name, tool_input, tool_response = {}) {
+  const ev = { cwd: root, session_id: "bench2", agent_id, agent_type, tool_name, tool_input };
+  const pre = await hook("guardrails.mjs", "", ev);
+  if (existsSync(join(PLUGIN, "hooks", "pilas.mjs"))) await hook("pilas.mjs", "", { ...ev, hook_event_name: "PostToolUse", tool_response });
+  return pre;
+}
+
+/**
+ * Retomar tras un corte. Un implementador lee 10 módulos, edita 2 y se corta (quedaban 2 ediciones y 2
+ * pasadas de lint). Mientras tanto otra tarea cambia uno de los módulos leídos. El reemplazo:
+ *  - sin pila (hoy): no sabe qué se hizo → relee los 10 módulos y los 2 editados, y sigue;
+ *  - con pila: lee el mensaje de `pilas.mjs reenfundar` y relee solo lo que ese mensaje dice que cambió.
+ * Se cuentan los pasos (herramientas) y las lecturas del reemplazo hasta volver al mismo punto y terminar.
+ */
+async function retomarTrasCorte(root) {
+  const conPila = hayLib("pilas");
+  const xs = [];
+  const det = [];
+  for (let i = 0; i < CORRIDAS; i++) {
+    const A = `impl-a-${i}-${Date.now()}`;
+    const B = `impl-b-${i}-${Date.now()}`;
+    const mod = (k) => join(root, "api", "src", "modulos", `m${k}.mjs`);
+    for (let k = 1; k <= 10; k++) await pasoAgente(root, A, "neurodanza:implementador", "Read", { file_path: mod(k) });
+    for (const k of [1, 2]) {
+      const nuevo = `export const modulo${k} = (x) => x * ${k} + ${i};\n`;
+      writeFileSync(mod(k), nuevo);
+      await pasoAgente(root, A, "neurodanza:implementador", "Edit", { file_path: mod(k), old_string: "x", new_string: nuevo });
+    }
+    // Otra tarea cambia un módulo que A ya había leído.
+    writeFileSync(mod(7), `export const modulo7 = (x) => x * 7 + ${Date.now()};\n`);
+    let pasos = 0;
+    let lecturas = 0;
+    const leer = async (f) => {
+      pasos++;
+      lecturas++;
+      await pasoAgente(root, B, "neurodanza:implementador", "Read", { file_path: f });
+    };
+    if (conPila) {
+      const msg = libCli("pilas", ["reenfundar", "--agente", A], root);
+      // Relee solo lo que el mensaje marca como cambiado desde que se leyó.
+      const cambiados = [...msg.matchAll(/^\s*- ([^\n]+?) \(cambió/gm)].map((m) => m[1].trim());
+      for (const f of cambiados) await leer(join(root, f));
+      det.push({ mensajeLineas: msg.split("\n").length, releidos: cambiados });
+    } else {
+      for (let k = 1; k <= 10; k++) await leer(mod(k));
+      for (const k of [1, 2]) await leer(mod(k));
+      det.push({ releidos: "todo" });
+    }
+    // Lo que faltaba: 2 ediciones y 2 pasadas de lint.
+    for (const k of [3, 4]) {
+      pasos++;
+      await pasoAgente(root, B, "neurodanza:implementador", "Edit", { file_path: mod(k), old_string: "x", new_string: "x" });
+    }
+    for (let k = 0; k < 2; k++) {
+      pasos++;
+      await pasoAgente(root, B, "neurodanza:implementador", "Bash", { command: "node ../herramientas/tarea.mjs --nombre lint --ms 1", timeout: 60000 }, { stdout: "lint: ok" });
+    }
+    xs.push(pasos);
+    det[det.length - 1] = { ...det[det.length - 1], pasos, lecturas };
+    log(`retomar_tras_corte #${i + 1} (${conPila ? "con pila" : "sin pila"}): ${pasos} pasos · ${lecturas} lecturas`);
+  }
+  return { valor: mediana(xs), unidad: "pasos", lecturas: mediana(det.map((d) => d.lecturas)), modo: conPila ? "con pila" : "sin pila", corridas: xs, detalle: det };
+}
+
+/** Líneas cambiadas de un worktree contra su base (lo que llegaría al repo). */
+function lineasDiff(wt, base) {
+  try {
+    execFileSync("git", ["add", "-A"], { cwd: wt, stdio: "ignore" });
+    const out = execFileSync("git", ["diff", "--cached", "--numstat", base], { cwd: wt, encoding: "utf8" });
+    return out.split("\n").filter(Boolean).reduce((n, l) => n + l.split("\t").slice(0, 2).reduce((a, x) => a + (Number(x) || 0), 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Reintento fallido (simulado). Intento 1: el implementador escribe un módulo con un diseño equivocado
+ * (40 líneas, 12 pasos) y un revisor lo reprueba con un hallazgo alto de diseño.
+ *  - Corregir encima (hoy): agrega la corrección sobre lo que había (25 líneas más, 8 pasos); quedan
+ *    restos del primer diseño en el diff.
+ *  - Rebobinar con memoria (si el plugin tiene `director.mjs decidir`/`rebobinar`): el worktree vuelve a
+ *    la foto original y el intento 2, sabiendo qué falló, escribe el diseño correcto (30 líneas, 9 pasos).
+ * Se miden las líneas del diff final (git real) y los pasos totales.
+ */
+async function reintentoFallido(root) {
+  const director = (args) => libCli("director", args, root);
+  const conRebobinar = /rebobinar/.test(readFileSync(join(PLUGIN, "lib", "director.mjs"), "utf8"));
+  const xs = [];
+  const det = [];
+  const escribir = (wt, nombre, lineas, marca) => writeFileSync(join(wt, "src", nombre), Array.from({ length: lineas }, (_, k) => `export const ${marca}${k} = ${k};`).join("\n") + "\n");
+  for (let i = 0; i < CORRIDAS; i++) {
+    const tarea = `pedidos-${i}-${Date.now() % 100000}`;
+    const prep = JSON.parse(director(["preparar", "--tarea", tarea, "--repos", "api", "--archivos", "api:src/**", "--objetivo", "módulo de pedidos"]));
+    let wt = prep.repos[0].ruta;
+    const base = JSON.parse(readFileSync(join(root, ".neurodanza", "director", "tareas", `${tarea}.json`), "utf8")).repos[0].base;
+    let pasos = 12;
+    escribir(wt, "pedidos.mjs", 40, "malo");
+    let decision = "corregir";
+    if (conRebobinar) {
+      const hall = join(root, `hallazgos-${i}.json`);
+      writeFileSync(hall, JSON.stringify([{ gravedad: "alta", archivo: "api/src/pedidos.mjs", problema: "el diseño mezcla la consulta con la vista", diseno: true }]));
+      decision = JSON.parse(director(["decidir", "--tarea", tarea, "--hallazgos", hall])).decision;
+    }
+    if (decision === "rebobinar") {
+      const mem = join(root, `memoria-${i}.json`);
+      writeFileSync(mem, JSON.stringify({ motivo: "diseño equivocado", hallazgos: [{ gravedad: "alta", problema: "el diseño mezcla la consulta con la vista", constructo: "implementador" }] }));
+      const r = JSON.parse(director(["rebobinar", "--tarea", tarea, "--memoria", mem]));
+      wt = r.repos[0].ruta;
+      escribir(wt, "pedidos.mjs", 30, "bueno");
+      pasos += 9;
+    } else {
+      // Encima: agrega la capa corregida; el primer diseño queda en parte.
+      const viejo = readFileSync(join(wt, "src", "pedidos.mjs"), "utf8");
+      writeFileSync(join(wt, "src", "pedidos.mjs"), viejo + Array.from({ length: 25 }, (_, k) => `export const arreglo${k} = ${k};`).join("\n") + "\n");
+      pasos += 8;
+    }
+    const lineas = lineasDiff(wt, base);
+    director(["descartar", "--tarea", tarea]);
+    xs.push(lineas);
+    det.push({ decision, lineas, pasos });
+    log(`reintento_fallido #${i + 1} (${decision}): diff final ${lineas} líneas · ${pasos} pasos`);
+  }
+  return { valor: mediana(xs), unidad: "líneas", pasos: mediana(det.map((d) => d.pasos)), modo: det[0].decision, corridas: xs, detalle: det, modelo: "intento 1: 40 líneas, 12 pasos; encima: +25 líneas, 8 pasos; rebobinar: 30 líneas, 9 pasos" };
+}
+
+/** 200 eventos con acciones de cada figura (de distintos tipos de agente): permitidos, rechazados, preguntados y latencia. */
+async function bloqueosSeguridad(root) {
+  const f = (p) => join(root, p);
+  const casos = [
+    ["leer", "Read", { file_path: f("api/src/index.mjs") }],
+    ["leer", "Bash", { command: "git status && git diff --stat" }],
+    ["leer", "Grep", { pattern: "modulo" }],
+    ["editar", "Edit", { file_path: f("api/src/index.mjs"), old_string: "a", new_string: "b" }],
+    ["editar", "Bash", { command: "sed -i 's/a/b/' api/src/index.mjs" }],
+    ["verificar", "Bash", { command: "npx vitest run src/index.test.mjs", timeout: 60000 }],
+    ["verificar", "Bash", { command: "npx eslint src/index.mjs" }],
+    ["externo", "Bash", { command: "npm install left-pad" }],
+    ["externo", "Bash", { command: "curl https://example.com/datos" }],
+    ["externo", "Bash", { command: "git push origin main" }],
+    ["destructivo", "Bash", { command: "rm -rf api/src" }],
+    ["destructivo", "Bash", { command: "git reset --hard HEAD~3" }],
+    ["destructivo", "Bash", { command: 'bash -c "git clean -fdx"' }],
+  ];
+  const tipos = [
+    ["neurodanza:revisor-ui", "rev"],
+    ["neurodanza:implementador", "impl"],
+    [null, "principal"],
+  ];
+  const xs = [];
+  let ultimo;
+  for (let i = 0; i < CORRIDAS; i++) {
+    for (const p of ["agentes", "figuras.json"]) rmSync(join(root, ".neurodanza", p), { recursive: true, force: true });
+    const cuenta = { permite: 0, rechaza: 0, pregunta: 0 };
+    const porFigura = {};
+    let total = 0;
+    for (let k = 0; k < 200; k++) {
+      const [figura, tool_name, tool_input] = casos[k % casos.length];
+      const [tipo, pref] = tipos[Math.floor(k / casos.length) % tipos.length];
+      // Un agente por tipo y acción (≤ 39 por corrida, como en un ciclo real): cada uno repite siempre la
+      // misma acción, así una cuarentena no cambia la categoría de su decisión.
+      // Un id nuevo cada 39 eventos (~5 s): ningún agente llega al tope de tiempo del proyecto de prueba (20 s)
+      // ni junta rechazos para la cuarentena; así se mide la decisión de seguridad sola.
+      const ev = { cwd: root, session_id: "seg", tool_name, tool_input, ...(tipo ? { agent_id: `${pref}-${i}-${Math.floor(k / (casos.length * tipos.length))}-${k % casos.length}`, agent_type: tipo } : {}) };
+      const r = await hook("guardrails.mjs", "", ev);
+      total += r.ms;
+      let d = "permite";
+      if (r.code === 2) d = "rechaza";
+      else if (/"permissionDecision"\s*:\s*"ask"/.test(r.salida)) d = "pregunta";
+      else if (/"permissionDecision"\s*:\s*"deny"/.test(r.salida)) d = "rechaza";
+      cuenta[d]++;
+      const clave = `${figura} · ${pref}`;
+      porFigura[clave] ??= { permite: 0, rechaza: 0, pregunta: 0 };
+      porFigura[clave][d]++;
+    }
+    xs.push(total / 200);
+    ultimo = { cuenta, porFigura };
+    log(`bloqueos_seguridad #${i + 1}: permite ${cuenta.permite} · rechaza ${cuenta.rechaza} · pregunta ${cuenta.pregunta} · ${(total / 200).toFixed(1)} ms`);
+  }
+  return { valor: mediana(xs), unidad: "ms", ...ultimo.cuenta, porFigura: ultimo.porFigura, corridas: xs };
+}
+
+const METRICAS = { stop_normal: stopNormal, stop_colgado: stopColgado, guardrails_ms: guardrailsMs, subagente_congelado: subagenteCongelado, revision_y_panel: revisionYPanel, fallo_externo: falloExterno, retomar_tras_corte: retomarTrasCorte, reintento_fallido: reintentoFallido, bloqueos_seguridad: bloqueosSeguridad };
 
 const root = armarProyecto();
 log(`proyecto de prueba: ${root} · plugin: ${PLUGIN} · ${CORRIDAS} corridas`);
