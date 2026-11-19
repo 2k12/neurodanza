@@ -63,6 +63,10 @@
     "barreras": {
       "type": "object",
       "properties": {
+        "comentarios": {
+          "enum": [false, "basura", "estricto"],
+          "description": "Comentarios nuevos en JS/TS que se rechazan al editar: basura (código comentado, TODO sin ticket) o estricto (solo directivas, JSDoc con etiquetas de lo exportado y // POR QUÉ: …)."
+        },
         "timeoutComandos": {
           "type": "object",
           "properties": {

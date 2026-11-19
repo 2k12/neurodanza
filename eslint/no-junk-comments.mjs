@@ -33,20 +33,34 @@ const rule = {
   meta: {
     type: "suggestion",
     docs: { description: "Prohíbe código comentado, TODO sin ticket y atribuciones de IA en comentarios" },
-    schema: [],
+    schema: [{ type: "object", properties: { modo: { enum: ["basura", "estricto"] } }, additionalProperties: false }],
     messages: {
       code: "Código comentado: bórralo (git guarda la historia).",
       task: "{{tag}} sin ticket: usa `{{tag}}(#123): …` o resuélvelo ahora.",
       ai: "Atribución de IA en un comentario: no va en el código.",
+      estricto: "Comentario: el código se explica con buenos nombres. Solo van directivas, JSDoc con etiquetas de API (@param, @returns…) de lo exportado y `// POR QUÉ: …`.",
     },
   },
   create(context) {
     const source = context.sourceCode ?? context.getSourceCode();
+    // Modo estricto (`{ "modo": "estricto" }`): el mismo criterio que la barrera `barreras.comentarios` del plugin.
+    const estricto = context.options?.[0]?.modo === "estricto";
+    const exportado = (comment) => {
+      const t = source.getTokenAfter(comment, { includeComments: false });
+      return t?.value === "export";
+    };
+    const permitidoEstricto = (comment, text) =>
+      /^\s*\**\s*(POR QU[ÉE]|WHY)\s*:/i.test(text) ||
+      (comment.type === "Block" && text.startsWith("*") && exportado(comment) && /@(param|returns?|throws|deprecated|example|see|template|typedef|type|property|callback)\b/.test(text));
     return {
       Program() {
         for (const comment of source.getAllComments()) {
           const text = comment.value;
-          if (comment.type === "Shebang" || DIRECTIVE.test(text)) continue;
+          if (comment.type === "Shebang" || DIRECTIVE.test(text) || (comment.type === "Line" && text.startsWith("/"))) continue;
+          if (estricto && !AI.test(text) && !TASK.test(text) && !permitidoEstricto(comment, text)) {
+            context.report({ loc: comment.loc, messageId: "estricto" });
+            continue;
+          }
           if (AI.test(text)) {
             context.report({ loc: comment.loc, messageId: "ai" });
             continue;

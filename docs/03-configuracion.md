@@ -110,7 +110,8 @@ Ver [04-barreras.md](04-barreras.md).
 | `migracionesInmutables` | `null` | Glob de migraciones: si el archivo ya existe, no se edita. |
 | `comandosProhibidos` | `[]` | `{ "patron", "motivo", "alcance" }`; `patron` es una expresión regular; `alcance` `"bare"` (por defecto) o `"raw"`. |
 | `timeoutComandos` | `{ "activo": true, "maxSeg": 120, "largos": [ … ] }` | Comandos que pueden no terminar (servidores, modo watch, suites completas): sin `timeout` de hasta `maxSeg` × 1000 ms, sin `run_in_background` y sin envolverlos en `timeout`, se rechazan con la forma de correrlos. `largos`: `{ "tipo": "servidor"\|"watch"\|"suite", "patron": "<regex>" }`. Ver [15-velocidad.md](15-velocidad.md#2-timeout-obligatorio-en-cada-comando). |
-| `exentos` | `[]` | Globs donde no se aplica `firmasIA` al editar (los propios archivos de reglas). |
+| `exentos` | `[]` | Globs donde no se aplican `firmasIA` ni `comentarios` al editar (los propios archivos de reglas). |
+| `comentarios` | `false` | Comentarios **nuevos** en JS/TS que se rechazan al editar (`lib/comentarios.mjs`): `"basura"` = código comentado y TODO sin ticket; `"estricto"` = todo, salvo directivas (`eslint-…`, `@ts-…`), JSDoc con etiquetas de API (`@param`, `@returns`, `@throws`, `@deprecated`, `@example`) de lo exportado y `// POR QUÉ: …`. Los que ya estaban no cuentan. `/neurodanza-init` lo propone en `"estricto"`. Ver [04-barreras.md](04-barreras.md#comentarios). |
 
 ```json
 "barreras": {

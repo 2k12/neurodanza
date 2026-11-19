@@ -11,6 +11,7 @@ import { MENSAJE_CORTE, mensajeCuarentena, registrarPaso, registrarRechazo, revi
 import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
 import { recordar } from "../lib/operador.mjs";
 import { registrarEnProyecto } from "../lib/errores.mjs";
+import { comentariosProhibidos, EXTENSIONES as EXT_CODIGO, textoRechazo } from "../lib/comentarios.mjs";
 
 const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
 
@@ -140,6 +141,20 @@ export function check(event, cfg, exists = existsSync, ctx = null) {
       return "Esa migración ya existe (puede estar aplicada): no se edita. Crea una migración nueva.";
     }
     if (b.firmasIA && !exempt(rel) && AI_ATTRIBUTION.test(written(input))) return "Atribución de IA (Co-Authored-By / «Generated with Claude»): no va en el código.";
+    // Comentarios nuevos que no van (barreras.comentarios): se comparan con lo que ya había.
+    if (b.comentarios && tool !== "NotebookEdit" && EXT_CODIGO.test(rel) && !exempt(rel)) {
+      const modo = b.comentarios === true ? "estricto" : b.comentarios;
+      let antes = "";
+      if (tool === "Write") {
+        try {
+          antes = exists(file) ? readFileSync(file, "utf8") : "";
+        } catch {
+          antes = "";
+        }
+      } else antes = typeof input.old_string === "string" ? input.old_string : (input.edits ?? []).map((e) => e?.old_string ?? "").join("\n");
+      const malos = comentariosProhibidos(antes, written(input), modo);
+      if (malos.length) return textoRechazo(malos, modo);
+    }
   }
 
   if (SHELL_TOOLS.has(tool)) {
