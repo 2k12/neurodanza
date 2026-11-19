@@ -15,6 +15,7 @@
 //   node panel.mjs cerrar --ronda <carpeta> --resultado <json>
 //   node panel.mjs ventana --resultado <json>                   resumen final (sin ronda en vivo)
 //   node panel.mjs crear --rol <ROL> [--rolDoc x] [--cargo "…"]  persona nueva para un rol sin persona
+//   node panel.mjs app                                          ¿la app responde? (si no, cuenta para el fusible; 3 = capa fundida)
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -23,6 +24,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
+import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -90,6 +92,19 @@ export function estadoFinal(nota) {
   const n = Number(nota);
   if (!Number.isFinite(n)) return "";
   return ESTADOS_FINALES.find(([min]) => n >= min)[1];
+}
+
+/**
+ * Veredicto de una ronda (puro). Además del promedio: si un revisor reprobó con hallazgo alto mientras el
+ * panel corría (`data.revisores === "reprobados"`), la ronda no puede aprobar (se repite tras corregir); y
+ * si faltan notas porque la app o el navegador están fundidos, la ronda queda PENDIENTE.
+ */
+export function veredictoRonda(data, umbral, capasFundidas = []) {
+  const s = score(data.evaluaciones ?? [], umbral);
+  const sinPanel = capasFundidas.filter((f) => f.capa === "app" || f.capa === "chromium");
+  if (sinPanel.length && s.motivo === "faltan notas") return { ...s, aprobado: false, pendiente: true, motivo: `pendiente: no se pudo verificar ${sinPanel.map((f) => `${f.capa} (${f.motivo})`).join(", ")}` };
+  if (data.revisores === "reprobados") return { ...s, aprobado: false, motivo: "un revisor reprobó con hallazgo alto durante la ronda: la ronda se repite tras la corrección" };
+  return s;
 }
 
 export function score(evaluaciones, umbral) {
@@ -170,17 +185,35 @@ function roleMaps(ctx) {
   return maps;
 }
 
+/** Capa fundida en el fusible → no se reintenta: el panel queda pendiente (el comando sale con 3). */
+function exigirCapa(cfg, capa) {
+  if (!fundida(cfg, capa)) return;
+  const e = new Error(`${textoCapa(cfg, capa)}: no se reintenta en este ciclo; el panel queda PENDIENTE (lo decide el usuario).`);
+  e.pendiente = true;
+  throw e;
+}
+
+/**
+ * URL de la app que responde. Si ninguna responde, registra el fallo en el fusible (capa app) y corta:
+ * antes se seguía con la primera URL y el login fallaba tarde, en cada persona.
+ */
 async function detectWeb(cfg) {
   if (process.env.NEURODANZA_WEB_URL) return process.env.NEURODANZA_WEB_URL.replace(/\/$/, "");
+  exigirCapa(cfg, "app");
+  const vistas = [];
   for (const url of cfg.app.urls) {
     try {
       const r = await fetch(`${url.replace(/\/$/, "")}${cfg.app.login.ruta.split("?")[0]}`, { signal: AbortSignal.timeout(4000) });
       if (r.ok) return url.replace(/\/$/, "");
-    } catch {
-      continue;
+      vistas.push(`${url} → HTTP ${r.status}`);
+    } catch (e) {
+      vistas.push(`${url} → ${e?.cause?.code ?? e?.name ?? "sin respuesta"}`);
     }
   }
-  return cfg.app.urls[0].replace(/\/$/, "");
+  const c = fallaFusible(cfg, "app", `la app no responde (${vistas.join("; ")})`);
+  const e = new Error(c.fundida ? `${textoCapa(cfg, "app")}: el panel queda PENDIENTE (lo decide el usuario).` : `la app no responde: ${vistas.join("; ")}. Revisa que esté levantada con el código nuevo (app.levantar). Fallo ${c.fallos.length} de ${cfg.fusible?.maxFallos ?? 2} en este ciclo.`);
+  e.pendiente = c.fundida;
+  throw e;
 }
 
 /** Playwright del proyecto (se busca en los repos configurados y en la raíz). */
@@ -194,7 +227,22 @@ async function playwright(cfg) {
       continue;
     }
   }
+  fallaFusible(cfg, "chromium", "no hay @playwright/test en el proyecto");
   throw new Error("No encontré @playwright/test en el proyecto: instálalo (pnpm add -D @playwright/test) y corre `npx playwright install chromium`.");
+}
+
+/** Abre Chromium; si no abre, lo registra en el fusible (capa chromium). */
+async function abrirNavegador(cfg) {
+  exigirCapa(cfg, "chromium");
+  const { chromium } = await playwright(cfg);
+  try {
+    return await chromium.launch();
+  } catch (e) {
+    const c = fallaFusible(cfg, "chromium", String(e?.message ?? e).split("\n")[0]);
+    const err = new Error(`Chromium no abre: ${String(e?.message ?? e).split("\n")[0]}${c.fundida ? " — capa chromium fundida: el panel queda PENDIENTE." : ""}`);
+    err.pendiente = c.fundida;
+    throw err;
+  }
 }
 
 function credentialsOf(ctx, p) {
@@ -259,8 +307,8 @@ async function navegar(ctx, a) {
   mkdirSync(out, { recursive: true });
   const acciones = a.acciones ? JSON.parse(readFileSync(a.acciones, "utf8")) : [];
   const viewport = a.dispositivo === "tablet" ? { width: 1024, height: 768 } : a.dispositivo === "celular" ? { width: 390, height: 844 } : { width: 1440, height: 900 };
-  const { chromium } = await playwright(cfg);
-  const browser = await chromium.launch();
+  // Cada persona corre en su propio proceso con su propio navegador y contexto: no comparten sesión.
+  const browser = await abrirNavegador(cfg);
   const page = await browser.newPage({ viewport, locale: cfg.app.idioma ?? "es-EC" });
   const problemas = [];
   const ignore = (cfg.app.ignorarConsola ?? ["status of 401"]).map((r) => new RegExp(r, "i"));
@@ -276,8 +324,14 @@ async function navegar(ctx, a) {
     await page.getByRole("button", { name: new RegExp(L.boton, "i") }).click();
     // «espera» = ruta a la que se llega tras entrar; con "/" basta con haber salido de la pantalla de login.
     const loginPath = L.ruta.split("?")[0];
-    if (!L.espera || L.espera === "/") await page.waitForURL((u) => !u.pathname.startsWith(loginPath), { timeout: 20_000 });
-    else await page.waitForURL((u) => u.pathname.startsWith(L.espera), { timeout: 20_000 });
+    try {
+      if (!L.espera || L.espera === "/") await page.waitForURL((u) => !u.pathname.startsWith(loginPath), { timeout: 20_000 });
+      else await page.waitForURL((u) => u.pathname.startsWith(L.espera), { timeout: 20_000 });
+    } catch (e) {
+      // El login no avanza: es la app (o sus usuarios) la que falla, no la persona.
+      fallaFusible(cfg, "app", `el login de ${p.id} no avanza en 20 s`);
+      throw e;
+    }
     let n = 0;
     for (const ruta of list(a.rutas)) {
       n++;
@@ -332,7 +386,7 @@ function calificar(ctx, a) {
   const file = resolve(a.resultado);
   const data = JSON.parse(readFileSync(file, "utf8"));
   const umbral = ctx.cfg.panel.umbral;
-  const s = score(data.evaluaciones ?? [], umbral);
+  const s = veredictoRonda(data, umbral, fundidas(ctx.cfg));
   Object.assign(data, s, { umbral, fecha: new Date().toISOString() });
   writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
   console.log(JSON.stringify(s));
@@ -451,7 +505,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
     if (cmd === "decir") decir(a);
     else if (cmd === "oir") oir(a);
-    else {
+    else if (cmd === "app") {
+      // ¿La app responde? Antes de lanzar a las personas: si no, cuenta para el fusible (capa app).
+      const cfg = loadConfig(process.cwd());
+      if (!cfg) throw new Error("No hay neurodanza.config.json en esta carpeta ni en las de arriba.");
+      console.log(`app ok · ${await detectWeb(cfg)}`);
+    } else {
       const ctx = context();
       const p = ctx.cfg.panel;
       if (cmd === "elegir") {
@@ -468,6 +527,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     }
   } catch (e) {
     console.error(String(e?.message ?? e));
-    process.exitCode = 2;
+    // 3 = capa fundida: el panel queda pendiente (no es un error de la persona ni del cambio).
+    process.exitCode = e?.pendiente ? 3 : 2;
   }
 }

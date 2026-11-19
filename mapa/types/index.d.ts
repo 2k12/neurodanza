@@ -31,6 +31,9 @@ export type Agente = {
   /** Avisos ya enviados al subagente: 'aviso' (80 %), 'tope' (100 %), 'bucle'. */
   avisos: string[]
   veredicto?: string
+  /** Tope de tiempo del agente (s) y hora de su último paso: para mostrar tiempo usado / total y el latido. */
+  maxSeg?: number
+  ultimoPaso?: number
 }
 
 export type Ciclo = {

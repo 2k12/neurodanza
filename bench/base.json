@@ -1,0 +1,177 @@
+{
+  "fecha": "2026-11-19T02:34:16.938Z",
+  "plugin": "C:\\Users\\jeipi\\AppData\\Local\\Temp\\claude\\4f573f375b2a9c90\\ec25cd63-ba72-4da4-a290-42d7d8118620\\scratchpad\\plugin-base",
+  "version": "0.6.1",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "stop_normal": {
+      "valor": 1.5492837,
+      "unidad": "s",
+      "corridas": [
+        1.6481967,
+        1.5463876,
+        1.5411789,
+        1.5492837,
+        1.5571819
+      ]
+    },
+    "stop_colgado": {
+      "valor": 300.4313927,
+      "unidad": "s",
+      "corridas": [
+        300.4374191,
+        300.4227289,
+        300.4573763,
+        300.4313927,
+        300.40795260000004
+      ],
+      "detalle": [
+        {
+          "segundos": 300.4374191,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 300.4227289,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 300.4573763,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 300.4313927,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 300.40795260000004,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        }
+      ],
+      "topeMedicion": 330
+    },
+    "guardrails_ms": {
+      "valor": 76.4707317,
+      "unidad": "ms",
+      "corridas": [
+        76.4707317,
+        76.19872369999997,
+        76.57918419999999,
+        76.58167929999995,
+        76.05235509999994
+      ],
+      "eventos": 1000
+    },
+    "subagente_congelado": {
+      "valor": null,
+      "unidad": "s",
+      "sinCorte": true,
+      "topeMedicion": 45,
+      "corridas": [
+        45,
+        45,
+        45,
+        45,
+        45
+      ],
+      "detalle": [
+        {
+          "congelaA": 3.343,
+          "sinLatidoA": null,
+          "cortadoA": null,
+          "alVolverRechazado": false
+        },
+        {
+          "congelaA": 3.307,
+          "sinLatidoA": null,
+          "cortadoA": null,
+          "alVolverRechazado": false
+        },
+        {
+          "congelaA": 3.378,
+          "sinLatidoA": null,
+          "cortadoA": null,
+          "alVolverRechazado": false
+        },
+        {
+          "congelaA": 3.376,
+          "sinLatidoA": null,
+          "cortadoA": null,
+          "alVolverRechazado": false
+        },
+        {
+          "congelaA": 3.345,
+          "sinLatidoA": null,
+          "cortadoA": null,
+          "alVolverRechazado": false
+        }
+      ],
+      "nota": "re-medida el 2026-11-19 con el banco corregido (lee .neurodanza/agentes/<id>.json); mismo resultado que la primera medición"
+    },
+    "revision_y_panel": {
+      "valor": 50.413,
+      "unidad": "s",
+      "corridas": [
+        50.53,
+        50.422,
+        50.413,
+        50.411,
+        50.372
+      ],
+      "orden": "revisores, después panel",
+      "modelo": "revisores 4 × 20 s en paralelo; personas 3 × 30 s en paralelo"
+    },
+    "fallo_externo": {
+      "valor": 28.514,
+      "unidad": "s",
+      "intentos": 12,
+      "resultado": "se rinde (informa al usuario)",
+      "corridas": [
+        28.519,
+        28.451,
+        28.514,
+        28.437,
+        28.54
+      ],
+      "detalle": [
+        {
+          "intentos": 12,
+          "resultado": "se rinde (informa al usuario)",
+          "segundos": 28.519
+        },
+        {
+          "intentos": 12,
+          "resultado": "se rinde (informa al usuario)",
+          "segundos": 28.451
+        },
+        {
+          "intentos": 12,
+          "resultado": "se rinde (informa al usuario)",
+          "segundos": 28.514
+        },
+        {
+          "intentos": 12,
+          "resultado": "se rinde (informa al usuario)",
+          "segundos": 28.437
+        },
+        {
+          "intentos": 12,
+          "resultado": "se rinde (informa al usuario)",
+          "segundos": 28.54
+        }
+      ],
+      "modelo": "hasta 3 rondas; 3 personas por ronda; 3 s por intento de persona"
+    }
+  }
+}

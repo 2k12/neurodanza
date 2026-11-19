@@ -76,6 +76,7 @@ Lista de repos del proyecto (por defecto `[]`). Cada uno:
 | `lint` | no | Comando de lint, con `{archivos}`. |
 | `tipos` | no | Comando de tipos (corre sobre todo el repo). |
 | `relacionadas` | no | Pruebas relacionadas con lo cambiado, con `{archivos}`. |
+| `suite` | no | Suite completa del repo. Corre **en segundo plano** después del hook `Stop` (lib/fondo.mjs), atada a la firma del cambio; sus fallas bloquean el `Stop` siguiente y el cierre del ciclo la exige. Sin `suite`, no hay fondo para ese repo. Ver [15-velocidad.md](15-velocidad.md). |
 | `sinPruebas` | no | Expresión regular de la salida que significa «no hay pruebas» (no es un fallo). Por defecto `No tests found\|No test files found`. |
 
 ```json
@@ -108,6 +109,7 @@ Ver [04-barreras.md](04-barreras.md).
 | `rutasProtegidas` | `[]` | Globs (texto o `{ "glob", "motivo" }`) que no se editan. |
 | `migracionesInmutables` | `null` | Glob de migraciones: si el archivo ya existe, no se edita. |
 | `comandosProhibidos` | `[]` | `{ "patron", "motivo", "alcance" }`; `patron` es una expresión regular; `alcance` `"bare"` (por defecto) o `"raw"`. |
+| `timeoutComandos` | `{ "activo": true, "maxSeg": 120, "largos": [ … ] }` | Comandos que pueden no terminar (servidores, modo watch, suites completas): sin `timeout` de hasta `maxSeg` × 1000 ms, sin `run_in_background` y sin envolverlos en `timeout`, se rechazan con la forma de correrlos. `largos`: `{ "tipo": "servidor"\|"watch"\|"suite", "patron": "<regex>" }`. Ver [15-velocidad.md](15-velocidad.md#2-timeout-obligatorio-en-cada-comando). |
 | `exentos` | `[]` | Globs donde no se aplica `firmasIA` al editar (los propios archivos de reglas). |
 
 ```json
@@ -129,6 +131,8 @@ Ver [05-retroalimentacion.md](05-retroalimentacion.md).
 |---|---|---|
 | `lintAlEditar` | `true` | Lint del archivo justo después de cada edición. |
 | `maxBloqueos` | `3` | Veces seguidas que el hook `Stop` puede bloquear por problemas graves antes de rendirse y pedirte revisión a mano. |
+| `topeStopSeg` | `90` | Tope (s) de la parte que bloquea del hook `Stop` (lint, tipos, pruebas relacionadas, generadores). Lo que no alcanza se corta y pasa al fondo. Entre 10 y 110 (el hook tiene 120 s). |
+| `topeFondoSeg` | `1800` | Tope (s) de cada tarea en segundo plano (suite completa y lo que no alcanzó). |
 | `cache` | `true` | El hook `Stop` no repite lint, tipos y pruebas de un repo cuyo cambio es idéntico al de la última vez (misma firma de commit, diff y archivos nuevos); reutiliza el resultado. `false` lo corre siempre. |
 | `version` | `null` | `{ "repo", "archivo", "ramaBase", "cambios" }`: exige subir la versión si cambió código. `ramaBase` por defecto `"main"`; `cambios` son `repo:glob`. |
 | `bitacora` | `null` | `{ "ruta", "archivo" }`: exige la bitácora de la versión. `archivo` admite `{minor}` (p. ej. `1.4`) y `{version}` (`1.4.0`). |
@@ -272,7 +276,18 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 |---|---|---|
 | `plan` | `".neurodanza/plan.md"` | Archivo del plan del ciclo (local, fuera de git). El mapa lo muestra. |
 | `maxPasos` | `{ "revisor": 25, "persona": 40, "implementador": 60, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
+| `maxSegundos` | `{ "revisor": 300, "persona": 420, "implementador": 900, "otro": 420 }` | Tope de tiempo por subagente: aviso al 80 % y rechazo de toda herramienta al 100 %. El agente principal no tiene tope. |
+| `latidoSeg` | `90` | Segundos sin un paso para marcar a un subagente «sin latido». |
 | `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
+
+## `fusible`
+
+Nada de reintentos infinitos contra algo externo. Ver [15-velocidad.md](15-velocidad.md#4-fusible).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `maxFallos` | `2` | Fallos de una capa (app, chromium, bd…) en el ciclo para fundirla: no se reintenta y el panel queda pendiente. |
+| `comprobaciones` | `{}` | `{ "capa": "comando" }` que dice si una capa responde (p. ej. `{ "bd": "pnpm prisma db execute --stdin < /dev/null" }`); lo corre `fusible.mjs comprobar --capa <c>`. |
 
 ## `director`
 

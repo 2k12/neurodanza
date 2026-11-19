@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { avisoPara, etiqueta, faseDe, irAFase, maxPasos, nuevoCiclo, pasosDelPlan, PRESUPUESTO, veredictoDe } from './register'
+import { avisoPara, etiqueta, faseDe, fundidasDe, irAFase, maxPasos, maxSegundos, nuevoCiclo, pasosDelPlan, PRESUPUESTO, sinLatido, TIEMPOS, veredictoDe } from './register'
 import type { Agente } from '../types'
 
 const PANE = {
@@ -70,4 +70,16 @@ test('el mapa dibuja la fase y el subagente que corre, en cada superficie', asyn
     expect((await ui.find({ type: 'Text', text: /Grep lucide/ }))?.text).toContain('1/25 pasos')
     await ui.unmount()
   }
+})
+
+test('tiempo, latido y fusible en el mapa', () => {
+
+  expect(maxSegundos('revisor-ui', TIEMPOS)).toBe(300)
+  expect(maxSegundos('implementador', TIEMPOS)).toBe(900)
+  const a = { id: 'a', toolUseId: 't', tipo: 'revisor-ui', desc: '', fase: 3, estado: 'corriendo' as const, pasos: 2, max: 25, ultima: '', inicio: 0, huella: '', repetidas: 0, avisos: [], ultimoPaso: 1000 }
+  expect(sinLatido(a, 50_000, 90_000)).toBe(false)
+  expect(sinLatido(a, 100_000, 90_000)).toBe(true)
+  expect(sinLatido({ ...a, estado: 'hecho' as const }, 100_000, 90_000)).toBe(false)
+  expect(fundidasDe({ capas: { app: { fundida: true, motivo: 'no arranca' }, bd: { fundida: false } } })).toEqual([{ capa: 'app', motivo: 'no arranca' }])
+  expect(fundidasDe(null)).toEqual([])
 })

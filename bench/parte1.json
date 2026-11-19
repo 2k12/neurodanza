@@ -1,0 +1,176 @@
+{
+  "fecha": "2026-11-19T03:51:42.048Z",
+  "plugin": "C:\\Users\\jeipi\\Desktop\\JOAN\\neurodanza",
+  "version": "0.7.0",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "stop_normal": {
+      "valor": 1.6072499,
+      "unidad": "s",
+      "corridas": [
+        1.6072499,
+        1.6010411,
+        1.611169,
+        1.6390155,
+        1.5968172999999999
+      ]
+    },
+    "stop_colgado": {
+      "valor": 85.45175590000001,
+      "unidad": "s",
+      "corridas": [
+        85.49651829999999,
+        85.4409343,
+        85.45175590000001,
+        85.4396561,
+        85.4635083
+      ],
+      "detalle": [
+        {
+          "segundos": 85.49651829999999,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.4409343,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.45175590000001,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.4396561,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.4635083,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        }
+      ],
+      "topeMedicion": 330
+    },
+    "guardrails_ms": {
+      "valor": 85.85417959999988,
+      "unidad": "ms",
+      "corridas": [
+        85.85417959999988,
+        83.30030049999998,
+        84.49678580000001,
+        91.91991519999996,
+        126.19955650000028
+      ],
+      "eventos": 1000
+    },
+    "subagente_congelado": {
+      "valor": 20.916,
+      "unidad": "s",
+      "sinCorte": false,
+      "topeMedicion": 45,
+      "corridas": [
+        20.891,
+        20.837,
+        20.921,
+        20.984,
+        20.916
+      ],
+      "detalle": [
+        {
+          "congelaA": 3.476,
+          "sinLatidoA": 10.513,
+          "cortadoA": 20.891,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.463,
+          "sinLatidoA": 10.496,
+          "cortadoA": 20.837,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.454,
+          "sinLatidoA": 10.511,
+          "cortadoA": 20.921,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.43,
+          "sinLatidoA": 10.505,
+          "cortadoA": 20.984,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.445,
+          "sinLatidoA": 10.496,
+          "cortadoA": 20.916,
+          "alVolverRechazado": true
+        }
+      ]
+    },
+    "revision_y_panel": {
+      "valor": 30.427,
+      "unidad": "s",
+      "corridas": [
+        30.452,
+        30.418,
+        30.34,
+        30.427,
+        30.485
+      ],
+      "orden": "revisores y panel en el mismo turno",
+      "modelo": "revisores 4 × 20 s en paralelo; personas 3 × 30 s en paralelo"
+    },
+    "fallo_externo": {
+      "valor": 3.796,
+      "unidad": "s",
+      "intentos": 2,
+      "resultado": "avanza con el panel pendiente",
+      "corridas": [
+        3.848,
+        3.851,
+        3.796,
+        3.781,
+        3.761
+      ],
+      "detalle": [
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.848
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.851
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.796
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.781
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.761
+        }
+      ],
+      "modelo": "hasta 3 rondas; 3 personas por ronda; 3 s por intento de persona"
+    }
+  }
+}
