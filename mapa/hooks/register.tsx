@@ -128,7 +128,8 @@ export function marcas(a: Agente, muertes: Record<string, number>, cuarentena: R
   if (cuarentena[a.id]) out.push('⛔ cuarentena')
   if (/persona-evaluadora/.test(a.tipo)) {
     const p = Object.keys(regresiones).find((id) => new RegExp(`\\b${id.replace(/[^\w-]/g, '')}\\b`, 'i').test(a.desc))
-    if (p && regresiones[p].length) out.push(`⚠ ${regresiones[p].length} ${regresiones[p].length > 1 ? 'regresiones' : 'regresión'}`)
+    const n = p ? (regresiones[p]?.length ?? 0) : 0
+    if (n) out.push(`⚠ ${n} ${n > 1 ? 'regresiones' : 'regresión'}`)
   }
   return out.length ? ` ${out.join(' ')}` : ''
 }

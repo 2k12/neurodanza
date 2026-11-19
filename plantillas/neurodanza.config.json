@@ -104,6 +104,14 @@
       "email": "persona.{id}@ejemplo.com",
       "clave": "${ND_PERSONA_PASSWORD:-Cambiar#2026}",
       "propietario": null
+    },
+    "recorridos": ".claude/personas/recorridos",
+    "memoria": ".claude/personas/memoria",
+    "notaMaxSiFalla": 6,
+    "exploracionPasos": 10,
+    "regresion": {
+      "clics": 1,
+      "tiempo": 0.3
     }
   },
   "evals": {
@@ -116,5 +124,15 @@
   },
   "figuras": {
     "activo": true
+  },
+  "indice": {
+    "activo": true,
+    "maxLineas": 60
+  },
+  "hotel": {
+    "activo": true,
+    "maxPasos": 8,
+    "maxSegundos": 120,
+    "maxPorTarea": 4
   }
 }

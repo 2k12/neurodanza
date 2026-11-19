@@ -122,3 +122,59 @@ Notas:
 - `bloqueos_seguridad` mide la decisión de la barrera, no lo que el usuario responde: las 90 preguntas aparecen en la ventana de permisos de Claude Code.
 
 Datos completos: [`base2.json`](base2.json), [`parte2.json`](parte2.json).
+
+### Parte 3 y tabla final
+
+**Qué mide el banco.** Agentes, revisores, personas y la app son **simulados** (procesos con demoras controladas, eventos de hook reales y una app HTTP con pantallas falsas). Mide el **harness**: hooks, scripts, orden del ciclo y cuántos pasos fija. **No mide la velocidad ni la calidad de un modelo.** Todos los números son medianas de 5 corridas en la misma máquina (Windows 11, Node 26); las métricas de la parte 3 usan un costo de 300 ms por paso de agente (`--paso-ms`), igual en la base y en el final.
+
+Una sola tabla con las 13 métricas: cada una contra **su** base original (la que se midió antes de programar la parte que la ataca) y el final (`final.json`, 1.0.0). Mejora = (base − final) / base × 100.
+
+| Métrica | Base | Base original | Final (1.0.0) | Mejora |
+|---|---|---|---|---|
+| `stop_normal` | base.json (0.6.1) | 1,5 s | 1,4 s | 10,5 % |
+| `stop_colgado` | base.json (0.6.1) | 300,4 s | 85,3 s | 71,6 % |
+| `guardrails_ms` | base.json (0.6.1) | 76,5 ms | 72,9 ms | 4,7 % |
+| `subagente_congelado` | base.json (0.6.1) | sin corte (tope de medición 45 s) | 21,8 s | antes no se cortaba |
+| `revision_y_panel` | base.json (0.6.1) | 50,4 s | 30,2 s | 40,0 % |
+| `fallo_externo` | base.json (0.6.1) | 28,5 s · 12 intentos | 3,4 s · 2 intentos | 88,0 % |
+| `retomar_tras_corte` | base2.json (0.7.0) | 16 pasos · 12 lecturas | 5 pasos · 1 lecturas | 68,8 % en pasos; 91,7 % en lecturas |
+| `reintento_fallido` | base2.json (0.7.0) | 65 líneas · 20 pasos | 30 líneas · 21 pasos | 53,8 % en líneas; -5,0 % en pasos |
+| `bloqueos_seguridad` | base2.json (0.7.0) | permite 200 · rechaza 0 · pregunta 0 · 103,1 ms | permite 98 · rechaza 12 · pregunta 90 · 74,8 ms | antes se permitían las 200; latencia 27,5 % |
+| `panel_pasos` | base3.json (0.8.0) | 40 pasos · 12,4 s | 14 pasos · 4,4 s | 65,0 % en pasos; 64,4 % en tiempo |
+| `regresion_ux` | base3.json (0.8.0) | 0 de 5 detectadas | 5 de 5 detectadas (clics 4 → 6) | antes no se detectaba |
+| `exploracion_implementador` | base3.json (0.8.0) | 17 (15 lecturas · 2 búsquedas) | 10 (10 lecturas · 0 búsquedas) | 41,2 % |
+| `stop_y_ciclo_total` | base3.json (0.8.0) | 21,5 s | 14,0 s | 34,8 % |
+
+**Ciclo simulado completo** (`stop_y_ciclo_total`, del diff pedido al veredicto, con el orden y los pasos que fija el skill de cada versión):
+
+| Versión | Total | Especialistas | Implementar | Verificar | Revisión + panel + fantasmas |
+|---|---|---|---|---|---|
+| 0.6.1 (base original, `base3-original.json`) | 25,0 s | — | 7,6 s (25 pasos) | 1,7 s | 15,8 s (revisores, después panel; personas de 40 pasos) |
+| 0.8.0 (`base3.json`) | 21,5 s | — | 7,6 s (25 pasos) | 1,8 s | 12,1 s (en el mismo turno; personas de 40 pasos) |
+| 1.0.0 (`final.json`) | 14,0 s | 2,5 s (2 en paralelo) | 5,5 s (18 pasos) | 1,8 s | 4,3 s (en el mismo turno; personas de 14 pasos) |
+
+**Mejora del ciclo simulado completo: 44,0 % frente a la 0.6.1** (25,0 → 14,0 s) y 34,8 % frente a la 0.8.0.
+
+**Peor espera bloqueante** (el agente principal esperando un hook): el `Stop` con una prueba colgada, **300,4 s → 85,3 s**.
+
+**Tiempo máximo que puede quedar colgado un subagente:** antes, **sin límite** (el banco cortó la medición a los 45 s sin que el harness lo cortara); ahora, su tope de tiempo: en el banco, 21,8 s con el tope del proyecto de prueba (20 s); con los valores por defecto, 210 s para una persona, 300 s para un revisor, 120 s para un especialista y 900 s para un implementador.
+
+**Índice** (dentro de `exploracion_implementador`, una llamada a `indice.mjs generar` incluido el arranque de Node): proyecto de prueba 257 ms; repo mediano de 303 archivos 226 ms en frío y 198 ms en caché; repo de 3003 archivos 630 ms en frío. Todo bajo el límite de 5 s.
+
+**Latencia de la barrera frente a la parte 2**, medida **intercalada** (base y nuevo alternados, 5 rondas, mediana): `guardrails_ms` 70,7 → 77,6 ms (**+9,8 %**, empeoró, bajo el límite del 25 %); `bloqueos_seguridad` 74,3 → 77,2 ms (+3,9 %).
+
+Lo que empeoró y por qué:
+
+- **Latencia de la barrera, +9,8 %:** la barrera ahora también busca la lección que corresponde recordar (operador) en cada llamada de un subagente que lee o edita. Cuesta menos de 5 ms por evento según la prueba; el resto es cargar un módulo más. La tabla contra la 0.6.1 sale con mejora (−4,7 %) porque la máquina variaba entre sesiones; la comparación válida es la intercalada.
+- **Especialistas, +2,5 s** en el ciclo simulado y **tokens**: son subagentes (2 × 8 pasos en el banco) que antes no existían. Valen la pena si sus respuestas evitan exploración: en el banco el implementador pasó de 25 a 18 pasos, pero ese ahorro viene del índice; el de los especialistas (no redescubrir convenciones) **no lo mide el banco**. La caché los evita mientras su área no cambie.
+- **Fantasmas** (parte 2): 2 × 10 pasos más de tokens en paralelo; no alargan el ciclo simulado porque corren con las personas.
+- **`reintento_fallido`, +1 paso** (parte 2): rebobinar rehace desde la foto original.
+
+**Cómo medir el efecto real** en un proyecto (lo que el banco no puede):
+
+1. En `ejemplos/nest-next` (o un proyecto propio), elige 3 cambios típicos (una pantalla nueva, un campo en un formulario con su endpoint, una corrección de permisos).
+2. Corre **N = 10 ciclos** de `/neurodanza-feature` con la versión anterior y 10 con la nueva, alternando versión en cada ciclo (para que el día, la red y la carga del servicio afecten a ambas) y desde el mismo commit de partida (`git worktree`).
+3. Registra por ciclo, desde el mapa: tiempo total, pasos por subagente y tokens (`/cost` al cerrar), más el veredicto del panel y si hubo rondas extra.
+4. Compara **medianas** y el rango intercuartil (P25–P75) de cada versión. Una diferencia es real si las medianas se separan más que el rango intercuartil de cada una; con menos de 10 ciclos por versión, la variación entre corridas de un modelo suele ser mayor que el efecto. Mira también la peor corrida: el harness existe sobre todo para acotarla.
+
+Datos completos: [`base3.json`](base3.json), [`base3-original.json`](base3-original.json), [`final.json`](final.json).

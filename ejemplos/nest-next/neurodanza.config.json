@@ -207,6 +207,14 @@
         "email": "${ND_ADMIN_EMAIL}",
         "clave": "${ND_ADMIN_PASSWORD}"
       }
+    },
+    "recorridos": "frontend/.claude/personas/recorridos",
+    "memoria": "frontend/.claude/personas/memoria",
+    "notaMaxSiFalla": 6,
+    "exploracionPasos": 10,
+    "regresion": {
+      "clics": 1,
+      "tiempo": 0.3
     }
   },
   "evals": {
@@ -218,5 +226,15 @@
       "frontend:.claude/skills/**",
       "frontend:.claude/evals/**"
     ]
+  },
+  "indice": {
+    "activo": true,
+    "maxLineas": 60
+  },
+  "hotel": {
+    "activo": true,
+    "maxPasos": 8,
+    "maxSegundos": 120,
+    "maxPorTarea": 4
   }
 }
