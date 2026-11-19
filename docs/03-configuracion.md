@@ -316,6 +316,15 @@ Ataques acotados contra la app local, en modo propuesta. Ver [17-seguridad.md](1
 | `maxPasos` · `maxSegundos` | `15` · `180` | Presupuesto de cada fantasma. |
 | `login` | — | Opcional: cómo entra una persona por API (`{ "url", "cuerpo": { …"{email}"…"{clave}" }, "token" }`). Si no está, se usa el de `panel.usuarios.login` con las credenciales de la persona. |
 
+## `indice`
+
+Índice pre-cocido por commit (`lib/indice.mjs`). Ver [19-menos-exploracion.md](19-menos-exploracion.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, ni el contrato ni los mensajes llevan el resumen del índice. |
+| `maxLineas` | `60` | Líneas máximas del resumen que va en un contrato o mensaje. |
+
 ## `fusible`
 
 Nada de reintentos infinitos contra algo externo. Ver [15-velocidad.md](15-velocidad.md#4-fusible).

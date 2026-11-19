@@ -454,6 +454,19 @@
           "description": "Cómo entra una persona por API (url, cuerpo con {email} y {clave}, token)."
         }
       }
+    },
+    "indice": {
+      "type": "object",
+      "description": "Índice pre-cocido por commit (lib/indice.mjs): resumen enfocado para contratos y mensajes de subagentes.",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "maxLineas": {
+          "type": "integer",
+          "minimum": 5
+        }
+      }
     }
   }
 }
