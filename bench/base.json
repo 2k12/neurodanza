@@ -87,36 +87,37 @@
       ],
       "detalle": [
         {
-          "congelaA": 3.318,
+          "congelaA": 3.343,
           "sinLatidoA": null,
           "cortadoA": null,
           "alVolverRechazado": false
         },
         {
-          "congelaA": 3.377,
+          "congelaA": 3.307,
           "sinLatidoA": null,
           "cortadoA": null,
           "alVolverRechazado": false
         },
         {
-          "congelaA": 3.359,
+          "congelaA": 3.378,
           "sinLatidoA": null,
           "cortadoA": null,
           "alVolverRechazado": false
         },
         {
-          "congelaA": 3.375,
+          "congelaA": 3.376,
           "sinLatidoA": null,
           "cortadoA": null,
           "alVolverRechazado": false
         },
         {
-          "congelaA": 3.357,
+          "congelaA": 3.345,
           "sinLatidoA": null,
           "cortadoA": null,
           "alVolverRechazado": false
         }
-      ]
+      ],
+      "nota": "re-medida el 2026-11-19 con el banco corregido (lee .neurodanza/agentes/<id>.json); mismo resultado que la primera medición"
     },
     "revision_y_panel": {
       "valor": 50.413,

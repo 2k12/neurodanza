@@ -62,6 +62,10 @@ Las barreras del plugin se apagan con `false`:
 "barreras": { "borradosRaiz": false }
 ```
 
+## Comandos que pueden no terminar
+
+Servidores, modos watch y suites completas sin `timeout` (o sin `run_in_background`) se rechazan con la forma exacta de correrlos (`barreras.timeoutComandos`). Y cada subagente tiene un tope de tiempo: al 100 % la barrera le rechaza toda herramienta nueva. Ver [15-velocidad.md](15-velocidad.md).
+
 ## Modo director
 
 Con el modo director activo (`lib/director.mjs activar`), las barreras distinguen al agente principal de los subagentes: el principal no edita ni corre comandos que modifiquen archivos (delega), y cada implementador edita solo en su worktree y dentro de los archivos de su contrato. Las rutas protegidas y las migraciones inmutables se aplican también dentro de los worktrees. Ver [13-director.md](13-director.md).

@@ -42,8 +42,32 @@ Los subagentes, revisores y personas son simulados (procesos con demoras control
 | `stop_normal` | 1,5 s |
 | `stop_colgado` | 300,4 s (esperó el tope interno de las pruebas relacionadas; 0 huérfanos) |
 | `guardrails_ms` | 76,5 ms |
-| `subagente_congelado` | sin corte (tope de medición 45 s); al volver, la herramienta se permitió |
+| `subagente_congelado` | sin corte (tope de medición 45 s); al volver, la herramienta se permitió (re-medido con el banco corregido: mismo resultado) |
 | `revision_y_panel` | 50,4 s (revisores, después panel) |
 | `fallo_externo` | 28,5 s · 12 intentos · se rinde (informa al usuario) |
 
 Datos completos: [`base.json`](base.json).
+
+### Parte 1 (0.7.0, mismas condiciones)
+
+| Métrica | Base | Ahora | Mejora |
+|---|---|---|---|
+| `stop_normal` | 1,55 s | 1,61 s | −3,7 % (empeoró) |
+| `stop_colgado` | 300,4 s | 85,5 s | 71,6 % |
+| `guardrails_ms` | 76,5 ms | 85,9 ms | −12,3 % (empeoró; límite: 25 %) |
+| `subagente_congelado` | sin corte (tope de medición 45 s) | corte a los 20,9 s; «sin latido» a los 10,5 s; al volver, rechazado | antes no se cortaba |
+| `revision_y_panel` | 50,4 s | 30,4 s | 39,6 % |
+| `fallo_externo` | 28,5 s · 12 intentos · se rinde | 3,8 s · 2 intentos · avanza con el panel pendiente | 86,7 % |
+
+Mejora = (base − ahora) / base × 100. Datos completos: [`parte1.json`](parte1.json).
+
+Lo que empeoró y por qué:
+
+- **`stop_normal` (+3,7 %, +60 ms):** el Stop ahora decide qué pasa al fondo, lo lanza (un proceso desacoplado, ~10 ms), revisa el fusible y registra más estado. Una primera versión quedaba en +20 %: las firmas de cada repo se calculaban una tras otra antes de empezar las comprobaciones (~300 ms) y la cancelación del fondo anterior esperaba a `taskkill` (~600 ms en Windows). Ahora las firmas corren en paralelo y la cancelación no espera.
+- **`guardrails_ms` (+12,3 %):** cada llamada de un subagente registra su paso (`.neurodanza/agentes/<id>.json`) y revisa el latido de los demás. La medida tiene ruido: con el mismo código, otra corrida dio 79,2 ms (+3,6 %), y en esta las dos últimas pasadas dieron 91,9 y 126,2 ms. En ambas queda bajo el límite del 25 %.
+
+Notas para leer los números:
+
+- `subagente_congelado` usa los topes cortos del proyecto de prueba (revisor 20 s, latido 8 s): el corte llega cuando vence el tope configurado. Con los valores por defecto sería a los 300 s (revisor) y el latido a los 90 s.
+- `stop_colgado` ahora corta a los 85 s (tope de 90 s menos el margen 5 s): la prueba colgada se corta, se informa «no alcanzó a correr» y pasa al fondo. 0 huérfanos en ambas versiones.
+- `revision_y_panel` y `fallo_externo` miden la orquestación que indica el skill con agentes simulados: el ahorro real depende de cuánto tarden los revisores y las personas de verdad.

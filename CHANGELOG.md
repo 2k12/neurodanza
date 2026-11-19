@@ -2,6 +2,25 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.7.0 · 2026-11-19
+
+Velocidad: que el harness nunca se quede colgado. Ver `docs/15-velocidad.md` y `bench/`.
+
+### Agregado
+- **Banco de pruebas** (`bench/bench.mjs`, sin dependencias): proyecto de prueba con dos repos git y 6 métricas con 5 corridas. Base contra 0.6.1 y resultados de esta versión en `bench/`.
+- **Hook Stop en dos velocidades:** la parte que bloquea tiene tope (`retroalimentacion.topeStopSeg`, 90 s); lo que no alcanza se corta matando su árbol de procesos y pasa al **fondo** (`lib/fondo.mjs`), un proceso desacoplado que también corre la suite completa (`repos[].suite`) atada a la firma del cambio. Sus fallas bloquean el Stop siguiente; un cambio nuevo lo cancela; `fondo.mjs esperar` es requisito del cierre.
+- **Timeout obligatorio** (`barreras.timeoutComandos`): servidores, modos watch y suites completas sin límite se rechazan con la forma exacta de correrlos.
+- **Corte por tiempo** (`ciclo.maxSegundos`, `ciclo.latidoSeg`, `lib/agentes.mjs`): aviso al 80 %, rechazo de toda herramienta al 100 % (sin el mapa, lo hace la barrera), latido y registro por agente. Hook `SubagentStop`.
+- **Fusible** (`lib/fusible.mjs`, `fusible.*`): dos fallos de la app, Chromium o una capa configurada en el ciclo la funden; el panel queda pendiente. `panel.mjs app`.
+
+### Cambiado
+- `/neurodanza-feature` lanza en el mismo turno los revisores y el panel, sobre una sola app levantada. Un revisor que reprueba con hallazgo alto impide que esa ronda apruebe.
+- Timeouts de los hooks: Stop 120 s (antes 600), lint al editar 60 s (antes 90).
+- Mapa 0.3.0: tiempo usado / total por subagente, «sin latido» y capas fundidas.
+
+### Medido (5 corridas, mediana)
+Stop con un comando colgado 300,4 s → 85,5 s (71,6 %); del diff al veredicto 50,4 s → 30,4 s (39,6 %); app que no arranca 28,5 s y 12 intentos → 3,8 s y 2 intentos (86,7 %); subagente congelado: antes sin corte, ahora cortado al vencer su tope. Empeoraron el Stop normal (+3,7 %) y la latencia de la barrera (+12,3 %, bajo el límite del 25 %).
+
 ## 0.6.1 · 2026-11-18
 
 - **La ventana Role Agents ya no se cierra al terminar cada turno.** El hook `Stop` cerraba la ronda en vivo aunque las personas siguieran probando en segundo plano. Ahora la ronda se cierra con `calificar`, con otra ronda, al terminar la sesión (hook nuevo `SessionEnd`, `feedback.mjs fin`) o tras 20 minutos sin mensajes.
