@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { avisoPara, etiqueta, faseDe, fundidasDe, irAFase, maxPasos, maxSegundos, nuevoCiclo, pasosDelPlan, PRESUPUESTO, sinLatido, TIEMPOS, veredictoDe } from './register'
+import { avisoPara, etiqueta, faseDe, fundidasDe, irAFase, marcas, maxPasos, maxSegundos, muertesPorTarea, nuevoCiclo, pasosDelPlan, PRESUPUESTO, sinLatido, TIEMPOS, veredictoDe } from './register'
 import type { Agente } from '../types'
 
 const PANE = {
@@ -82,4 +82,15 @@ test('tiempo, latido y fusible en el mapa', () => {
   expect(sinLatido({ ...a, estado: 'hecho' as const }, 100_000, 90_000)).toBe(false)
   expect(fundidasDe({ capas: { app: { fundida: true, motivo: 'no arranca' }, bd: { fundida: false } } })).toEqual([{ capa: 'app', motivo: 'no arranca' }])
   expect(fundidasDe(null)).toEqual([])
+})
+
+test('reemplazos, muertes, cuarentena y fantasmas en el mapa', () => {
+  expect(muertesPorTarea([{ tarea: 'pedidos-api' }, { tarea: 'pedidos-api' }, { tarea: 'otra' }])).toEqual({ 'pedidos-api': 2, otra: 1 })
+  const a = { id: 'i2', toolUseId: 't', tipo: 'implementador', desc: 'pedidos-api ↻ 2', fase: 1, estado: 'corriendo' as const, pasos: 2, max: 60, ultima: '', inicio: 0, huella: '', repetidas: 0, avisos: [] }
+  expect(marcas(a, { 'pedidos-api': 1 }, {})).toBe(' ✝ 1')
+  expect(marcas(a, {}, { i2: true })).toBe(' ⛔ cuarentena')
+  expect(veredictoDe('{"id":"h1","confirmado":true,"gravedad":"alta"}')).toBe('✔ alta')
+  expect(veredictoDe('resultado guardado · h2 · no confirmado')).toBe('sin hallazgo')
+  expect(faseDe({ tool: 'Agent', subagent_type: 'neurodanza:fantasma' }, 2)).toBe(3)
+  expect(maxPasos('fantasma', PRESUPUESTO)).toBe(15)
 })

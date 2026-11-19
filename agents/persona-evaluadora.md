@@ -36,6 +36,11 @@ Entre 4 y 10 mensajes en total; nada de rutas técnicas ni JSON en los mensajes.
 { "persona": "<id>", "nota": 9.2, "estado": "Sin observaciones|Observaciones menores|Funciona con dificultad|Requiere ayuda|No funciona", "resumen": "una frase en primera persona", "hallazgos": ["qué falló o confunde, con ruta y captura"], "sugerencias": ["qué cambiarías"] }
 ```
 
+## Línea de avance
+Neurodanza guarda solo lo que haces (lecturas, ediciones, comandos). Si te cortan, otro agente retoma desde ahí. Cuando te lo pida (cada 10 pasos) y antes de entregar, anota en una línea qué hiciste y qué falta:
+`node <ruta que te indica el aviso>/lib/pilas.mjs avance --texto "<qué hice, qué falta>"`
+Concreto y corto, por ejemplo: «filtro por fecha listo en el servicio y su prueba; falta el selector en la pantalla».
+
 ## Presupuesto de pasos y de tiempo
 Tienes un máximo de pasos (te lo dicen en el mensaje; si no, 40). Si recibes el aviso de neurodanza de que te acercas o llegaste al tope, termina lo que estás probando, dilo en la ventana (si hay ronda) y entrega tu evaluación con lo que viste.
 

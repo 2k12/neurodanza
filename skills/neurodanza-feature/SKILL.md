@@ -6,7 +6,7 @@ description: Ciclo automático para cada funcionalidad o corrección en un proye
 # /neurodanza-feature: ciclo automático de una funcionalidad
 
 Configuración: `neurodanza.config.json` en la raíz del proyecto (si no existe, corre `/neurodanza-init`).
-Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. Fusible: `<fusible>` = `node "<carpeta de este skill>/../../lib/fusible.mjs"`. Fondo: `<fondo>` = `node "<carpeta de este skill>/../../lib/fondo.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
+Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. Fusible: `<fusible>` = `node "<carpeta de este skill>/../../lib/fusible.mjs"`. Fondo: `<fondo>` = `node "<carpeta de este skill>/../../lib/fondo.mjs"`. Pilas: `<pilas>` = `node "<carpeta de este skill>/../../lib/pilas.mjs"`. Fantasmas: `<fantasmas>` = `node "<carpeta de este skill>/../../lib/fantasmas.mjs"`. Agentes: `<agentes>` = `node "<carpeta de este skill>/../../lib/agentes.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
 Nunca agregues coautoría ni firmas de IA en commits, PR o código.
 Si está instalado `neurodanza-mapa`, el usuario ve en un panel la fase y cada subagente en vivo; se abre solo (o con `/neurodanza-mapa`).
 
@@ -22,7 +22,7 @@ Trabajas en dos papeles: **planificas** (paso 0) y **ejecutas** el plan paso por
 - Delega solo tareas acotadas. Cada subagente tiene un presupuesto de pasos (`<ciclo> presupuesto`; revisores 25, personas 40, implementadores 60) y el mapa le avisa al 80 % y al llegar al tope. Díselo en el mensaje: «Presupuesto: N pasos; si llegas, entrega lo que tengas».
 
 ## 0. Entender y planificar (obligatorio)
-Empieza el ciclo con `<fusible> reiniciar` (las capas externas vuelven a cero fallos).
+Empieza el ciclo con `<fusible> reiniciar` y `<agentes> reiniciar` (capas externas, tiempos, rechazos y cuarentenas en cero).
 Si el contexto de inicio dice que la sesión está **dentro de un componente** (p. ej. `frontend/`), pídele al usuario `/add-dir` de la raíz antes de seguir (no lo hagas tú).
 Resume en pocas líneas qué entendiste (qué cambia, pantallas y roles afectados), escribe el plan en el archivo y **espera el visto bueno del usuario** antes de tocar código. Pregunta solo lo que cambia el resultado.
 Si el contexto de inicio trae **errores conocidos** del proyecto, tenlos presentes en el plan.
@@ -37,7 +37,9 @@ Tú diriges: planificas, delegas, integras y verificas. **No editas código** (l
 3. Por tarea: `<director> preparar --tarea <id> --repos <repos> --archivos "<repo:glob,…>" --objetivo "<una línea>" --terminado "<comprobación>" --constructo <implementador-área>`. Responde las rutas de sus worktrees y el **contrato** listo para pegar, con las **lecciones** que ese constructo aprendió en el proyecto. Usa siempre el mismo nombre de constructo para la misma área (`implementador-backend`, `implementador-frontend`, `implementador-migraciones`…): así acumula experiencia.
 4. Lanza en **un solo mensaje** un `implementador` por tarea independiente, con el contrato y solo el contexto que necesita (reglas que aplican, errores conocidos relevantes, archivos de referencia). No le pases tu razonamiento completo.
 5. Al volver cada uno, lee su JSON. Si `terminado` es `true`: `<director> integrar --tarea <id>`. Si responde `fuera del contrato`, decide si el archivo era necesario (`--forzar`) o si va en otra tarea; si responde `conflicto al aplicar`, crea una tarea de corrección sobre el estado actual. Si `terminado` es `false`, relánzalo con lo pendiente o divide la tarea.
-6. Integradas todas, sigue con el paso 2 (verificar) como siempre. Para corregir hallazgos de revisores o personas, crea tareas nuevas.
+6. Integradas todas, sigue con el paso 2 (verificar) como siempre. Para corregir hallazgos de revisores, personas o fantasmas, decide primero cómo:
+   - `<director> decidir --tarea <id> --hallazgos <json>` (los hallazgos de esa tarea, con `gravedad`, `archivo`, `problema` y, si sabes, `lineas`) responde **corregir** (algo puntual: crea una tarea de corrección encima) o **rebobinar** (hallazgos altos, de diseño, o una corrección que supera `director.rebobinar.umbralCorreccion` del diff).
+   - **Rebobinar con memoria:** `<director> rebobinar --tarea <id> --memoria <json>` (`{ "motivo", "hallazgos", "notas": [notas de personas], "constructo" }`). Guarda el intento fallido como muerte, vuelve el worktree a la **misma foto original** y deja un contrato con «Intentos anteriores y por qué fallaron». Lanza un implementador nuevo con ese contrato (descripción `<tarea> ✝ <n>`). Si responde con tope (`director.rebobinar.maxMuertes`), no rebobines más: informa al usuario con los intentos y sus hallazgos.
 7. Al cerrar el ciclo: `<director> desactivar` (y `<director> tareas` debe quedar vacío; descarta lo que sobre con `<director> descartar --tarea <id>`).
 
 ### Directo
@@ -59,11 +61,15 @@ Con el diff verificado, lanza **en el mismo turno** los revisores que aplican y 
 3. Personas: `<panel> usuarios` (si el proyecto tiene un rol sin persona: `<panel> crear --rol <ROL>` y otra vez `<panel> usuarios`) y `<panel> elegir --rutas <rutas afectadas>` (de `panel.min` a `panel.max`, una por rol que puede modificar lo cambiado).
 4. **Ventana en vivo** (Windows, si `panel.ventana` es `"windows"`): `<panel> en-vivo --ronda <scratchpad>/panel-<versión>-r<n> --personas <ids> --titulo "Panel de personas · v<versión> · ronda <n>" --cambio "<qué cambió, en lenguaje de usuario>"`. **Antes de anunciar un arreglo en «qué cambió», compruébalo en la pantalla real** (`<panel> navegar`): si lo prometido no aparece, la persona baja la nota con razón.
 
-**Lanzar, en UN SOLO mensaje:** los revisores de `lanzar` y un agente `persona-evaluadora` por persona.
+**Fantasmas** (si `<ciclo> revisores` dice `fantasmas.lanzar: true`: el diff toca endpoints, permisos, roles, consultas o pantallas que escriben): `<fantasmas> hipotesis` genera hasta `fantasmas.max` hipótesis concretas (rol atacante, recurso, técnica). Requieren la app levantada.
+
+**Lanzar, en UN SOLO mensaje:** los revisores de `lanzar`, un agente `persona-evaluadora` por persona y un `fantasma` por hipótesis (si hay).
+- A cada fantasma: su hipótesis (el JSON), el comando `<fantasmas>` con ruta absoluta, qué personas usar (dueño del recurso y `rolAtacante`) y el framework de pruebas del repo. No edita nada: deja su resultado con `<fantasmas> resultado`.
 - A cada revisor: **solo** qué se pidió (una línea), los repos tocados, la rama, contra qué rama comparar, su presupuesto de pasos y de tiempo, y sus lecciones (`<constructos> playbook --constructo <revisor>`, si tiene). **No** le pases tu razonamiento ni tus conclusiones.
 - A cada persona: su `id`, el comando `<panel>` con ruta absoluta, la carpeta `--ronda`, qué cambió **en lenguaje de usuario**, las rutas, los pasos a intentar, una carpeta de salida en el scratchpad y su presupuesto de pasos y de tiempo. Cada una corre con su usuario y su propio navegador (no comparten sesión), a la vez que las demás.
 
 **Juntar los resultados:**
+0. Fantasmas: `<fantasmas> veredicto` lista los confirmados. **Un confirmado de gravedad alta cuenta como un hallazgo alto de revisor** (aplica la regla siguiente): crea una tarea para que el implementador corrija **e integre la prueba propuesta** (`prueba.propuesta` del resultado). Los no confirmados se descartan sin más.
 1. Revisores: si alguno devuelve `aprobado: false` con un hallazgo **alto**, el panel termina su ronda, pero **esa ronda no puede aprobar el cambio**: anótalo en el JSON del panel (`"revisores": "reprobados"`; si todos aprobaron, `"revisores": "aprobados"`). Corrige los hallazgos altos y medios, vuelve al paso 2 y relanza solo los revisores que reprobaron (máximo 2 vueltas; si sigue reprobando, informa al usuario) y una ronda nueva del panel.
 2. Panel: guarda el resultado en `<panel.evaluaciones>/v<versión>-<tema>.json`:
    ```json
@@ -73,10 +79,20 @@ Con el diff verificado, lanza **en el mismo turno** los revisores que aplican y 
 3. **Si el panel no aprobó**: corrige con los hallazgos y sugerencias, vuelve al paso 2 y, si la app no recarga sola, levántala de nuevo. En la ronda siguiente (`ronda` + 1; conserva las anteriores en `"historial"`) **vuelve a evaluar solo a las personas con nota ≤ `panel.umbral`** y a las que usan una ruta que tocaste al corregir; las demás conservan su evaluación anterior (cópiala al JSON de la ronda nueva con `"reutilizada": true`). Máximo `panel.maxRondas`; si no llega, informa al usuario con los hallazgos y pregunta si autoriza otra ronda.
 4. **Si aprobó** (y los revisores también): el cambio cuenta como realizado. El hook de Stop no deja terminar un cambio de pantallas sin una evaluación aprobada de la versión actual, salvo que el panel haya quedado pendiente por el fusible (entonces lo informa y decide el usuario).
 
-## 4. Subagentes lentos o trabados
-Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, personas 7 min, implementadores 15 min). Al 80 % recibe un aviso; al 100 % la barrera le rechaza toda herramienta y solo puede entregar su respuesta. Si el mapa (o `.neurodanza/agentes/`) muestra a uno **sin latido** (`ciclo.latidoSeg` sin dar un paso), decide: espera si su último paso es un comando largo con timeout, o relánzalo con una tarea más chica.
+## 4. Subagentes lentos, trabados o en cuarentena: re-enfundar una sola vez
+Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, personas 7 min, implementadores 15 min). Al 80 % recibe un aviso; al 100 % la barrera le rechaza toda herramienta y solo puede entregar su respuesta. Los hooks guardan su pila (qué leyó, editó y corrió) y cada 10 pasos él anota una línea de avance.
+
+**Re-enfundar** cuando un subagente vuelve cortado por tiempo o pasos, aparece **sin latido** en el mapa (o en `.neurodanza/agentes/`) sin un comando largo en curso, entrega con pendientes críticos, o cae en **cuarentena**:
+1. `<pilas> reenfundar --agente <agent_id>` genera el mensaje completo: el contrato, lo que ya hizo, qué archivos leyó y siguen iguales (que no relea) y cuáles cambiaron, los comandos que fallaron, lo que falta y el presupuesto **restante**. En el modo director, el reemplazo trabaja en el **mismo worktree**.
+2. Lanza un agente nuevo del mismo tipo con ese mensaje y la descripción que sugiere (`<tarea> ↻ 2`).
+3. **En cuarentena** (`⛔`, tras `figuras.cuarentena` rechazos): en el mensaje, quita la acción que causó los bloqueos (los motivos están en su registro, `<agentes> ver`) y agrega una advertencia: «tu antecesor fue bloqueado por …; no lo intentes, entrega o pide al director».
+4. **Una sola vez por tarea** (`reenfundar` lo hace cumplir). Si el reemplazo también se corta o cae en cuarentena, no relances: informa al usuario con `<pilas> resumen --agente <id>`.
+
+Solo tú (el agente principal) lanzas subagentes: con las figuras activas, la barrera se lo rechaza a cualquier subagente.
 
 ## 5. Cerrar
+- **Pilas:** `<pilas> limpiar` al cerrar el ciclo (no van a git).
+- **Reflexión con las muertes:** cada rebobinado ya pasó como evidencia a los constructos; inclúyelo en el informe.
 - **Suite completa:** `<fondo> esperar` debe salir con 0 (la suite completa pasó para el cambio actual). Si sale con 1, corrige; si sale con 2 (sigue corriendo o es de otro cambio), espera o díselo al usuario. Los `Stop` intermedios no bloquean por esto; el cierre sí.
 - **Fusible:** si alguna capa quedó fundida (`<fusible> estado`), el informe dice «no se pudo verificar: <capa> (motivo)» y el panel queda pendiente: pregúntale al usuario cómo sigue.
 - **Reflexión (constructos).** Escribe `<scratchpad>/reflexion.json` con lo que encontraron los jueces en este ciclo y regístralo con `<constructos> reflexion --archivo <ese json>`:

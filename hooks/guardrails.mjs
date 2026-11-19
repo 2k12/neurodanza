@@ -7,7 +7,11 @@ import { basename, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
 import { enWorktree, fueraDeContrato, leerModo, leerTareas } from "../lib/director.mjs";
-import { MENSAJE_CORTE, registrarPaso, revisarLatidos, terminar } from "../lib/agentes.mjs";
+import { MENSAJE_CORTE, mensajeCuarentena, registrarPaso, registrarRechazo, revisarLatidos, terminar, tocaRevisar } from "../lib/agentes.mjs";
+import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
+import { registrarEnProyecto } from "../lib/errores.mjs";
+
+const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
 
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
@@ -210,30 +214,70 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const ahora = Date.now();
   let aviso = "";
-  // Corte por tiempo (solo subagentes: el agente principal nunca queda bloqueado por esto).
+  const conFiguras = cfg.figuras?.activo === true;
+  /** Rechaza: cuenta para la cuarentena del subagente (con figuras activas) y sale con 2. */
+  const rechazar = (motivo) => {
+    let texto = motivo;
+    if (conFiguras && event.agent_id) {
+      try {
+        const r = registrarRechazo(cfg, event.agent_id, motivo, cfg.figuras?.cuarentena ?? 3, ahora);
+        if (r.entra) {
+          // Cada cuarentena va a errores conocidos: la próxima vez el mensaje trae cómo se resolvió.
+          const [conocido] = registrarEnProyecto(cfg, [`cuarentena:\n${String(event.agent_type ?? "subagente").replace(/^neurodanza:/, "")}: ${(r.agente.rechazos ?? []).map((x) => x.motivo).join(" · ")}`], event.session_id);
+          texto = `${motivo}\n${mensajeCuarentena(r.agente)}${conocido.includes("↳") ? `\n${conocido.split("\n").slice(-1)[0]}` : ""}`;
+        }
+      } catch {
+        /* el registro es una ayuda */
+      }
+    }
+    process.stderr.write(`${texto.startsWith("neurodanza") ? "" : "Barrera (neurodanza): "}${texto}\n`);
+    process.exit(2);
+  };
+  // Corte por tiempo y cuarentena (solo subagentes: el agente principal nunca queda bloqueado por esto).
   if (event.agent_id) {
     try {
       const r = registrarPaso(cfg, event, ahora);
+      if (conFiguras && r.agente.cuarentena) {
+        process.stderr.write(`${mensajeCuarentena(r.agente)}\n`);
+        process.exit(2);
+      }
       if (r.corte) {
         process.stderr.write(`${MENSAJE_CORTE}\n`);
         process.exit(2);
       }
       aviso = r.aviso ?? "";
+      // Línea de avance cada `pilas.avanceCada` pasos: se le pide al subagente, sin bloquear.
+      const cada = cfg.pilas?.activo === false ? 0 : cfg.pilas?.avanceCada ?? 10;
+      if (cada > 0 && r.agente.pasos % cada === 0) aviso = [aviso, `neurodanza: llevas ${r.agente.pasos} pasos. Anota tu avance en una línea (qué hiciste, qué falta): node "${PILAS_CLI}" avance --texto "<qué hice, qué falta>"`].filter(Boolean).join("\n");
     } catch {
       /* el registro es una ayuda: si falla, la barrera sigue */
     }
   }
   try {
-    revisarLatidos(cfg, ahora, event.agent_id);
+    if (tocaRevisar(cfg, ahora)) revisarLatidos(cfg, ahora, event.agent_id);
   } catch {
     /* idem */
   }
-  const why = check(event, cfg);
-  if (why) {
-    process.stderr.write(`Barrera (neurodanza): ${why}\n`);
-    process.exit(2);
+  // La tabla de figuras y el registro de agentes no los escribe ningún agente.
+  if (tocaProtegido(cfg, event)) rechazar("neurodanza: .neurodanza/figuras.json y .neurodanza/agentes/ los escriben solo el director y las barreras; ningún agente puede modificarlos.");
+  // Figuras: la acción debe estar en la mano del agente; si no, ◇ y ✕ se preguntan al usuario y lo demás se rechaza.
+  let pregunta = "";
+  if (conFiguras) {
+    if (event.agent_id && event.tool_name === "Agent") rechazar("neurodanza: solo el agente principal lanza subagentes (re-enfundar o reemplazar a un agente lo hace el director).");
+    const file = event.tool_input?.file_path ?? event.tool_input?.notebook_path;
+    if (event.agent_id && file) {
+      const w = enWorktree(leerTareas(cfg), file);
+      if (w) asociarAgente(cfg, event.agent_id, w.tarea.id);
+    }
+    const d = decidirFigura(event, cfg, manoDe(cfg, event));
+    if (d?.decision === "deny") rechazar(d.motivo);
+    if (d?.decision === "ask") pregunta = d.motivo;
   }
+  const why = check(event, cfg);
+  if (why) rechazar(why);
+  // Segunda llave: el usuario aprueba en la ventana de permisos. El aviso, si hay, va como contexto.
+  if (pregunta) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: pregunta, ...(aviso ? { additionalContext: aviso } : {}) } }));
   // Aviso al 80 % del tiempo: contexto junto al resultado de la herramienta, sin decidir permisos
   // (devolver "allow" se saltaría los permisos del usuario).
-  if (aviso) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: aviso } }));
+  else if (aviso) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: aviso } }));
 }

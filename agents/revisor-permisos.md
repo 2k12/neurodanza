@@ -21,6 +21,11 @@ No corrijas nada. Responde solo este JSON:
 ```
 `aprobado` es false si hay algún hallazgo de gravedad alta o media.
 
+## Línea de avance
+Neurodanza guarda solo lo que haces (lecturas, ediciones, comandos). Si te cortan, otro agente retoma desde ahí. Cuando te lo pida (cada 10 pasos) y antes de entregar, anota en una línea qué hiciste y qué falta:
+`node <ruta que te indica el aviso>/lib/pilas.mjs avance --texto "<qué hice, qué falta>"`
+Concreto y corto, por ejemplo: «filtro por fecha listo en el servicio y su prueba; falta el selector en la pantalla».
+
 ## Presupuesto de pasos y de tiempo
 Tienes un máximo de pasos (te lo dicen en el mensaje; si no, 25). Lee primero el diff completo y después solo lo que necesites para decidir. Si recibes el aviso de neurodanza de que te acercas o llegaste al tope, deja de investigar y entrega tu JSON con lo que tienes; agrega en `hallazgos` uno de gravedad `baja` que diga qué no alcanzaste a revisar.
 

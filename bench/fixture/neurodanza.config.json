@@ -3,7 +3,9 @@
     {
       "nombre": "api",
       "ruta": "api",
-      "codigo": ["src/**"],
+      "codigo": [
+        "src/**"
+      ],
       "lint": "node ../herramientas/tarea.mjs --nombre lint --ms 400 {archivos}",
       "tipos": "node ../herramientas/tarea.mjs --nombre tipos --ms 900",
       "relacionadas": "node ../herramientas/tarea.mjs --nombre pruebas --ms 1000 --colgable {archivos}",
@@ -12,14 +14,38 @@
     {
       "nombre": "web",
       "ruta": "web",
-      "codigo": ["src/**"],
+      "codigo": [
+        "src/**"
+      ],
       "lint": "node ../herramientas/tarea.mjs --nombre lint --ms 300 {archivos}",
       "tipos": "node ../herramientas/tarea.mjs --nombre tipos --ms 700",
       "relacionadas": "node ../herramientas/tarea.mjs --nombre pruebas --ms 600 {archivos}"
     }
   ],
-  "app": { "urls": ["http://localhost:47613"], "levantar": "node servidor.mjs", "login": { "ruta": "/login" } },
-  "panel": { "maxRondas": 3, "ventana": "ninguna" },
-  "ciclo": { "maxSegundos": { "revisor": 20, "persona": 30, "implementador": 60, "otro": 30 }, "latidoSeg": 8 },
-  "autoconfigurar": false
+  "app": {
+    "urls": [
+      "http://localhost:47613"
+    ],
+    "levantar": "node servidor.mjs",
+    "login": {
+      "ruta": "/login"
+    }
+  },
+  "panel": {
+    "maxRondas": 3,
+    "ventana": "ninguna"
+  },
+  "ciclo": {
+    "maxSegundos": {
+      "revisor": 20,
+      "persona": 30,
+      "implementador": 60,
+      "otro": 30
+    },
+    "latidoSeg": 8
+  },
+  "autoconfigurar": false,
+  "figuras": {
+    "activo": true
+  }
 }

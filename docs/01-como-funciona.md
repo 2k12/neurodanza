@@ -12,6 +12,8 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Director | `lib/director.mjs` y `agents/implementador.md` | Modo director: worktrees por tarea, contratos e integración del diff. |
 | Constructos | `lib/constructos.mjs` | Lecciones por agente: reflexión al cerrar, a prueba, aprobadas solo si mejoran. |
 | Velocidad | `lib/procesos.mjs`, `lib/firma.mjs`, `lib/fondo.mjs`, `lib/agentes.mjs`, `lib/fusible.mjs` | Comandos con tope que matan su árbol, firma del cambio, suite completa en segundo plano, tiempo y latido por subagente, fusible por capa externa. Ver [15-velocidad.md](15-velocidad.md). |
+| No perder trabajo | `lib/pilas.mjs`, `hooks/pilas.mjs`, `director.mjs decidir`/`rebobinar` | Pila de cada subagente, re-enfundar guiado y rebobinar con memoria. Ver [16-no-perder-trabajo.md](16-no-perder-trabajo.md). |
+| Seguridad | `lib/figuras.mjs`, `lib/fantasmas.mjs`, `agents/fantasma.md` | Figuras y manos, segunda llave (`ask`), cuarentena y fantasmas en modo propuesta. Ver [17-seguridad.md](17-seguridad.md). |
 | Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
 | Agentes | `agents/*.md` | 4 revisores y la `persona-evaluadora`. |

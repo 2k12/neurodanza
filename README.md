@@ -19,6 +19,8 @@ Unos evals con respuesta conocida miden si los revisores y las personas evalúan
 | **Modo director** | Cambios grandes, en `/neurodanza-feature` | El agente principal no edita: divide el trabajo en tareas con dueños de archivos y las delega a implementadores, cada uno en su propio worktree y con un contrato. Las barreras hacen cumplir el contrato; el director integra el diff. |
 | **Constructos** | Al cerrar cada ciclo | La reflexión anota los problemas que encontraron los jueces a cada agente. Sus lecciones pasan a prueba y solo se aprueban si el problema aparece menos (y, para revisores, si las evals no empeoran). |
 | **Velocidad** | Siempre | El hook `Stop` tiene tope (lo que no alcanza y la suite completa corren en segundo plano), los comandos que pueden no terminar exigen timeout, cada subagente tiene tope de tiempo y latido, y un fusible corta los reintentos contra la app o el navegador caídos. Ver [docs/15](docs/15-velocidad.md). |
+| **No perder trabajo** | Siempre (subagentes) | Los hooks guardan la pila de cada subagente (qué leyó, editó y corrió); si se corta, el reemplazo retoma sin releer todo, una sola vez. Una tarea que falla por diseño se rebobina a la foto original con memoria de por qué falló. Ver [docs/16](docs/16-no-perder-trabajo.md). |
+| **Seguridad práctica** | Con `figuras.activo` | Cada acción se clasifica (◯ leer △ editar □ verificar ◇ externo ✕ destructivo); fuera de la mano del agente, lo externo y destructivo se pregunta al usuario y lo demás se rechaza; tres rechazos dejan al agente en cuarentena. Fantasmas prueban fugas y escaladas contra la app local, sin editar nada. Ver [docs/17](docs/17-seguridad.md). |
 | **Mapa en vivo** | Siempre, con el plugin `neurodanza-mapa` | Panel al lado del chat con la fase del ciclo, cada subagente (pasos, última herramienta, tiempo, veredicto) y el plan. Avisa al subagente que se acerca a su presupuesto de pasos o repite la misma llamada. |
 | **Errores conocidos** | Al iniciar la sesión y en cada bloqueo | Cada problema de los hooks se guarda con una firma; si vuelve, el mensaje trae cómo se resolvió. |
 | **Evals** | `/neurodanza-evals` | Casos con errores sembrados y un control limpio para los revisores, y casos de calibración para el panel. |
@@ -74,6 +76,8 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 13. [Modo director](docs/13-director.md)
 14. [Constructos: agentes que aprenden, con freno](docs/14-constructos.md)
 15. [Velocidad: que el harness nunca se quede colgado](docs/15-velocidad.md) · [banco de pruebas](bench/README.md)
+16. [No perder trabajo: pilas, re-enfundar y rebobinar](docs/16-no-perder-trabajo.md)
+17. [Seguridad práctica: figuras, cuarentena y fantasmas](docs/17-seguridad.md)
 
 Hay un ejemplo completo en [`ejemplos/nest-next/`](ejemplos/nest-next/): la configuración de un proyecto real NestJS + Next con tres repos (`backend`, `frontend`, `docs`).
 

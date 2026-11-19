@@ -228,6 +228,23 @@
               "node_modules"
             ]
           }
+        },
+        "rebobinar": {
+          "type": "object",
+          "properties": {
+            "activo": {
+              "type": "boolean"
+            },
+            "umbralCorreccion": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Fracción del diff original a partir de la cual corregir encima deja de convenir."
+            },
+            "maxMuertes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },
@@ -330,6 +347,78 @@
             "type": "string"
           },
           "description": "{ capa: comando } que dice si la capa responde (p. ej. bd)."
+        }
+      }
+    },
+    "pilas": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "avanceCada": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cada cuántos pasos se le pide al subagente su línea de avance (0 = nunca)."
+        }
+      }
+    },
+    "figuras": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "cuarentena": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "manos": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "leer",
+                "editar",
+                "verificar",
+                "externo",
+                "destructivo",
+                "red-app"
+              ]
+            }
+          },
+          "description": "Manos por tipo de agente (revisor, persona, implementador, fantasma, principal, otro)."
+        }
+      }
+    },
+    "fantasmas": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxPasos": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSegundos": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "login": {
+          "type": "object",
+          "description": "Cómo entra una persona por API (url, cuerpo con {email} y {clave}, token)."
         }
       }
     }

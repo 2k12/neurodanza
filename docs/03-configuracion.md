@@ -280,6 +280,37 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | `latidoSeg` | `90` | Segundos sin un paso para marcar a un subagente «sin latido». |
 | `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
 
+## `pilas`
+
+Lo que hizo cada subagente, para retomar si se corta. Ver [16-no-perder-trabajo.md](16-no-perder-trabajo.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `activo` | `true` | Los hooks guardan la pila de cada subagente en `.neurodanza/pilas/` (no va a git). |
+| `avanceCada` | `10` | Cada cuántos pasos se le pide al subagente su línea de avance (sin bloquear). `0` = nunca. |
+
+## `figuras`
+
+Qué puede hacer cada tipo de agente: ◯ leer · △ editar · □ verificar · ◇ externo · ✕ destructivo. Ver [17-seguridad.md](17-seguridad.md).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `activo` | `false` (**`true`** en los proyectos que crea `/neurodanza-init`) | Prende la clasificación por figuras, la segunda llave (`ask`) y la cuarentena. Apagado en configuraciones existentes para no cambiar flujos. |
+| `manos` | `{}` | Manos por tipo (`revisor`, `persona`, `implementador`, `fantasma`, `principal`, `otro`): lista de `leer`, `editar`, `verificar`, `externo`, `destructivo`, `red-app`. Lo que no se ponga usa los valores por defecto. |
+| `cuarentena` | `3` | Rechazos de un subagente en el ciclo para dejarlo en cuarentena (mano vacía). |
+
+## `fantasmas`
+
+Ataques acotados contra la app local, en modo propuesta. Ver [17-seguridad.md](17-seguridad.md#3-fantasmas-en-modo-propuesta).
+
+| Clave | Por defecto | Qué hace |
+|---|---|---|
+| `activo` | `true` | Si el cambio toca endpoints, permisos, roles, consultas o pantallas que escriben, el skill lanza fantasmas en paralelo con revisores y panel. |
+| `hosts` | `["localhost", "127.0.0.1"]` | Únicos hosts a los que un fantasma puede pedir algo. Los de `app.urls` se agregan solos. |
+| `max` | `3` | Hipótesis (y fantasmas) por ciclo. |
+| `maxPasos` · `maxSegundos` | `15` · `180` | Presupuesto de cada fantasma. |
+| `login` | — | Opcional: cómo entra una persona por API (`{ "url", "cuerpo": { …"{email}"…"{clave}" }, "token" }`). Si no está, se usa el de `panel.usuarios.login` con las credenciales de la persona. |
+
 ## `fusible`
 
 Nada de reintentos infinitos contra algo externo. Ver [15-velocidad.md](15-velocidad.md#4-fusible).
@@ -296,6 +327,7 @@ Modo director: el agente principal dirige y los implementadores trabajan en work
 | Clave | Por defecto | Qué hace |
 |---|---|---|
 | `worktrees` | `"auto"` | Dónde se crean los worktrees de las tareas. `"auto"`: si la raíz **no** es un repo (proyecto de varios repos), en `.neurodanza/wt` dentro del proyecto (ningún repo la ve y no pide permisos); si la raíz **es** un repo, en `../.neurodanza-wt/<proyecto>`, para que el lint y las pruebas del repo no los recorran. También acepta una ruta relativa a la raíz con `{proyecto}`. |
+| `rebobinar` | `{ "activo": true, "umbralCorreccion": 0.5, "maxMuertes": 2 }` | Rebobinar con memoria: cuándo conviene volver a la foto original en vez de corregir encima (`umbralCorreccion` = fracción del diff original), y cuántas veces como máximo por tarea antes de informar al usuario. Ver [16-no-perder-trabajo.md](16-no-perder-trabajo.md#3-rebobinar-con-memoria). |
 | `enlazar` | `["node_modules"]` | Qué se enlaza del repo real en cada worktree (las dependencias, para no instalarlas). `[]` no enlaza nada. |
 
 ## `constructos`
