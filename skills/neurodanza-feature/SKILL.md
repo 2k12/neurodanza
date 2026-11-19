@@ -6,7 +6,7 @@ description: Ciclo automático para cada funcionalidad o corrección en un proye
 # /neurodanza-feature: ciclo automático de una funcionalidad
 
 Configuración: `neurodanza.config.json` en la raíz del proyecto (si no existe, corre `/neurodanza-init`).
-Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
+Panel: `<panel>` = `node "<carpeta de este skill>/../../panel/panel.mjs"` (la carpeta del skill aparece arriba como «Base directory»). Ciclo: `<ciclo>` = `node "<carpeta de este skill>/../../lib/ciclo.mjs"`. Errores: `<errores>` = `node "<carpeta de este skill>/../../lib/errores.mjs"`. Constructos: `<constructos>` = `node "<carpeta de este skill>/../../lib/constructos.mjs"`. Fusible: `<fusible>` = `node "<carpeta de este skill>/../../lib/fusible.mjs"`. Fondo: `<fondo>` = `node "<carpeta de este skill>/../../lib/fondo.mjs"`. En Git Bash de Windows antepone `MSYS_NO_PATHCONV=1`.
 Nunca agregues coautoría ni firmas de IA en commits, PR o código.
 Si está instalado `neurodanza-mapa`, el usuario ve en un panel la fase y cada subagente en vivo; se abre solo (o con `/neurodanza-mapa`).
 
@@ -22,6 +22,7 @@ Trabajas en dos papeles: **planificas** (paso 0) y **ejecutas** el plan paso por
 - Delega solo tareas acotadas. Cada subagente tiene un presupuesto de pasos (`<ciclo> presupuesto`; revisores 25, personas 40, implementadores 60) y el mapa le avisa al 80 % y al llegar al tope. Díselo en el mensaje: «Presupuesto: N pasos; si llegas, entrega lo que tengas».
 
 ## 0. Entender y planificar (obligatorio)
+Empieza el ciclo con `<fusible> reiniciar` (las capas externas vuelven a cero fallos).
 Si el contexto de inicio dice que la sesión está **dentro de un componente** (p. ej. `frontend/`), pídele al usuario `/add-dir` de la raíz antes de seguir (no lo hagas tú).
 Resume en pocas líneas qué entendiste (qué cambia, pantallas y roles afectados), escribe el plan en el archivo y **espera el visto bueno del usuario** antes de tocar código. Pregunta solo lo que cambia el resultado.
 Si el contexto de inicio trae **errores conocidos** del proyecto, tenlos presentes en el plan.
@@ -46,29 +47,38 @@ Tú diriges: planificas, delegas, integras y verificas. **No editas código** (l
 - **Errores conocidos:** si un hook trae `↳ error conocido [firma]… Se resolvió así: …`, aplica esa solución primero. Si dice `↳ se repite [firma]` y lo resuelves, anota cómo: `<errores> resolver --firma <firma> --solucion "<qué hiciste, en una línea>"`. Para buscar uno: `<errores> listar`.
 
 ## 2. Verificar
-Corre lint, tipos y pruebas de cada repo tocado (los comandos están en `repos[]` de la configuración) **en paralelo** (en un solo mensaje, o en una sola línea con `&`). Todo en verde antes de seguir. El hook `Stop` no repite lo que ya pasó con el mismo código (caché), así que no hace falta correrlo dos veces "por si acaso".
+Corre lint, tipos y pruebas **relacionadas** de cada repo tocado (los comandos están en `repos[]` de la configuración) **en paralelo** (en un solo mensaje, o en una sola línea con `&`). Todo en verde antes de seguir. El hook `Stop` no repite lo que ya pasó con el mismo código (caché) y corre la **suite completa en segundo plano** (`repos[].suite`): no la corras tú. Comandos que pueden no terminar (servidores, modo watch, suites completas) llevan `timeout` o van en segundo plano: la barrera rechaza los que no y te dice cómo correrlos.
 
-## 3. Revisión técnica (solo los revisores que aplican, en paralelo)
-1. `<ciclo> revisores` responde qué revisores lanzar y por qué (`lanzar`, `motivos`, `omitir`): `docs` siempre; `ui` y `permisos` si hay pantallas, interfaz, rutas o accesos; `coherencia` si cambió código en 2 repos o un contrato. Con `ciclo.revisores: "todos"` van siempre los 4.
-2. Lanza en un solo mensaje los de `lanzar`. A cada uno dale **solo**: qué se pidió (una línea), los repos tocados, la rama, contra qué rama comparar, su presupuesto de pasos y sus lecciones (`<constructos> playbook --constructo <revisor>`, si tiene). **No** le pases tu razonamiento ni tus conclusiones.
-- Si alguno devuelve `aprobado: false`, corrige los hallazgos altos y medios, vuelve al paso 2 y relanza solo los que reprobaron. Máximo 2 vueltas; si sigue reprobando, informa al usuario.
+## 3. Revisión técnica y panel de personas, en el mismo turno
+Con el diff verificado, lanza **en el mismo turno** los revisores que aplican y el panel de personas: corren **a la vez**, sobre **una única app levantada** antes de lanzar.
 
-## 4. Panel de personas (aprueba si el promedio supera `panel.umbral`)
-1. **App corriendo con el código nuevo** (`app.levantar` de la configuración). Si depende de algo que solo el usuario puede abrir (Docker Desktop, una VPN…), pídeselo; no lo arranques tú.
-2. Usuarios de prueba: `<panel> usuarios`. Si el proyecto tiene un rol sin persona: `<panel> crear --rol <ROL>` y otra vez `<panel> usuarios`.
-3. Personas: `<panel> elegir --rutas <rutas afectadas>` (de `panel.min` a `panel.max`, una por rol que puede modificar lo cambiado).
-4. **Ventana en vivo** (Windows, si `panel.ventana` es `"windows"`): `<panel> en-vivo --ronda <scratchpad>/panel-<versión>-r<n> --personas <ids> --titulo "Panel de personas · v<versión> · ronda <n>" --cambio "<qué cambió, en lenguaje de usuario>"`.
-   Luego lanza en un solo mensaje un agente `persona-evaluadora` por persona, con: su `id`, el comando `<panel>` con ruta absoluta, la carpeta `--ronda`, qué cambió **en lenguaje de usuario**, las rutas, los pasos a intentar, una carpeta de salida en el scratchpad y su presupuesto de pasos.
-   **Antes de anunciar un arreglo en «qué cambió», compruébalo en la pantalla real** (`<panel> navegar`): si lo prometido no aparece, la persona baja la nota con razón.
-5. Guarda el resultado en `<panel.evaluaciones>/v<versión>-<tema>.json`:
+**Preparar (antes de lanzar nada):**
+1. Revisores: `<ciclo> revisores` responde cuáles lanzar y por qué (`lanzar`, `motivos`, `omitir`): `docs` siempre; `ui` y `permisos` si hay pantallas, interfaz, rutas o accesos; `coherencia` si cambió código en 2 repos o un contrato. Con `ciclo.revisores: "todos"` van siempre los 4.
+2. Si el cambio toca pantallas: **app corriendo con el código nuevo**, una sola vez (`app.levantar`, en segundo plano). Si depende de algo que solo el usuario puede abrir (Docker Desktop, una VPN…), pídeselo; no lo arranques tú. Comprueba que responde: `<panel> app`.
+   - **Fusible:** si `<panel> app` falla, revisa la causa una vez y vuelve a probar. Al **segundo fallo** la capa queda fundida (`<panel> app` sale con 3): **no reintentes más** en este ciclo, lanza solo a los revisores y el panel queda **pendiente** (ni aprobado ni reprobado): díselo al usuario al cerrar y que él decida. Lo mismo con Chromium o el login (`panel.mjs` los registra solo). `<fusible> estado` muestra cómo está cada capa.
+3. Personas: `<panel> usuarios` (si el proyecto tiene un rol sin persona: `<panel> crear --rol <ROL>` y otra vez `<panel> usuarios`) y `<panel> elegir --rutas <rutas afectadas>` (de `panel.min` a `panel.max`, una por rol que puede modificar lo cambiado).
+4. **Ventana en vivo** (Windows, si `panel.ventana` es `"windows"`): `<panel> en-vivo --ronda <scratchpad>/panel-<versión>-r<n> --personas <ids> --titulo "Panel de personas · v<versión> · ronda <n>" --cambio "<qué cambió, en lenguaje de usuario>"`. **Antes de anunciar un arreglo en «qué cambió», compruébalo en la pantalla real** (`<panel> navegar`): si lo prometido no aparece, la persona baja la nota con razón.
+
+**Lanzar, en UN SOLO mensaje:** los revisores de `lanzar` y un agente `persona-evaluadora` por persona.
+- A cada revisor: **solo** qué se pidió (una línea), los repos tocados, la rama, contra qué rama comparar, su presupuesto de pasos y de tiempo, y sus lecciones (`<constructos> playbook --constructo <revisor>`, si tiene). **No** le pases tu razonamiento ni tus conclusiones.
+- A cada persona: su `id`, el comando `<panel>` con ruta absoluta, la carpeta `--ronda`, qué cambió **en lenguaje de usuario**, las rutas, los pasos a intentar, una carpeta de salida en el scratchpad y su presupuesto de pasos y de tiempo. Cada una corre con su usuario y su propio navegador (no comparten sesión), a la vez que las demás.
+
+**Juntar los resultados:**
+1. Revisores: si alguno devuelve `aprobado: false` con un hallazgo **alto**, el panel termina su ronda, pero **esa ronda no puede aprobar el cambio**: anótalo en el JSON del panel (`"revisores": "reprobados"`; si todos aprobaron, `"revisores": "aprobados"`). Corrige los hallazgos altos y medios, vuelve al paso 2 y relanza solo los revisores que reprobaron (máximo 2 vueltas; si sigue reprobando, informa al usuario) y una ronda nueva del panel.
+2. Panel: guarda el resultado en `<panel.evaluaciones>/v<versión>-<tema>.json`:
    ```json
-   { "version": "1.4.0", "cambio": "…", "rutas": ["…"], "ronda": 1, "evaluaciones": [ <las respuestas> ] }
+   { "version": "1.4.0", "cambio": "…", "rutas": ["…"], "ronda": 1, "revisores": "aprobados", "evaluaciones": [ <las respuestas> ] }
    ```
-   y ejecuta `<panel> calificar --resultado <ese json>`. Después **cierra la ronda en la ventana**: `<panel> cerrar --ronda <carpeta> --resultado <ese json>` (muestra notas y veredicto y se cierra sola). Hazlo también si no aprobó. Si lo olvidas, `calificar` la cierra con las notas. No la cierres antes de tener todas las evaluaciones: las personas corren en segundo plano y siguen probando aunque tu turno termine.
-6. **Si no aprobó**: corrige con los hallazgos y sugerencias, vuelve al paso 2 y, si la app no recarga sola, levántala de nuevo. En la ronda siguiente (`ronda` + 1; conserva las anteriores en `"historial"`) **vuelve a evaluar solo a las personas con nota ≤ `panel.umbral`** y a las que usan una ruta que tocaste al corregir; las demás conservan su evaluación anterior (cópiala al JSON de la ronda nueva con `"reutilizada": true`). Máximo `panel.maxRondas`; si no llega, informa al usuario con los hallazgos y pregunta si autoriza otra ronda.
-7. **Si aprobó**: el cambio cuenta como realizado. El hook de Stop no deja terminar un cambio de pantallas sin una evaluación aprobada de la versión actual.
+   y ejecuta `<panel> calificar --resultado <ese json>` (con `"revisores": "reprobados"` la ronda no aprueba aunque el promedio alcance; con la app o Chromium fundidos y notas faltantes, queda `pendiente`). Después **cierra la ronda en la ventana**: `<panel> cerrar --ronda <carpeta> --resultado <ese json>` (muestra notas y veredicto y se cierra sola). Hazlo también si no aprobó. Si lo olvidas, `calificar` la cierra con las notas. No la cierres antes de tener todas las evaluaciones: las personas corren en segundo plano y siguen probando aunque tu turno termine.
+3. **Si el panel no aprobó**: corrige con los hallazgos y sugerencias, vuelve al paso 2 y, si la app no recarga sola, levántala de nuevo. En la ronda siguiente (`ronda` + 1; conserva las anteriores en `"historial"`) **vuelve a evaluar solo a las personas con nota ≤ `panel.umbral`** y a las que usan una ruta que tocaste al corregir; las demás conservan su evaluación anterior (cópiala al JSON de la ronda nueva con `"reutilizada": true`). Máximo `panel.maxRondas`; si no llega, informa al usuario con los hallazgos y pregunta si autoriza otra ronda.
+4. **Si aprobó** (y los revisores también): el cambio cuenta como realizado. El hook de Stop no deja terminar un cambio de pantallas sin una evaluación aprobada de la versión actual, salvo que el panel haya quedado pendiente por el fusible (entonces lo informa y decide el usuario).
+
+## 4. Subagentes lentos o trabados
+Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, personas 7 min, implementadores 15 min). Al 80 % recibe un aviso; al 100 % la barrera le rechaza toda herramienta y solo puede entregar su respuesta. Si el mapa (o `.neurodanza/agentes/`) muestra a uno **sin latido** (`ciclo.latidoSeg` sin dar un paso), decide: espera si su último paso es un comando largo con timeout, o relánzalo con una tarea más chica.
 
 ## 5. Cerrar
+- **Suite completa:** `<fondo> esperar` debe salir con 0 (la suite completa pasó para el cambio actual). Si sale con 1, corrige; si sale con 2 (sigue corriendo o es de otro cambio), espera o díselo al usuario. Los `Stop` intermedios no bloquean por esto; el cierre sí.
+- **Fusible:** si alguna capa quedó fundida (`<fusible> estado`), el informe dice «no se pudo verificar: <capa> (motivo)» y el panel queda pendiente: pregúntale al usuario cómo sigue.
 - **Reflexión (constructos).** Escribe `<scratchpad>/reflexion.json` con lo que encontraron los jueces en este ciclo y regístralo con `<constructos> reflexion --archivo <ese json>`:
   ```json
   { "ciclo": "<tema>-v<versión>", "version": "<versión>",

@@ -5,12 +5,13 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Pieza | Archivo | Qué es |
 |---|---|---|
 | Configuración | `lib/config.mjs` | Carga `neurodanza.config.json`, aplica valores por defecto y valida. |
-| Hooks | `hooks/hooks.json` | Registra los errores conocidos (`SessionStart`), las barreras (`PreToolUse`), el lint al editar (`PostToolUse`) y la definición de terminado (`Stop`). |
+| Hooks | `hooks/hooks.json` | Registra los errores conocidos y la autoconfiguración (`SessionStart`), las barreras y el tiempo por subagente (`PreToolUse`), el lint al editar (`PostToolUse`), la definición de terminado (`Stop`), el fin de cada subagente (`SubagentStop`) y el cierre de la ronda del panel (`SessionEnd`). |
 | Barreras | `hooks/guardrails.mjs` | Decide si una herramienta se permite. |
 | Retroalimentación | `hooks/feedback.mjs` | Errores conocidos al iniciar, lint al editar y revisión completa al terminar (en paralelo y con caché). |
 | Errores conocidos | `lib/errores.mjs` | Catálogo del proyecto: firma, contador y solución de cada problema que marcan los hooks. |
 | Director | `lib/director.mjs` y `agents/implementador.md` | Modo director: worktrees por tarea, contratos e integración del diff. |
 | Constructos | `lib/constructos.mjs` | Lecciones por agente: reflexión al cerrar, a prueba, aprobadas solo si mejoran. |
+| Velocidad | `lib/procesos.mjs`, `lib/firma.mjs`, `lib/fondo.mjs`, `lib/agentes.mjs`, `lib/fusible.mjs` | Comandos con tope que matan su árbol, firma del cambio, suite completa en segundo plano, tiempo y latido por subagente, fusible por capa externa. Ver [15-velocidad.md](15-velocidad.md). |
 | Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
 | Agentes | `agents/*.md` | 4 revisores y la `persona-evaluadora`. |
@@ -34,22 +35,24 @@ flowchart TD
     G -- permitido --> H["Herramienta se ejecuta"]
     H --> L{"Lint al editar<br/>PostToolUse"}
     L -- error --> C
-    L -- ok --> D[2. Verificar: lint, tipos y pruebas]
-    D --> R["3. Revisores que aplican, en paralelo<br/>coherencia · permisos · ui · docs"]
-    R -- "aprobado: false (máx. 2 vueltas)" --> C
-    R -- todos aprueban --> P0["4. Panel de personas<br/>app corriendo · usuarios · elegir 3 a 5"]
-    P0 --> V{"panel.ventana"}
-    V -- "windows (y Windows)" --> VW["en-vivo: ventana con avatares<br/>las personas usan decir / oir"]
-    V -- "ninguna o macOS/Linux" --> VC[Solo chat]
-    VW --> N["persona-evaluadora × N<br/>navegar con Playwright y calificar 1 a 10"]
-    VC --> N
-    N --> S["calificar: promedio > umbral"]
-    S --> X["cerrar: la ventana muestra notas y se cierra"]
-    X -- no aprobó y quedan rondas --> C
-    X -- no aprobó y no quedan rondas --> U[Informar al usuario<br/>y pedir permiso para otra ronda]
-    X -- aprobó --> Z{"Stop: definición de terminado<br/>lint · tipos · pruebas · versión · bitácora<br/>migraciones · panel aprobado · guías · evals"}
+    L -- ok --> D["2. Verificar: lint, tipos y pruebas relacionadas<br/>(la suite completa corre en el fondo)"]
+    D --> AP{"App levantada una vez<br/>panel.mjs app"}
+    AP -- "2 fallos: capa fundida" --> PP["Panel PENDIENTE<br/>decide el usuario"]
+    AP -- responde --> T3["3. Mismo turno, en paralelo"]
+    PP --> T3
+    T3 --> R["Revisores que aplican<br/>coherencia · permisos · ui · docs"]
+    T3 --> N["persona-evaluadora × N, a la vez<br/>cada una con su usuario y su navegador<br/>ventana Role Agents (Windows)"]
+    R --> J{"Juntar"}
+    N --> J
+    J -- "revisor reprobó (alto):<br/>la ronda no aprueba" --> C
+    J -- "panel ≤ umbral (quedan rondas)" --> C
+    J -- "no quedan rondas" --> U[Informar al usuario<br/>y pedir permiso para otra ronda]
+    J -- "todo aprobado o panel pendiente" --> Z{"Stop: definición de terminado<br/>lint · tipos · pruebas (con tope) · fallas del fondo<br/>versión · bitácora · migraciones · panel · guías · evals"}
     Z -- falta algo --> C
-    Z -- todo bien --> F["5. Cerrar: bitácora, PR si se pidió, informe"]
+    Z -- todo bien --> FE["fondo.mjs esperar:<br/>suite completa ok para este cambio"]
+    FE --> F["5. Cerrar: bitácora, reflexión, PR si se pidió, informe"]
+    K2["Corte por tiempo y latido<br/>.neurodanza/agentes/"] -.vigila.-> R
+    K2 -.vigila.-> N
     M["neurodanza-mapa<br/>fase · subagentes · presupuesto"] -.observa.-> C
     M -.observa.-> R
     M -.observa.-> N

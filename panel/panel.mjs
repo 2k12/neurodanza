@@ -24,7 +24,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
-import { falla as fallaFusible, fundida, textoCapa } from "../lib/fusible.mjs";
+import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -92,6 +92,19 @@ export function estadoFinal(nota) {
   const n = Number(nota);
   if (!Number.isFinite(n)) return "";
   return ESTADOS_FINALES.find(([min]) => n >= min)[1];
+}
+
+/**
+ * Veredicto de una ronda (puro). Además del promedio: si un revisor reprobó con hallazgo alto mientras el
+ * panel corría (`data.revisores === "reprobados"`), la ronda no puede aprobar (se repite tras corregir); y
+ * si faltan notas porque la app o el navegador están fundidos, la ronda queda PENDIENTE.
+ */
+export function veredictoRonda(data, umbral, capasFundidas = []) {
+  const s = score(data.evaluaciones ?? [], umbral);
+  const sinPanel = capasFundidas.filter((f) => f.capa === "app" || f.capa === "chromium");
+  if (sinPanel.length && s.motivo === "faltan notas") return { ...s, aprobado: false, pendiente: true, motivo: `pendiente: no se pudo verificar ${sinPanel.map((f) => `${f.capa} (${f.motivo})`).join(", ")}` };
+  if (data.revisores === "reprobados") return { ...s, aprobado: false, motivo: "un revisor reprobó con hallazgo alto durante la ronda: la ronda se repite tras la corrección" };
+  return s;
 }
 
 export function score(evaluaciones, umbral) {
@@ -373,7 +386,7 @@ function calificar(ctx, a) {
   const file = resolve(a.resultado);
   const data = JSON.parse(readFileSync(file, "utf8"));
   const umbral = ctx.cfg.panel.umbral;
-  const s = score(data.evaluaciones ?? [], umbral);
+  const s = veredictoRonda(data, umbral, fundidas(ctx.cfg));
   Object.assign(data, s, { umbral, fecha: new Date().toISOString() });
   writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
   console.log(JSON.stringify(s));
