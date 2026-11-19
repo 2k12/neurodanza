@@ -2,15 +2,16 @@
 // neurodanza · ciclo de retroalimentación.
 //   node feedback.mjs post  → PostToolUse: lint del archivo recién editado (error = se lo muestra al agente)
 //   node feedback.mjs stop  → Stop: no deja terminar si lo cambiado no pasa lint, tipos, pruebas
-//                             relacionadas o la definición de terminado del proyecto. Corre las
-//                             comprobaciones en paralelo y no repite las de un repo que no cambió
-//                             desde la última vez (caché por firma del cambio).
+//                             relacionadas o la definición de terminado del proyecto. La parte que
+//                             bloquea corre en paralelo, con caché y con tope (retroalimentacion.topeStopSeg):
+//                             lo que no alcanza se corta y pasa al fondo, junto con la suite completa
+//                             (lib/fondo.mjs). Las fallas del fondo bloquean el Stop siguiente.
 //   node feedback.mjs inicio → SessionStart: autoconfiguración y errores conocidos del proyecto como contexto.
 //   node feedback.mjs fin    → SessionEnd: cierra la ronda del panel que haya quedado abierta.
 // Todo sale de `neurodanza.config.json`; sin ese archivo no hace nada. Ver docs/05-retroalimentacion.md.
-import { exec, execSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +20,15 @@ import { autoconfigurar } from "../lib/autoconfig.mjs";
 import { enWorktree, leerTareas } from "../lib/director.mjs";
 import { cerrarRondaActiva } from "../panel/panel.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
+import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
+import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
+import { correr } from "../lib/procesos.mjs";
+
+export { fingerprint, firmaActual, parseStatus };
+
+/** Margen que el hook Stop se guarda para decidir y responder antes de su tope. */
+const MARGEN_STOP_MS = 5000;
+const nombrePaso = (p) => (p === "pruebas" ? "pruebas relacionadas" : p === "suite" ? "suite completa" : p);
 
 const norm = (p) => String(p ?? "").replace(/\\/g, "/");
 const tail = (s, n = 25) => String(s).split(/\r?\n/).filter((l) => l.trim()).slice(-n).join("\n");
@@ -29,27 +39,6 @@ function sh(cmd, cwd, timeout = 240_000) {
   } catch (e) {
     return { ok: false, out: `${e.stdout ?? ""}${e.stderr ?? ""}`.trim() || String(e.message) };
   }
-}
-
-/** Igual que `sh`, pero sin bloquear: permite correr lint, tipos y pruebas a la vez. */
-function shAsync(cmd, cwd, timeout = 240_000) {
-  const t0 = Date.now();
-  return new Promise((res) => {
-    exec(cmd, { cwd, encoding: "utf8", timeout, maxBuffer: 32 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
-      const ms = Date.now() - t0;
-      if (!err) return res({ ok: true, out: stdout, ms });
-      res({ ok: false, out: `${stdout ?? ""}${stderr ?? ""}`.trim() || String(err.message), ms });
-    });
-  });
-}
-
-/** Archivos con cambios sin commit (incluye nuevos; excluye borrados). */
-export function parseStatus(porcelain) {
-  return porcelain
-    .split(/\r?\n/)
-    .filter((l) => l.length > 3 && !/^( D|D )/.test(l))
-    .map((l) => l.slice(3).split(" -> ").pop().replace(/^"|"$/g, ""))
-    .filter((f) => !f.endsWith("/"));
 }
 
 /** ¿Algún archivo cambiado coincide con `repo:glob` (o `glob` = cualquier repo)? */
@@ -147,57 +136,46 @@ function docsCommittedInBranch(cfg) {
   return false;
 }
 
-function changesOf(cfg) {
-  const out = {};
-  for (const r of cfg.repos) {
-    const dir = cfg.abs(r.ruta);
-    if (!existsSync(join(dir, ".git"))) continue;
-    const s = sh("git status --porcelain --untracked-files=all", dir, 20_000);
-    out[r.nombre] = s.ok ? parseStatus(s.out) : [];
-  }
-  return out;
-}
-
-/** Lint, tipos y pruebas relacionadas de un repo, a la vez. Devuelve problemas y tiempos. */
-async function codeChecks(cfg, repo, files) {
+/**
+ * Lint, tipos y pruebas relacionadas de un repo, a la vez y con hora límite (`hasta`). Lo que no termina a
+ * tiempo se corta (se mata su árbol) y vuelve en `cortadas`: nunca cuenta como bien. `hecho(paso)` = ya
+ * pasó en segundo plano para esta misma firma, así que no se repite.
+ */
+async function codeChecks(cfg, repo, files, { hasta = Infinity, hecho = () => false } = {}) {
   const dir = cfg.abs(repo.ruta);
   const code = files.filter((f) => matchesAny(f, repo.codigo ?? []) && !matchesAny(f, repo.ignorar ?? []));
-  if (code.length === 0) return { problems: [], pasos: [] };
+  const problems = [];
+  const pasos = [];
+  const cortadas = [];
+  if (code.length === 0) return { problems, pasos, cortadas };
   const lintable = repo.lintGlobs ? code.filter((f) => matchesAny(f, repo.lintGlobs)) : code;
   const none = new RegExp(repo.sinPruebas ?? "No tests found|No test files found", "i");
   const jobs = [];
-  if (repo.lint && lintable.length > 0) jobs.push({ paso: "lint", run: shAsync(repo.lint.replace("{archivos}", quote(lintable)), dir), n: 25 });
-  if (repo.tipos) jobs.push({ paso: "tipos", run: shAsync(repo.tipos, dir), n: 25 });
-  if (repo.relacionadas) jobs.push({ paso: "pruebas", run: shAsync(repo.relacionadas.replace("{archivos}", quote(code)), dir, 300_000), n: 30, none });
-  const problems = [];
-  const pasos = [];
-  for (const j of jobs) {
-    const r = await j.run;
-    const ok = r.ok || Boolean(j.none?.test(r.out));
-    pasos.push({ repo: repo.nombre, paso: j.paso, ok, ms: r.ms });
-    if (!ok) problems.push(`${repo.nombre} · ${j.paso === "pruebas" ? "pruebas relacionadas" : j.paso}:\n${tail(r.out, j.n)}`);
-  }
-  return { problems, pasos };
-}
-
-/** Firma de un conjunto de partes (misma firma = mismo resultado de lint, tipos y pruebas). */
-export const fingerprint = (parts) => createHash("sha1").update(parts.join("\u0000")).digest("hex");
-
-/** Estado de un repo: commit, diff contra HEAD y tamaño y fecha de cada archivo cambiado o nuevo. */
-function repoFingerprint(cfg, repo, files) {
-  const dir = cfg.abs(repo.ruta);
-  const diff = sh("git diff HEAD --no-ext-diff --no-color", dir, 20_000);
-  const head = sh("git rev-parse HEAD", dir, 10_000);
-  const stats = files.map((f) => {
-    try {
-      const st = statSync(join(dir, f));
-      return `${f}:${st.size}:${st.mtimeMs}`;
-    } catch {
-      return `${f}:-`;
+  const agregar = (paso, comando, n, sinPruebas) => {
+    if (hecho(paso)) pasos.push({ repo: repo.nombre, paso, ok: true, ms: 0, fondo: true });
+    else jobs.push({ paso, comando, n, sinPruebas });
+  };
+  if (repo.lint && lintable.length > 0) agregar("lint", repo.lint.replace("{archivos}", quote(lintable)), 25);
+  if (repo.tipos) agregar("tipos", repo.tipos, 25);
+  if (repo.relacionadas) agregar("pruebas", repo.relacionadas.replace("{archivos}", quote(code)), 30, none);
+  const resultados = await Promise.all(
+    jobs.map(async (j) => {
+      const resta = hasta - Date.now();
+      if (resta < 500) return { j, r: { ok: false, cortado: true, ms: 0, out: "" } };
+      return { j, r: await correr(j.comando, { cwd: dir, timeoutMs: Math.min(300_000, resta) }) };
+    }),
+  );
+  for (const { j, r } of resultados) {
+    if (r.cortado) {
+      cortadas.push({ repo: repo.nombre, paso: j.paso, comando: j.comando, cwd: dir });
+      pasos.push({ repo: repo.nombre, paso: j.paso, ok: false, cortado: true, ms: r.ms });
+      continue;
     }
-  });
-  const cmds = JSON.stringify([repo.lint, repo.tipos, repo.relacionadas]);
-  return fingerprint([repo.nombre, head.out ?? "", diff.ok ? diff.out : String(Date.now()), ...stats, cmds]);
+    const ok = r.ok || Boolean(j.sinPruebas?.test(r.out));
+    pasos.push({ repo: repo.nombre, paso: j.paso, ok, ms: r.ms });
+    if (!ok) problems.push(`${repo.nombre} · ${nombrePaso(j.paso)}:\n${tail(r.out, j.n)}`);
+  }
+  return { problems, pasos, cortadas };
 }
 
 const cacheFile = (cfg) => join(tmpdir(), `neurodanza-cache-${createHash("sha1").update(cfg.root).digest("hex").slice(0, 12)}.json`);
@@ -221,16 +199,24 @@ function writeEstado(cfg, estado) {
   }
 }
 
-/** Corre los generadores cuyas condiciones se cumplen; los marcados `error` bloquean si fallan. */
-function regenerate(cfg, changes) {
-  const out = [];
+/**
+ * Corre los generadores cuyas condiciones se cumplen, en orden y dentro de la hora límite. Los marcados
+ * `error` bloquean si fallan; los que no alcanzan se cortan y pasan al fondo.
+ */
+async function regenerate(cfg, changes, hasta = Infinity) {
+  const problems = [];
+  const cortadas = [];
   for (const g of cfg.retroalimentacion.regenerar) {
     if (changedMatching(changes, g.cuando ?? []).length === 0) continue;
     const repo = cfg.repos.find((r) => r.nombre === g.en);
-    const r = sh(g.comando, repo ? cfg.abs(repo.ruta) : cfg.root);
-    if (!r.ok && g.error) out.push(`${g.nombre ?? g.comando}:\n${tail(r.out)}`);
+    const cwd = repo ? cfg.abs(repo.ruta) : cfg.root;
+    const paso = `generador ${g.nombre ?? g.comando}`;
+    const resta = hasta - Date.now();
+    const r = resta < 500 ? { cortado: true } : await correr(g.comando, { cwd, timeoutMs: Math.min(240_000, resta) });
+    if (r.cortado) cortadas.push({ repo: g.en ?? "raíz", paso, comando: g.comando, cwd });
+    else if (!r.ok && g.error) problems.push(`${g.nombre ?? g.comando}:\n${tail(r.out)}`);
   }
-  return out;
+  return { problems, cortadas };
 }
 
 function counter(session) {
@@ -258,6 +244,9 @@ function versionContext(cfg) {
 
 async function stop(cfg, event) {
   const t0 = Date.now();
+  // Hora límite de la parte que bloquea: lo que no termine antes se corta y pasa al fondo.
+  const tope = (cfg.retroalimentacion.topeStopSeg ?? 90) * 1000;
+  const hasta = t0 + tope - MARGEN_STOP_MS;
   // La ronda en vivo NO se cierra aquí: las personas corren en segundo plano y siguen probando
   // después de que termina el turno principal. Se cierra con `calificar`, con otra ronda, al terminar
   // la sesión (`fin`) o tras 20 minutos sin mensajes.
@@ -268,18 +257,32 @@ async function stop(cfg, event) {
     return c.set(0);
   }
 
-  const hard = [...regenerate(cfg, changes)];
-  // Repos en paralelo; uno cuyo cambio es idéntico al de la última vez reutiliza su resultado.
+  const touched = cfg.repos.filter((r) => (changes[r.nombre] ?? []).length > 0);
+  // Firmas de todos los repos a la vez (git en paralelo): misma firma = mismo resultado.
+  const firmas = Object.fromEntries(await Promise.all(touched.map(async (r) => [r.nombre, await repoFingerprintAsync(cfg, r, changes[r.nombre])])));
+  const firma = firmaCambio(firmas);
+  const hard = [];
+  const notas = [];
+
+  // 1. Lo que verificó el fondo para ESTE cambio: sus fallas bloquean; lo que ya pasó no se repite.
+  const previo = leerFondo(cfg);
+  const antes = resumenFondo(previo, firma, vivo(previo?.pid));
+  for (const t of antes.fallas) hard.push(`${t.repo} · ${nombrePaso(t.paso)} (en segundo plano)${t.estado === "cortada" ? ": se acabó el tiempo del fondo" : ""}:\n${t.salida ?? ""}`);
+  const okFondo = new Set(antes.ok.map((t) => idTarea(t.repo, t.paso)));
+
+  // 2. Parte bloqueante: generadores, y lint, tipos y pruebas relacionadas en paralelo por repo, con caché.
+  const gen = await regenerate(cfg, changes, hasta);
+  hard.push(...gen.problems);
   const useCache = cfg.retroalimentacion.cache !== false;
   const cache = useCache ? readJson(cacheFile(cfg), {}) : {};
-  const touched = cfg.repos.filter((r) => (changes[r.nombre] ?? []).length > 0);
   const results = await Promise.all(
     touched.map(async (repo) => {
-      const sig = useCache ? repoFingerprint(cfg, repo, changes[repo.nombre]) : "";
+      const sig = firmas[repo.nombre];
       const prev = cache[repo.nombre];
-      if (useCache && prev?.sig === sig) return { problems: prev.problems, pasos: prev.pasos.map((p) => ({ ...p, cache: true })) };
-      const r = await codeChecks(cfg, repo, changes[repo.nombre]);
-      if (useCache) cache[repo.nombre] = { sig, ...r };
+      if (useCache && prev?.sig === sig) return { problems: prev.problems, pasos: prev.pasos.map((p) => ({ ...p, cache: true })), cortadas: [] };
+      const r = await codeChecks(cfg, repo, changes[repo.nombre], { hasta, hecho: (paso) => okFondo.has(idTarea(repo.nombre, paso)) });
+      // Solo se guarda un resultado completo: lo cortado no se sabe si pasa.
+      if (useCache && r.cortadas.length === 0) cache[repo.nombre] = { sig, problems: r.problems, pasos: r.pasos };
       return r;
     }),
   );
@@ -293,6 +296,23 @@ async function stop(cfg, event) {
     }
   }
 
+  // 3. Fondo: la suite completa de cada repo tocado y lo que no alcanzó a correr.
+  const cortadas = [...gen.cortadas, ...results.flatMap((r) => r.cortadas)];
+  const suites = touched
+    .filter((r) => r.suite && (changes[r.nombre] ?? []).some((f) => matchesAny(f, r.codigo ?? []) && !matchesAny(f, r.ignorar ?? [])))
+    .map((r) => ({ repo: r.nombre, paso: "suite", comando: r.suite, cwd: cfg.abs(r.ruta) }));
+  let fondo = previo;
+  if (suites.length || cortadas.length) {
+    try {
+      fondo = asegurarFondo(cfg, firma, [...suites, ...cortadas]);
+    } catch (e) {
+      notas.push(`no pude lanzar el segundo plano: ${e.message}`);
+    }
+  }
+  const ahora = resumenFondo(fondo, firma, vivo(fondo?.pid));
+  if (cortadas.length) notas.push(`no alcanzó a correr dentro del tope de ${Math.round(tope / 1000)} s: ${cortadas.map((t) => `${t.repo} · ${nombrePaso(t.paso)}`).join(", ")}. Sigue en segundo plano; si falla, bloquea el próximo Stop.`);
+  if (!antes.fallas.length && ahora.pendientes.length) notas.push(`en segundo plano (no bloquea): ${ahora.pendientes.map((t) => `${t.repo} · ${nombrePaso(t.paso)}`).join(", ")}. Antes de cerrar el ciclo: \`node <plugin>/lib/fondo.mjs esperar\`.`);
+
   const { version, baseVersion } = versionContext(cfg);
   const umbral = cfg.panel.umbral;
   const done = doneProblems(cfg, changes, {
@@ -304,11 +324,15 @@ async function stop(cfg, event) {
     docsInBranch: docsCommittedInBranch(cfg),
   });
   hard.push(...done.hard);
-  writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, ms: Date.now() - t0 });
+  writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, cortadas: cortadas.length, fondo: { firma, estado: ahora.estado, pendientes: ahora.pendientes.length }, ms: Date.now() - t0 });
 
   const max = cfg.retroalimentacion.maxBloqueos;
   const soft = event.stop_hook_active ? [] : done.soft;
-  if (hard.length === 0 && soft.length === 0) return c.set(0);
+  const info = notas.length ? `neurodanza: ${notas.join(" · ")}` : "";
+  if (hard.length === 0 && soft.length === 0) {
+    if (info) process.stdout.write(JSON.stringify({ systemMessage: info }));
+    return c.set(0);
+  }
   // Los mismos problemas seguidos suman intentos; si cambian, se empieza de nuevo.
   const sig = hard.join("\n");
   const n = sig === c.sig ? c.n : 0;
@@ -320,11 +344,11 @@ async function stop(cfg, event) {
     return;
   }
   c.set(hard.length > 0 ? n + 1 : n, sig);
-  const reason = ["Antes de terminar, corrige esto (neurodanza):", ...registrarEnProyecto(cfg, hard, event.session_id).map((h) => `✖ ${h}`), ...soft.map((s) => `• ${s}`)].join("\n\n");
+  const reason = ["Antes de terminar, corrige esto (neurodanza):", ...registrarEnProyecto(cfg, hard, event.session_id).map((h) => `✖ ${h}`), ...soft.map((x) => `• ${x}`), ...notas.map((x) => `ℹ ${x}`)].join("\n\n");
   process.stdout.write(JSON.stringify({ decision: "block", reason }));
 }
 
-function post(cfg, event) {
+async function post(cfg, event) {
   if (!cfg.retroalimentacion.lintAlEditar) return;
   const file = norm(event?.tool_input?.file_path ?? event?.tool_input?.notebook_path ?? "");
   let at = file ? repoOf(cfg, file) : null;
@@ -338,7 +362,8 @@ function post(cfg, event) {
   const { repo, rel } = at;
   if (!matchesAny(rel, repo.codigo ?? []) || matchesAny(rel, repo.ignorar ?? [])) return;
   if (repo.lintGlobs && !matchesAny(rel, repo.lintGlobs)) return;
-  const r = sh(repo.lint.replace("{archivos}", `"${rel}"`), at.dir, 90_000);
+  const r = await correr(repo.lint.replace("{archivos}", `"${rel}"`), { cwd: at.dir, timeoutMs: 50_000 });
+  if (r.cortado) return; // el lint de un archivo no debería tardar tanto: el Stop lo vuelve a correr
   if (!r.ok) {
     const [msg] = registrarEnProyecto(cfg, [`${repo.nombre} · lint:\n${tail(r.out)}`], event.session_id);
     process.stderr.write(`Lint de ${repo.nombre}/${rel}:\n${msg.split("\n").slice(1).join("\n")}\n`);
@@ -362,11 +387,25 @@ function fin(cfg) {
   }
 }
 
+/** Resultado del fondo para el cambio actual, al iniciar la sesión (vacío si no hay nada que decir). */
+function informeFondoInicio(cfg) {
+  try {
+    const e = leerFondo(cfg);
+    if (!e) return "";
+    const r = resumenFondo(e, firmaActual(cfg), vivo(e.pid));
+    if (r.estado === "falla") return `neurodanza · en segundo plano falló para el cambio actual (el próximo Stop lo bloquea):\n${r.fallas.map((t) => `✖ ${t.repo} · ${nombrePaso(t.paso)}:\n${t.salida ?? ""}`).join("\n")}`;
+    if (r.estado === "corriendo") return `neurodanza · sigue en segundo plano: ${r.pendientes.map((t) => `${t.repo} · ${nombrePaso(t.paso)}`).join(", ")} (no bloquea).`;
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 function inicio(cfg, event) {
   // Deja el proyecto listo (.gitignore, aviso de permisos) y carga los errores conocidos.
   const auto = autoconfigurar(cfg, event?.cwd ?? process.cwd());
   const errores = cfg.errores?.activo === false ? "" : contextoErrores(top(loadErrores(archivoDe(cfg)), cfg.errores?.alIniciar ?? 5));
-  const contexto = [auto.contexto, errores].filter(Boolean).join("\n\n");
+  const contexto = [auto.contexto, informeFondoInicio(cfg), errores].filter(Boolean).join("\n\n");
   const out = {};
   if (auto.mensaje) out.systemMessage = auto.mensaje;
   if (contexto) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: contexto };
@@ -388,7 +427,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(0);
   }
   if (!cfg) process.exit(0);
-  if (process.argv[2] === "post") post(cfg, event);
+  if (process.argv[2] === "post") await post(cfg, event);
   else if (process.argv[2] === "stop") await stop(cfg, event);
   else if (process.argv[2] === "inicio") inicio(cfg, event);
   else if (process.argv[2] === "fin") fin(cfg);

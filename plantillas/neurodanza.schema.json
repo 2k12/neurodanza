@@ -52,6 +52,10 @@
           },
           "sinPruebas": {
             "type": "string"
+          },
+          "suite": {
+            "type": "string",
+            "description": "Suite completa del repo: corre en segundo plano (lib/fondo.mjs)."
           }
         }
       }
@@ -60,7 +64,20 @@
       "type": "object"
     },
     "retroalimentacion": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "topeStopSeg": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 110,
+          "description": "Tope en segundos de la parte que bloquea del hook Stop; lo que no alcanza pasa al fondo."
+        },
+        "topeFondoSeg": {
+          "type": "integer",
+          "minimum": 60,
+          "description": "Tope en segundos de cada tarea en segundo plano."
+        }
+      }
     },
     "reglas": {
       "type": "object",

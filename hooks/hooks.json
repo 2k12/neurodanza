@@ -31,7 +31,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" post",
-            "timeout": 90
+            "timeout": 60
           }
         ]
       }
@@ -42,7 +42,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/feedback.mjs\" stop",
-            "timeout": 600
+            "timeout": 120
           }
         ]
       }
