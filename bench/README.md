@@ -41,6 +41,9 @@ La base se midió contra una copia intacta de `main` (0.6.1) mientras se escrib�
 | `comentarios_barrera` | 20 escrituras de código por la barrera real con `barreras.comentarios: "estricto"`: 12 con comentarios que no deberían escribirse (explicativos, al final de la línea, JSDoc de una función no exportada) y 8 que deben pasar (directivas, JSDoc de lo exportado, `// POR QUÉ:`, `@ts-expect-error`, y código sin comentarios con `//` dentro de textos, URLs o expresiones regulares). Se cuenta qué porcentaje de las primeras se rechaza y cuántas de las segundas se rechazan por error. |
 | `pedido_textual` | Un pedido con 3 frases exactas («Filtrar por estado», «No hay pedidos con ese estado», "Estado inválido"); el director resume el objetivo en una línea («Filtro de pedidos por estado») y prepara la tarea. Se cuenta cuántas frases exactas llegan al contrato del implementador. Con `lib/funcionalidad.mjs`, antes se crea el documento de la funcionalidad con el pedido textual. |
 | `prueba_primero` | Dos implementaciones de la misma función con su prueba (`node --test`): una escribe el código y después la prueba; la otra escribe la prueba, la ve en rojo (`pruebas.mjs rojo`, si el plugin lo trae) y después el código. Se cuenta cuántas clasifica bien el harness: aviso en el hook `Stop` para la primera, rojo registrado y sin aviso para la segunda. |
+| `autoajuste` | Tres sesiones sembradas en transcripts falsos con el formato real (`transcripts.mjs`): un rechazo repetido, el mismo error en 3 comandos, un comando largo repetido, un revisor cortado por tiempo en 3 sesiones y un lint configurado que falla; más ruido. Cada comando pasa primero por la barrera (lo que se ve en vivo) y después, si existe, la pasada diaria. Cuenta lo aprendido (6), los falsos y si, tras aplicar el presupuesto, mantiene o propone revertir según bajen o no los cortes (2). |
+| `regresion_impacto` | Un cambio toca un componente compartido y la pantalla de pedidos (la del diff); clientes usa el mismo componente y en el caso «roto» (`BENCH_ROTO=clientes`) perdió «Importar»; productos no lo usa. 3 recorridos permanentes con su versión aprobada. Una persona prueba la pantalla del diff en ambas versiones; con `lib/regresion.mjs` se repiten sin modelo los afectados y la dueña juzga solo lo que cambió (3 pasos). Cuenta detección, falsos (también en un caso «limpio») y pasos de modelo. |
+| `inicio_ms` | Latencia del hook `SessionStart` (20 llamadas, mediana). |
 | `stop_y_ciclo_total` | El ciclo simulado completo como lo indica el skill del plugin medido: especialistas (si hay `lib/hotel.mjs`), implementar (los pasos de `exploracion_implementador` + 8), verificar (el hook `Stop` real), revisión + panel + fantasmas (4 revisores × 12 pasos, 3 personas × los pasos de `panel_pasos`, 2 fantasmas × 10 pasos si hay `lib/fantasmas.mjs`; a la vez si el skill lo dice) y cerrar. Cada paso cuesta `--paso-ms`. |
 
 Los subagentes, revisores y personas son simulados (procesos con demoras controladas y eventos de hook reales): miden la orquestación y los hooks, no la velocidad de un modelo.
@@ -203,3 +206,20 @@ Base: la 1.0.0 (`base4.json`); final: la 1.1.0 (`final4.json`). Mismas condicion
 **Lo que el banco no mide:** si el pedido textual evita rondas de corrección, si las pruebas en rojo atrapan errores, ni cuántas macros nacen en un proyecto real. Los comandos a mano de `comandos_app` son más cortos que los que escribió el agente en un proyecto real (412 y 499 caracteres frente a promedios de 1131 y 1191; ver [docs/21](../docs/21-cli-de-la-app.md)).
 
 Datos: [`base4.json`](base4.json), [`final4.json`](final4.json).
+
+### Parte 5: autoajuste y regresión mecánica (1.1.2 → 1.2.0, 5 corridas, mediana)
+
+| Métrica | 1.1.2 | 1.2.0 | Cambio |
+|---|---|---|---|
+| `autoajuste` | aprendido 1 de 6 (la macro, en vivo) · falsos 0 · evaluación 0 de 2 | aprendido 6 de 6 · falsos 0 · evaluación 2 de 2 · pasada 59 ms | lecciones, errores conocidos y propuestas que antes no existían (la tabla de `--comparar` dice −500 % porque trata más como peor) |
+| `regresion_impacto` | regresión fuera del diff **no detectada** · falsos 0 · 14 pasos de modelo (roto) y 14 (limpio) | **detectada** · falsos 0 · 17 (roto) y 14 (limpio) · 2 de 3 recorridos repetidos sin modelo | +3 pasos de modelo solo cuando hay algo que juzgar |
+
+Las otras 19 métricas quedan iguales o dentro de ±1,5 % (`stop_normal` 1,4 s, `guardrails_ms` 78,0 → 77,4 ms, `stop_y_ciclo_total` 14,0 → 14,1 s). `comandos_app` sale 336 → 327 caracteres solo porque la ruta del plugin de la base (un worktree) es más larga.
+
+**Latencia del inicio de sesión, intercalada** (3 rondas): 78,4 → 81,1 ms de media (**+3,4 %**, empeoró: el hook de inicio carga el módulo del autoajuste para leer sus propuestas; la pasada diaria corre aparte, en segundo plano).
+
+**Con las sesiones reales de un proyecto** (9 sesiones, 231 subagentes): primera pasada 4,1 s, las siguientes 82 ms; 17 errores repetidos al catálogo y una propuesta del tipo «plugin» que llevó a corregir las instrucciones de la persona evaluadora.
+
+**Lo que el banco no mide:** si las lecciones bajan los rechazos en sesiones reales (lo juzga cada lección, por día) ni la repetición con Chromium en una app real.
+
+Datos: [`base5.json`](base5.json), [`final5.json`](final5.json). `base5-autoajuste.json` es una medición parcial anterior de la misma base.
