@@ -110,7 +110,8 @@ Ver [04-barreras.md](04-barreras.md).
 | `migracionesInmutables` | `null` | Glob de migraciones: si el archivo ya existe, no se edita. |
 | `comandosProhibidos` | `[]` | `{ "patron", "motivo", "alcance" }`; `patron` es una expresión regular; `alcance` `"bare"` (por defecto) o `"raw"`. |
 | `timeoutComandos` | `{ "activo": true, "maxSeg": 120, "largos": [ … ] }` | Comandos que pueden no terminar (servidores, modo watch, suites completas): sin `timeout` de hasta `maxSeg` × 1000 ms, sin `run_in_background` y sin envolverlos en `timeout`, se rechazan con la forma de correrlos. `largos`: `{ "tipo": "servidor"\|"watch"\|"suite", "patron": "<regex>" }`. Ver [15-velocidad.md](15-velocidad.md#2-timeout-obligatorio-en-cada-comando). |
-| `exentos` | `[]` | Globs donde no se aplica `firmasIA` al editar (los propios archivos de reglas). |
+| `exentos` | `[]` | Globs donde no se aplican `firmasIA` ni `comentarios` al editar (los propios archivos de reglas). |
+| `comentarios` | `false` | Comentarios **nuevos** en JS/TS que se rechazan al editar (`lib/comentarios.mjs`): `"basura"` = código comentado y TODO sin ticket; `"estricto"` = todo, salvo directivas (`eslint-…`, `@ts-…`), JSDoc con etiquetas de API (`@param`, `@returns`, `@throws`, `@deprecated`, `@example`) de lo exportado y `// POR QUÉ: …`. Los que ya estaban no cuentan. `/neurodanza-init` lo propone en `"estricto"`. Ver [04-barreras.md](04-barreras.md#comentarios). |
 
 ```json
 "barreras": {
@@ -284,6 +285,11 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | `maxSegundos` | `{ "revisor": 300, "persona": 210, "implementador": 900, "otro": 420 }` | Tope de tiempo por subagente: aviso al 80 % y rechazo de toda herramienta al 100 %. El agente principal no tiene tope. |
 | `latidoSeg` | `90` | Segundos sin un paso para marcar a un subagente «sin latido». |
 | `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
+| `pruebaPrimero` | `"avisar"` | Pruebas primero (`lib/pruebas.mjs`): si cambió código y una prueba nueva o cambiada no se vio en rojo (`pruebas.mjs rojo`) antes de implementar, el hook `Stop` avisa (`"avisar"`, no bloquea) o bloquea (`"exigir"`). `false` = no mira. Ver [20-odd-en-neurodanza.md](20-odd-en-neurodanza.md). |
+| `riesgo.activo` | `true` | Proporcionalidad (`lib/riesgo.mjs`): cada cambio es **bajo** (lint, tipos y pruebas; sin revisores, panel, fantasmas ni especialistas), **medio** (1 revisor, 1 persona si hay pantallas, 1 fantasma si aplica) o **alto** (el ciclo completo). Con `false`, todo cambio es alto. Ver [20-odd-en-neurodanza.md](20-odd-en-neurodanza.md). |
+| `riesgo.lineasBajo` | `40` | Hasta estas líneas (agregadas + borradas) en un repo, sin contratos ni archivos sensibles: bajo. Solo docs o pruebas también es bajo. |
+| `riesgo.lineasAlto` | `400` | Más de estas líneas: alto. |
+| `riesgo.altos` | migraciones, `*.sql`, `*auth*`, `*guard*`, `*polic*`, `*permis*`, `*acl*`, `*casl*`, `middleware*` | Globs de archivos sensibles: tocar uno es riesgo alto. También lo son las migraciones de `retroalimentacion.migraciones` y el código en 2 repos. |
 
 ## `pilas`
 
@@ -315,6 +321,21 @@ Ataques acotados contra la app local, en modo propuesta. Ver [17-seguridad.md](1
 | `max` | `3` | Hipótesis (y fantasmas) por ciclo. |
 | `maxPasos` · `maxSegundos` | `15` · `180` | Presupuesto de cada fantasma. |
 | `login` | — | Opcional: cómo entra una persona por API (`{ "url", "cuerpo": { …"{email}"…"{clave}" }, "token" }`). Si no está, se usa el de `panel.usuarios.login` con las credenciales de la persona. |
+
+## `cli`
+
+CLI de la app (`lib/app.mjs`). Ver [21-cli-de-la-app.md](21-cli-de-la-app.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, la barrera no cuenta comandos repetidos ni sugiere la CLI (la CLI sigue funcionando). |
+| `macros` | `".claude/neurodanza-macros.json"` | Macros del proyecto, en git: las usa todo el equipo. |
+| `repetidoMin` | `200` | Caracteres desde los que un comando de terminal cuenta como largo. |
+| `repetidoVeces` | `3` | Repeticiones de un comando largo (con los números normalizados) para proponerlo como macro. |
+| `podarDias` | `30` | Días sin uso para que `app.mjs podar` proponga borrar una macro. |
+| `sesionMin` | `10` | Minutos que vale una sesión guardada (`.neurodanza/app/sesiones.json`, local). Si la app la rechaza antes (401), entra de nuevo una vez. |
+
+Para entrar como una persona, la CLI usa `panel.usuarios` (o `fantasmas.login`): `--como admin` usa `panel.usuarios.login` tal cual; `--como <persona o ROL>`, el correo y la clave de esa persona.
 
 ## `indice`
 

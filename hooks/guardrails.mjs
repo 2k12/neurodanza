@@ -11,6 +11,7 @@ import { MENSAJE_CORTE, mensajeCuarentena, registrarPaso, registrarRechazo, revi
 import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
 import { recordar } from "../lib/operador.mjs";
 import { registrarEnProyecto } from "../lib/errores.mjs";
+import { comentariosProhibidos, EXTENSIONES as EXT_CODIGO, textoRechazo } from "../lib/comentarios.mjs";
 
 const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
 
@@ -140,6 +141,20 @@ export function check(event, cfg, exists = existsSync, ctx = null) {
       return "Esa migración ya existe (puede estar aplicada): no se edita. Crea una migración nueva.";
     }
     if (b.firmasIA && !exempt(rel) && AI_ATTRIBUTION.test(written(input))) return "Atribución de IA (Co-Authored-By / «Generated with Claude»): no va en el código.";
+    // Comentarios nuevos que no van (barreras.comentarios): se comparan con lo que ya había.
+    if (b.comentarios && tool !== "NotebookEdit" && EXT_CODIGO.test(rel) && !exempt(rel)) {
+      const modo = b.comentarios === true ? "estricto" : b.comentarios;
+      let antes = "";
+      if (tool === "Write") {
+        try {
+          antes = exists(file) ? readFileSync(file, "utf8") : "";
+        } catch {
+          antes = "";
+        }
+      } else antes = typeof input.old_string === "string" ? input.old_string : (input.edits ?? []).map((e) => e?.old_string ?? "").join("\n");
+      const malos = comentariosProhibidos(antes, written(input), modo);
+      if (malos.length) return textoRechazo(malos, modo);
+    }
   }
 
   if (SHELL_TOOLS.has(tool)) {
@@ -261,6 +276,19 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   // La tabla de figuras y el registro de agentes no los escribe ningún agente.
   if (tocaProtegido(cfg, event)) rechazar("neurodanza: .neurodanza/figuras.json y .neurodanza/agentes/ los escriben solo el director y las barreras; ningún agente puede modificarlos.");
+  // CLI de la app: una macro se juzga por el comando que de verdad corre (barreras y figuras).
+  let evento = event;
+  let app = null;
+  if (SHELL_TOOLS.has(event.tool_name)) {
+    try {
+      app = await import("../lib/app.mjs");
+      const cmd = String(event.tool_input?.command ?? "");
+      const real = app.comandoDeMacro(cfg, cmd);
+      if (real) evento = { ...event, tool_input: { ...event.tool_input, command: `${cmd} ; ${real}` } };
+    } catch {
+      /* la CLI es una ayuda */
+    }
+  }
   // Figuras: la acción debe estar en la mano del agente; si no, ◇ y ✕ se preguntan al usuario y lo demás se rechaza.
   let pregunta = "";
   if (conFiguras) {
@@ -270,12 +298,23 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       const w = enWorktree(leerTareas(cfg), file);
       if (w) asociarAgente(cfg, event.agent_id, w.tarea.id);
     }
-    const d = decidirFigura(event, cfg, manoDe(cfg, event));
+    const d = decidirFigura(evento, cfg, manoDe(cfg, event));
     if (d?.decision === "deny") rechazar(d.motivo);
     if (d?.decision === "ask") pregunta = d.motivo;
   }
-  const why = check(event, cfg);
+  const why = check(evento, cfg);
   if (why) rechazar(why);
+  if (app) {
+    const cmd = String(event.tool_input?.command ?? "");
+    // Guardar o borrar una macro cambia lo que todo el equipo puede correr: lo decide el usuario.
+    if (/app\.mjs["']?\s+(aceptar|borrar)\b/.test(cmd)) pregunta = pregunta || `neurodanza: ${/\baceptar\b/.test(cmd) ? "guardar un comando como macro del proyecto (queda en git y cualquiera la puede correr)" : "borrar una macro del proyecto"}. ¿Lo apruebas?`;
+    try {
+      const extra = [app.contarRepetido(cfg, cmd), app.pistaApp(cfg, event)].filter(Boolean).join("\n");
+      if (extra) aviso = [aviso, extra].filter(Boolean).join("\n");
+    } catch {
+      /* la CLI es una ayuda */
+    }
+  }
   // Operador: la lección cuyos activadores coinciden con el archivo que el subagente lee o edita, una sola vez
   // por lección y agente (va como contexto junto al resultado de la herramienta).
   if (event.agent_id) {

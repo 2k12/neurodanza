@@ -23,6 +23,8 @@ Unos evals con respuesta conocida miden si los revisores y las personas evalúan
 | **Seguridad práctica** | Con `figuras.activo` | Cada acción se clasifica (◯ leer △ editar □ verificar ◇ externo ✕ destructivo); fuera de la mano del agente, lo externo y destructivo se pregunta al usuario y lo demás se rechaza; tres rechazos dejan al agente en cuarentena. Fantasmas prueban fugas y escaladas contra la app local, sin editar nada. Ver [docs/17](docs/17-seguridad.md). |
 | **Panel con recorridos** | Con pantallas en el cambio | Antes de implementar, cada persona escribe qué espera poder hacer (pasos verificables) y el usuario lo aprueba con el plan; en el panel lo ejecuta primero y califica paso por paso. Los recorridos permanentes guardan sus métricas por versión y marcan regresiones de experiencia (más clics, más tiempo). Ver [docs/18](docs/18-panel-con-recorridos.md). |
 | **Menos exploración** | Siempre | Índice del repo por commit (rutas, pantallas, modelos, exportaciones) en cada contrato y mensaje; especialistas de solo lectura que el director consulta antes de delegar, con respuestas en caché; lecciones que se recuerdan al tocar sus archivos. Ver [docs/19](docs/19-menos-exploracion.md). |
+| **Proporcionalidad (ODD)** | Siempre | Cada cambio es de riesgo bajo, medio o alto (archivos sensibles, migraciones, repos y líneas): bajo corre lint, tipos y pruebas; medio, un revisor y una persona; alto, el ciclo completo. Los cambios grandes llevan un documento con el pedido textual del usuario y sus specs, y las pruebas se ven en rojo antes de implementar. Ver [docs/20](docs/20-odd-en-neurodanza.md). |
+| **CLI de la app** | Cuando el agente prueba la app o verifica | `app.mjs api … --como <persona>` entra con la sesión en caché y responde compacto; `verificar` corre lint, tipos y pruebas en paralelo. Los comandos largos que se repiten se proponen como macros del proyecto. La barrera de comentarios (modo estricto) rechaza al editar los comentarios nuevos que no van. Ver [docs/21](docs/21-cli-de-la-app.md). |
 | **Mapa en vivo** | Siempre, con el plugin `neurodanza-mapa` | Panel al lado del chat con la fase del ciclo, cada subagente (pasos, última herramienta, tiempo, veredicto) y el plan. Avisa al subagente que se acerca a su presupuesto de pasos o repite la misma llamada. |
 | **Errores conocidos** | Al iniciar la sesión y en cada bloqueo | Cada problema de los hooks se guarda con una firma; si vuelve, el mensaje trae cómo se resolvió. |
 | **Evals** | `/neurodanza-evals` | Casos con errores sembrados y un control limpio para los revisores, y casos de calibración para el panel. |
@@ -82,6 +84,8 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 17. [Seguridad práctica: figuras, cuarentena y fantasmas](docs/17-seguridad.md)
 18. [Panel con recorridos: Tenet, Westworld y guion](docs/18-panel-con-recorridos.md)
 19. [Menos exploración: índice, especialistas y operador](docs/19-menos-exploracion.md)
+20. [ODD en neurodanza: proporcionalidad, pedido textual y pruebas primero](docs/20-odd-en-neurodanza.md)
+21. [La CLI de la app, macros y comentarios](docs/21-cli-de-la-app.md)
 
 Hay un ejemplo completo en [`ejemplos/nest-next/`](ejemplos/nest-next/): la configuración de un proyecto real NestJS + Next con tres repos (`backend`, `frontend`, `docs`).
 

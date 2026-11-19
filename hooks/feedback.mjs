@@ -20,6 +20,8 @@ import { autoconfigurar } from "../lib/autoconfig.mjs";
 import { enWorktree, leerTareas } from "../lib/director.mjs";
 import { cerrarRondaActiva } from "../panel/panel.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
+import { riesgoEnRama } from "../lib/riesgo.mjs";
+import { leerRegistro as leerRegistroPruebas, sinRojo } from "../lib/pruebas.mjs";
 import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
 import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
 import { correr } from "../lib/procesos.mjs";
@@ -81,6 +83,15 @@ export function approvedFor(dir, version, ok) {
   return false;
 }
 
+/** Riesgo del cambio en la rama (lib/riesgo.mjs), o null si no se pudo calcular. */
+function riesgoActual(cfg) {
+  try {
+    return riesgoEnRama(cfg, cfg.retroalimentacion.version?.ramaBase ?? "main");
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Reglas de la definición de terminado (puras, para poder probarlas).
  * @returns {{hard: string[], soft: string[]}}
@@ -107,12 +118,27 @@ export function doneProblems(cfg, changes, ctx) {
   // Con la app o el navegador fundidos (fusible), el panel no se pudo hacer: queda PENDIENTE, ni aprobado ni
   // reprobado. No bloquea: lo decide el usuario.
   const sinPanel = (ctx.fundidas ?? []).filter((f) => f.capa === "app" || f.capa === "chromium");
-  if (screens.length > 0 && ctx.version && !ctx.panelApproved(ctx.version)) {
+  // Proporcionalidad: con riesgo bajo el panel no corre (ciclo.riesgo); se dice, sin bloquear.
+  // `ctx.riesgo` puede ser una función: se calcula solo si hace falta (cuesta varias llamadas a git).
+  const faltaPanel = screens.length > 0 && ctx.version && !ctx.panelApproved(ctx.version);
+  const riesgo = faltaPanel ? (typeof ctx.riesgo === "function" ? ctx.riesgo() : ctx.riesgo) : null;
+  const sinPersonas = riesgo && riesgo.plan?.personas === 0;
+  if (faltaPanel && sinPersonas) soft.push(`riesgo ${riesgo.nivel} (${riesgo.motivos.join("; ")}): el panel de personas no corre para este cambio.`);
+  else if (screens.length > 0 && ctx.version && !ctx.panelApproved(ctx.version)) {
     if (sinPanel.length) soft.push(`panel de personas PENDIENTE: no se pudo verificar ${sinPanel.map((f) => `${f.capa} (${f.motivo})`).join(", ")}. No cuenta como aprobado ni reprobado: pregúntale al usuario cómo sigue.`);
     else hard.push(`panel de personas: cambiaste pantallas y no hay una evaluación aprobada (promedio > ${cfg.panel.umbral}) de la versión ${ctx.version}. Sigue el paso 4 de /neurodanza-feature.`);
   }
   if (screens.length > 0 && rf.guias && changedMatching(changes, [rf.guias]).length === 0) {
     soft.push(`cambiaste pantallas (${screens.slice(0, 3).join(", ")}${screens.length > 3 ? "…" : ""}) sin tocar su guía de usuario. Si cambió lo que ve o hace el usuario, actualízala; si no, ignora este aviso.`);
+  }
+  // Pruebas primero (ciclo.pruebaPrimero): una prueba nueva o cambiada que nunca se vio en rojo no demuestra nada.
+  const modoPrueba = cfg.ciclo?.pruebaPrimero;
+  if (modoPrueba && ctx.registroPruebas) {
+    const faltan = sinRojo(cfg, changes, ctx.registroPruebas);
+    if (faltan.length) {
+      const texto = `no se vio la prueba en rojo antes de implementar: ${faltan.slice(0, 3).join(", ")}${faltan.length > 3 ? "…" : ""}. Corre \`pruebas.mjs rojo --repo <repo> --archivo <prueba>\` con el código anterior (sin tu cambio) para ver que falla, y \`pruebas.mjs verde\` con el cambio.`;
+      (modoPrueba === "exigir" ? hard : soft).push(texto);
+    }
   }
   const tooling = changedMatching(changes, cfg.evals.vigilar ?? []);
   if (tooling.length > 0 && ctx.version && !ctx.evalsApproved(ctx.version)) {
@@ -337,6 +363,8 @@ async function stop(cfg, event) {
     evalsApproved: (ver) => approvedFor(cfg.abs(cfg.evals.informes), ver, (e) => e.informe?.aprobado === true),
     docsInBranch: docsCommittedInBranch(cfg),
     fundidas: capasFundidas,
+    riesgo: () => riesgoActual(cfg),
+    registroPruebas: leerRegistroPruebas(cfg),
   });
   hard.push(...done.hard);
   writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, cortadas: cortadas.length, fondo: { firma, estado: ahora.estado, pendientes: ahora.pendientes.length }, ms: Date.now() - t0 });

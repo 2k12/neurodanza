@@ -48,3 +48,11 @@ test("caché del hook Stop: misma entrada, misma firma", () => {
   assert.notEqual(fingerprint(["a", "diff"]), fingerprint(["a", "diff2"]));
   assert.notEqual(fingerprint(["ab", "c"]), fingerprint(["a", "bc"]));
 });
+
+test("ciclo.mjs revisores responde JSON (sin importación circular con fantasmas.mjs)", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const salida = execFileSync(process.execPath, [fileURLToPath(new URL("../lib/ciclo.mjs", import.meta.url)), "revisores"], { cwd: cfg.root, encoding: "utf8", timeout: 30_000 });
+  const j = JSON.parse(salida);
+  assert.ok(Array.isArray(j.lanzar));
+  assert.ok("fantasmas" in j);
+});
