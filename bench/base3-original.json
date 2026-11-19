@@ -1,0 +1,151 @@
+{
+  "fecha": "2026-11-19T07:27:56.320Z",
+  "plugin": "C:\\Users\\jeipi\\AppData\\Local\\Temp\\claude\\4f573f375b2a9c90\\ec25cd63-ba72-4da4-a290-42d7d8118620\\scratchpad\\plugin-orig",
+  "version": "0.6.1",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "panel_pasos": {
+      "valor": 40,
+      "unidad": "pasos",
+      "segundos": 12.358,
+      "verificada": true,
+      "modo": "sin guion",
+      "corridas": [
+        40,
+        40,
+        40,
+        40,
+        40
+      ],
+      "detalle": [
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.386
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.358
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.352
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.34
+        },
+        {
+          "pasos": 40,
+          "verificada": true,
+          "modo": "sin guion",
+          "segundos": 12.359
+        }
+      ],
+      "modelo": "cada paso de la persona: 300 ms; 6 mensajes en la ventana"
+    },
+    "regresion_ux": {
+      "valor": 0,
+      "unidad": "de 5 detectadas",
+      "texto": "0 de 5 detectadas",
+      "detalle": [
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        },
+        {
+          "detectada": false,
+          "motivo": "sin memoria por recorrido"
+        }
+      ]
+    },
+    "exploracion_implementador": {
+      "valor": 17,
+      "unidad": "lecturas y búsquedas",
+      "texto": "17 (15 lecturas · 2 búsquedas)",
+      "encontro": true,
+      "modo": "sin índice",
+      "indice": null,
+      "corridas": [
+        17,
+        17,
+        17,
+        17,
+        17
+      ],
+      "detalle": [
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        },
+        {
+          "lecturas": 15,
+          "busquedas": 2,
+          "encontro": true
+        }
+      ]
+    },
+    "stop_y_ciclo_total": {
+      "valor": 25.021,
+      "unidad": "s",
+      "corridas": [
+        25.03,
+        25.024,
+        25.021,
+        24.992,
+        25.009
+      ],
+      "fases": {
+        "especialistas": 0,
+        "implementar": 7.561,
+        "verificar": 1.684,
+        "revisionPanel": 15.765
+      },
+      "modelo": {
+        "pasoMs": 300,
+        "pasosImplementador": 25,
+        "pasosPersona": 40,
+        "especialistas": false,
+        "fantasmas": false,
+        "orden": "revisores, después panel"
+      }
+    }
+  }
+}
