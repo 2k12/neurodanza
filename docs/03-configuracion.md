@@ -224,6 +224,7 @@ Ver [07-panel-personas.md](07-panel-personas.md).
 | `recorridos` | `".claude/personas/recorridos"` | Carpeta de los recorridos **permanentes** (en git, con id estable), los que se comparan entre versiones. Ver [18-panel-con-recorridos.md](18-panel-con-recorridos.md). |
 | `notaMaxSiFalla` | `6` | Nota máxima de una persona si un paso **crítico** de su recorrido no cumple (según ella o según la ejecución). |
 | `memoria` | `".claude/personas/memoria"` | Historial por versión de cada recorrido permanente (en git: la comparación es compartida). |
+| `exploracionPasos` | `10` | Exploración libre de cada persona **después** de su recorrido: máximo de pasos, y solo en pantallas que tocó el diff. |
 | `regresion` | `{ "clics": 1, "tiempo": 0.3 }` | Regresión de experiencia frente a la última versión aprobada: `clics` o más clics, o `tiempo` (fracción: 0.3 = +30 %, y al menos 1 s) más de tiempo. También cuentan un paso que antes cumplía y ahora no, y errores nuevos. |
 
 ```json
@@ -279,8 +280,8 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | Clave | Por defecto | Qué hace |
 |---|---|---|
 | `plan` | `".neurodanza/plan.md"` | Archivo del plan del ciclo (local, fuera de git). El mapa lo muestra. |
-| `maxPasos` | `{ "revisor": 25, "persona": 40, "implementador": 60, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
-| `maxSegundos` | `{ "revisor": 300, "persona": 420, "implementador": 900, "otro": 420 }` | Tope de tiempo por subagente: aviso al 80 % y rechazo de toda herramienta al 100 %. El agente principal no tiene tope. |
+| `maxPasos` | `{ "revisor": 25, "persona": 20, "implementador": 60, "otro": 40 }` | Presupuesto de pasos por subagente. El mapa le avisa al 80 % y al tope. |
+| `maxSegundos` | `{ "revisor": 300, "persona": 210, "implementador": 900, "otro": 420 }` | Tope de tiempo por subagente: aviso al 80 % y rechazo de toda herramienta al 100 %. El agente principal no tiene tope. |
 | `latidoSeg` | `90` | Segundos sin un paso para marcar a un subagente «sin latido». |
 | `revisores` | `"segun-cambio"` | `"segun-cambio"`: solo los revisores que aplican al diff (`lib/ciclo.mjs revisores`); `"todos"`: siempre los 4. |
 

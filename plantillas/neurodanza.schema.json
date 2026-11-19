@@ -219,6 +219,11 @@
             }
           },
           "description": "Umbrales de regresión de experiencia contra la última versión aprobada."
+        },
+        "exploracionPasos": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pasos máximos de exploración libre de cada persona tras su recorrido, solo en pantallas del diff."
         }
       }
     },

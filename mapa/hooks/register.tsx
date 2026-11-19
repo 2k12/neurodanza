@@ -89,13 +89,13 @@ export function huella(e: Llamada): string {
 }
 
 export type Presupuesto = { revisor: number; persona: number; implementador: number; otro: number }
-export const PRESUPUESTO: Presupuesto = { revisor: 25, persona: 40, implementador: 60, otro: 40 }
+export const PRESUPUESTO: Presupuesto = { revisor: 25, persona: 20, implementador: 60, otro: 40 }
 
 /** Presupuesto de los fantasmas (`fantasmas.maxPasos`, `fantasmas.maxSegundos`). */
 export const fantasmaTope = { pasos: 15, seg: 180 }
 
 export type Tiempos = { revisor: number; persona: number; implementador: number; otro: number }
-export const TIEMPOS: Tiempos = { revisor: 300, persona: 420, implementador: 900, otro: 420 }
+export const TIEMPOS: Tiempos = { revisor: 300, persona: 210, implementador: 900, otro: 420 }
 
 /** Tope de tiempo (s) de un subagente según su tipo (`ciclo.maxSegundos`). */
 export const maxSegundos = (tipo: string, t: Tiempos) => (/fantasma/.test(tipo) ? fantasmaTope.seg : /revisor-/.test(tipo) ? t.revisor : /persona-evaluadora/.test(tipo) ? t.persona : /implementador/.test(tipo) ? t.implementador : t.otro)
