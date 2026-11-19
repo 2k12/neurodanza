@@ -143,8 +143,48 @@ export function check(event, cfg, exists = existsSync, ctx = null) {
     const bare = withoutQuotes(raw);
     const project = b.comandosProhibidos.map((c) => [new RegExp(c.patron, "i"), c.motivo, c.alcance ?? "bare"]);
     for (const [re, why, scope] of [...baseShellRules(b), ...project]) if (re.test(scope === "raw" ? raw : bare)) return why;
+    const largo = comandoLargo(bare, input, cfg);
+    if (largo) return largo;
   }
   return null;
+}
+
+/** ¿El comando ya trae un límite? (timeout de la herramienta acotado, segundo plano o envuelto en `timeout`) */
+export function acotado(cmd, input, maxSeg) {
+  const t = Number(input?.timeout);
+  if (Number.isFinite(t) && t > 0 && t <= maxSeg * 1000) return true;
+  if (input?.run_in_background === true) return true;
+  // `timeout [opciones] <duración> <comando>` (GNU coreutils, también en Git Bash) o `-Timeout N` en PowerShell.
+  return /^\s*(timeout|gtimeout)\b[^|;&]*?\s\d+(\.\d+)?[smhd]?\s+\S/.test(cmd) || /-Timeout(Sec)?\s+\d+/i.test(cmd);
+}
+
+/**
+ * Comando que puede no terminar (servidor, modo watch, suite completa) sin límite: devuelve el motivo
+ * del rechazo con la forma exacta de correrlo, o null.
+ */
+export function comandoLargo(cmd, input, cfg) {
+  const tc = cfg.barreras.timeoutComandos;
+  if (!tc?.activo) return null;
+  const hit = (tc.largos ?? []).find((l) => {
+    try {
+      return new RegExp(l.patron ?? l, "i").test(cmd);
+    } catch {
+      return false;
+    }
+  });
+  if (!hit || acotado(cmd, input, tc.maxSeg)) return null;
+  const ms = tc.maxSeg * 1000;
+  const levantar = cfg.app?.levantar;
+  const tipo = hit.tipo ?? "largo";
+  if (tipo === "servidor")
+    return `neurodanza: «${cmd.trim().slice(0, 80)}» es un servidor y no termina. La app la levanta el ciclo una sola vez${levantar ? ` (app.levantar: \`${levantar}\`)` : " (app.levantar)"}; no la levantes desde un comando suelto. Si de verdad necesitas otro servidor, córrelo con run_in_background: true.`;
+  if (tipo === "watch")
+    return `neurodanza: «${cmd.trim().slice(0, 80)}» está en modo watch y no termina. Quita --watch/-w (p. ej. \`vitest run\`, \`tsc --noEmit\`) o córrelo con run_in_background: true.`;
+  if (tipo === "suite") {
+    const rel = cfg.repos.find((r) => r.relacionadas)?.relacionadas;
+    return `neurodanza: «${cmd.trim().slice(0, 80)}» corre la suite completa y puede tardar mucho. Corre solo las pruebas relacionadas con filtro de archivos${rel ? ` (\`${rel}\`)` : ""}, o la suite con timeout: ${ms} en la llamada (o run_in_background: true). La suite completa ya corre en segundo plano al terminar el turno (hook Stop).`;
+  }
+  return `neurodanza: «${cmd.trim().slice(0, 80)}» puede no terminar. Córrelo con timeout: ${ms} en la llamada, o con run_in_background: true.`;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

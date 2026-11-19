@@ -61,7 +61,51 @@
       }
     },
     "barreras": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "timeoutComandos": {
+          "type": "object",
+          "properties": {
+            "activo": {
+              "type": "boolean"
+            },
+            "maxSeg": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 600
+            },
+            "largos": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "patron"
+                    ],
+                    "properties": {
+                      "patron": {
+                        "type": "string"
+                      },
+                      "tipo": {
+                        "enum": [
+                          "servidor",
+                          "watch",
+                          "suite",
+                          "largo"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     },
     "retroalimentacion": {
       "type": "object",
