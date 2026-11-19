@@ -7,7 +7,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
-import { aplicar, guardarPaso, leerPila, pasoDe, resumen } from "../lib/pilas.mjs";
+import { registrarPaso } from "../lib/agentes.mjs";
+import { aplicar, guardarPaso, leerPila, pasoDe, reenfundar, resumen } from "../lib/pilas.mjs";
 
 const HOOK = fileURLToPath(new URL("../hooks/pilas.mjs", import.meta.url));
 
@@ -68,3 +69,19 @@ test("pilas: el resumen es corto y dice qué no releer", () => {
   assert.match(txt, /src\/m3\.mjs \(cambió desde que se leyó\)/);
 });
 
+test("re-enfundar: mensaje completo con presupuesto restante, una sola vez por agente o tarea", () => {
+  const { root, cfg } = proyecto();
+  const t0 = Date.now() - 120_000;
+  for (let k = 1; k <= 3; k++) {
+    guardarPaso(cfg, "imp1", pasoDe(cfg, ev(root, "Read", { file_path: join(root, "src", `m${k}.mjs`) }), t0 + k));
+    registrarPaso(cfg, { agent_id: "imp1", agent_type: "neurodanza:implementador", tool_name: "Read" }, t0 + k * 1000);
+  }
+  guardarPaso(cfg, "imp1", pasoDe(cfg, ev(root, "Bash", { command: 'node pilas.mjs avance --texto "falta el selector de fechas"' }), t0 + 10));
+  const r = reenfundar(cfg, "imp1");
+  assert.match(r.mensaje, /^Retomas el trabajo de un agente anterior que se cortó/);
+  assert.match(r.mensaje, /Leídos que siguen iguales \(3\)/);
+  assert.match(r.mensaje, /## Lo que falta\n- falta el selector de fechas/);
+  assert.match(r.mensaje, /Presupuesto restante: \d+ pasos y \d+ min \(no el completo\)/);
+  assert.match(r.descripcion, /↻ 2/);
+  assert.throws(() => reenfundar(cfg, "imp1"), /ya se re-enfundó una vez/);
+});

@@ -73,8 +73,13 @@ Con el diff verificado, lanza **en el mismo turno** los revisores que aplican y 
 3. **Si el panel no aprobó**: corrige con los hallazgos y sugerencias, vuelve al paso 2 y, si la app no recarga sola, levántala de nuevo. En la ronda siguiente (`ronda` + 1; conserva las anteriores en `"historial"`) **vuelve a evaluar solo a las personas con nota ≤ `panel.umbral`** y a las que usan una ruta que tocaste al corregir; las demás conservan su evaluación anterior (cópiala al JSON de la ronda nueva con `"reutilizada": true`). Máximo `panel.maxRondas`; si no llega, informa al usuario con los hallazgos y pregunta si autoriza otra ronda.
 4. **Si aprobó** (y los revisores también): el cambio cuenta como realizado. El hook de Stop no deja terminar un cambio de pantallas sin una evaluación aprobada de la versión actual, salvo que el panel haya quedado pendiente por el fusible (entonces lo informa y decide el usuario).
 
-## 4. Subagentes lentos o trabados
-Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, personas 7 min, implementadores 15 min). Al 80 % recibe un aviso; al 100 % la barrera le rechaza toda herramienta y solo puede entregar su respuesta. Si el mapa (o `.neurodanza/agentes/`) muestra a uno **sin latido** (`ciclo.latidoSeg` sin dar un paso), decide: espera si su último paso es un comando largo con timeout, o relánzalo con una tarea más chica.
+## 4. Subagentes lentos o trabados: re-enfundar una sola vez
+Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, personas 7 min, implementadores 15 min). Al 80 % recibe un aviso; al 100 % la barrera le rechaza toda herramienta y solo puede entregar su respuesta. Los hooks guardan su pila (qué leyó, editó y corrió) y cada 10 pasos él anota una línea de avance.
+
+**Re-enfundar** cuando un subagente vuelve cortado por tiempo o pasos, aparece **sin latido** en el mapa (o en `.neurodanza/agentes/`) sin un comando largo en curso o entrega con pendientes críticos:
+1. `<pilas> reenfundar --agente <agent_id>` genera el mensaje completo: el contrato, lo que ya hizo, qué archivos leyó y siguen iguales (que no relea) y cuáles cambiaron, los comandos que fallaron, lo que falta y el presupuesto **restante**. En el modo director, el reemplazo trabaja en el **mismo worktree**.
+2. Lanza un agente nuevo del mismo tipo con ese mensaje y la descripción que sugiere (`<tarea> ↻ 2`).
+3. **Una sola vez por tarea** (`reenfundar` lo hace cumplir). Si el reemplazo también se corta, no relances: informa al usuario con `<pilas> resumen --agente <id>`.
 
 ## 5. Cerrar
 - **Pilas:** `<pilas> limpiar` al cerrar el ciclo (no van a git).
