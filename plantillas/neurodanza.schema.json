@@ -362,6 +362,31 @@
           "description": "Cada cuántos pasos se le pide al subagente su línea de avance (0 = nunca)."
         }
       }
+    },
+    "figuras": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "manos": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "leer",
+                "editar",
+                "verificar",
+                "externo",
+                "destructivo",
+                "red-app"
+              ]
+            }
+          },
+          "description": "Manos por tipo de agente (revisor, persona, implementador, fantasma, principal, otro)."
+        }
+      }
     }
   }
 }

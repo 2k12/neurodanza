@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { loadConfig, matchesAny, repoOf } from "../lib/config.mjs";
 import { enWorktree, fueraDeContrato, leerModo, leerTareas } from "../lib/director.mjs";
 import { MENSAJE_CORTE, registrarPaso, revisarLatidos, terminar } from "../lib/agentes.mjs";
+import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
 
 const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
 
@@ -212,6 +213,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const ahora = Date.now();
   let aviso = "";
+  const conFiguras = cfg.figuras?.activo === true;
+  /** Rechaza con el motivo y sale con 2. */
+  const rechazar = (motivo) => {
+    process.stderr.write(`${motivo.startsWith("neurodanza") ? "" : "Barrera (neurodanza): "}${motivo}\n`);
+    process.exit(2);
+  };
   // Corte por tiempo (solo subagentes: el agente principal nunca queda bloqueado por esto).
   if (event.agent_id) {
     try {
@@ -233,12 +240,26 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   } catch {
     /* idem */
   }
-  const why = check(event, cfg);
-  if (why) {
-    process.stderr.write(`Barrera (neurodanza): ${why}\n`);
-    process.exit(2);
+  // La tabla de figuras y el registro de agentes no los escribe ningún agente.
+  if (tocaProtegido(cfg, event)) rechazar("neurodanza: .neurodanza/figuras.json y .neurodanza/agentes/ los escriben solo el director y las barreras; ningún agente puede modificarlos.");
+  // Figuras: la acción debe estar en la mano del agente; si no, ◇ y ✕ se preguntan al usuario y lo demás se rechaza.
+  let pregunta = "";
+  if (conFiguras) {
+    if (event.agent_id && event.tool_name === "Agent") rechazar("neurodanza: solo el agente principal lanza subagentes (re-enfundar o reemplazar a un agente lo hace el director).");
+    const file = event.tool_input?.file_path ?? event.tool_input?.notebook_path;
+    if (event.agent_id && file) {
+      const w = enWorktree(leerTareas(cfg), file);
+      if (w) asociarAgente(cfg, event.agent_id, w.tarea.id);
+    }
+    const d = decidirFigura(event, cfg, manoDe(cfg, event));
+    if (d?.decision === "deny") rechazar(d.motivo);
+    if (d?.decision === "ask") pregunta = d.motivo;
   }
+  const why = check(event, cfg);
+  if (why) rechazar(why);
+  // Segunda llave: el usuario aprueba en la ventana de permisos. El aviso, si hay, va como contexto.
+  if (pregunta) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: pregunta, ...(aviso ? { additionalContext: aviso } : {}) } }));
   // Aviso al 80 % del tiempo: contexto junto al resultado de la herramienta, sin decidir permisos
   // (devolver "allow" se saltaría los permisos del usuario).
-  if (aviso) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: aviso } }));
+  else if (aviso) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: aviso } }));
 }

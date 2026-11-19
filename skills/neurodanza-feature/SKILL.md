@@ -83,6 +83,8 @@ Cada subagente tiene un tope de tiempo (`ciclo.maxSegundos`: revisores 5 min, pe
 2. Lanza un agente nuevo del mismo tipo con ese mensaje y la descripción que sugiere (`<tarea> ↻ 2`).
 3. **Una sola vez por tarea** (`reenfundar` lo hace cumplir). Si el reemplazo también se corta, no relances: informa al usuario con `<pilas> resumen --agente <id>`.
 
+Solo tú (el agente principal) lanzas subagentes: con las figuras activas, la barrera se lo rechaza a cualquier subagente.
+
 ## 5. Cerrar
 - **Pilas:** `<pilas> limpiar` al cerrar el ciclo (no van a git).
 - **Reflexión con las muertes:** cada rebobinado ya pasó como evidencia a los constructos; inclúyelo en el informe.
