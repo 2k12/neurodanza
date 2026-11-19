@@ -356,7 +356,8 @@
             "activo": { "type": "boolean" },
             "lineasBajo": { "type": "integer", "minimum": 0, "description": "Hasta estas líneas en un repo, sin contratos ni archivos sensibles: riesgo bajo." },
             "lineasAlto": { "type": "integer", "description": "Más de estas líneas: riesgo alto." },
-            "altos": { "type": "array", "items": { "type": "string" }, "description": "Globs de archivos sensibles (permisos, auth, migraciones…): riesgo alto." }
+            "altos": { "type": "array", "items": { "type": "string" }, "description": "Globs de archivos sensibles (permisos, auth, migraciones…): riesgo alto. No aplican al repo de docs, a la documentación ni a las pruebas." },
+            "permisosEnCodigo": { "oneOf": [{ "type": "string", "minLength": 1 }, { "const": false }], "description": "Expresión regular: si las líneas cambiadas del código coinciden, el cambio es al menos medio y entra el revisor de permisos. false = no mirar el contenido." }
           }
         }
       }
