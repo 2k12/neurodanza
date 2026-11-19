@@ -391,6 +391,36 @@
           "description": "Manos por tipo de agente (revisor, persona, implementador, fantasma, principal, otro)."
         }
       }
+    },
+    "fantasmas": {
+      "type": "object",
+      "properties": {
+        "activo": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxPasos": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSegundos": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "login": {
+          "type": "object",
+          "description": "Cómo entra una persona por API (url, cuerpo con {email} y {clave}, token)."
+        }
+      }
     }
   }
 }
