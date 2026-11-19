@@ -1,0 +1,363 @@
+{
+  "fecha": "2026-11-19T04:48:57.009Z",
+  "plugin": "C:\\Users\\jeipi\\Desktop\\JOAN\\neurodanza",
+  "version": "0.8.0",
+  "plataforma": "win32 x64",
+  "node": "v26.5.0",
+  "corridas": 5,
+  "metricas": {
+    "stop_normal": {
+      "valor": 1.3809628999999999,
+      "unidad": "s",
+      "corridas": [
+        1.381878,
+        1.3617819999999998,
+        1.3679733,
+        1.3809628999999999,
+        1.3926146000000001
+      ]
+    },
+    "stop_colgado": {
+      "valor": 85.3895422,
+      "unidad": "s",
+      "corridas": [
+        85.4129583,
+        85.3971148,
+        85.3895422,
+        85.3525659,
+        85.36329889999999
+      ],
+      "detalle": [
+        {
+          "segundos": 85.4129583,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.3971148,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.3895422,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.3525659,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        },
+        {
+          "segundos": 85.36329889999999,
+          "cortadoPorElBanco": false,
+          "huerfanos": 0,
+          "bloqueo": true
+        }
+      ],
+      "topeMedicion": 330
+    },
+    "guardrails_ms": {
+      "valor": 68.2099448000001,
+      "unidad": "ms",
+      "corridas": [
+        68.19279070000006,
+        67.91248389999996,
+        68.32572510000004,
+        68.83983870000007,
+        68.2099448000001
+      ],
+      "eventos": 1000
+    },
+    "subagente_congelado": {
+      "valor": 21.751,
+      "unidad": "s",
+      "sinCorte": false,
+      "topeMedicion": 45,
+      "corridas": [
+        21.753,
+        21.721,
+        21.751,
+        21.742,
+        21.767
+      ],
+      "detalle": [
+        {
+          "congelaA": 3.254,
+          "sinLatidoA": 10.909,
+          "cortadoA": 21.753,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.25,
+          "sinLatidoA": 10.918,
+          "cortadoA": 21.721,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.236,
+          "sinLatidoA": 10.895,
+          "cortadoA": 21.751,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.249,
+          "sinLatidoA": 10.914,
+          "cortadoA": 21.742,
+          "alVolverRechazado": true
+        },
+        {
+          "congelaA": 3.26,
+          "sinLatidoA": 10.932,
+          "cortadoA": 21.767,
+          "alVolverRechazado": true
+        }
+      ]
+    },
+    "revision_y_panel": {
+      "valor": 30.252,
+      "unidad": "s",
+      "corridas": [
+        30.297,
+        30.258,
+        30.239,
+        30.252,
+        30.247
+      ],
+      "orden": "revisores y panel en el mismo turno",
+      "modelo": "revisores 4 × 20 s en paralelo; personas 3 × 30 s en paralelo"
+    },
+    "fallo_externo": {
+      "valor": 3.411,
+      "unidad": "s",
+      "intentos": 2,
+      "resultado": "avanza con el panel pendiente",
+      "corridas": [
+        3.425,
+        3.411,
+        3.393,
+        3.411,
+        3.401
+      ],
+      "detalle": [
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.425
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.411
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.393
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.411
+        },
+        {
+          "intentos": 2,
+          "resultado": "avanza con el panel pendiente",
+          "segundos": 3.401
+        }
+      ],
+      "modelo": "hasta 3 rondas; 3 personas por ronda; 3 s por intento de persona"
+    },
+    "retomar_tras_corte": {
+      "valor": 5,
+      "unidad": "pasos",
+      "lecturas": 1,
+      "modo": "con pila",
+      "corridas": [
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "detalle": [
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        },
+        {
+          "mensajeLineas": 30,
+          "releidos": [
+            "api/src/modulos/m7.mjs"
+          ],
+          "pasos": 5,
+          "lecturas": 1
+        }
+      ]
+    },
+    "reintento_fallido": {
+      "valor": 30,
+      "unidad": "líneas",
+      "pasos": 21,
+      "modo": "rebobinar",
+      "corridas": [
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "detalle": [
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        },
+        {
+          "decision": "rebobinar",
+          "lineas": 30,
+          "pasos": 21
+        }
+      ],
+      "modelo": "intento 1: 40 líneas, 12 pasos; encima: +25 líneas, 8 pasos; rebobinar: 30 líneas, 9 pasos"
+    },
+    "bloqueos_seguridad": {
+      "valor": 71.23672349999995,
+      "unidad": "ms",
+      "permite": 98,
+      "rechaza": 12,
+      "pregunta": 90,
+      "porFigura": {
+        "leer · rev": {
+          "permite": 18,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · rev": {
+          "permite": 0,
+          "rechaza": 12,
+          "pregunta": 0
+        },
+        "verificar · rev": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · rev": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "destructivo · rev": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "leer · impl": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · impl": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "verificar · impl": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · impl": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "destructivo · impl": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "leer · principal": {
+          "permite": 15,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "editar · principal": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "verificar · principal": {
+          "permite": 10,
+          "rechaza": 0,
+          "pregunta": 0
+        },
+        "externo · principal": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        },
+        "destructivo · principal": {
+          "permite": 0,
+          "rechaza": 0,
+          "pregunta": 15
+        }
+      },
+      "corridas": [
+        70.96858150000004,
+        70.99572800000003,
+        71.441773,
+        71.23672349999995,
+        72.11506349999999
+      ]
+    }
+  }
+}

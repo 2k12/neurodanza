@@ -2,6 +2,26 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 0.8.0 · 2026-11-19
+
+No perder trabajo y seguridad práctica. Ver `docs/16-no-perder-trabajo.md`, `docs/17-seguridad.md` y `bench/`.
+
+### Agregado
+- **Pilas** (`lib/pilas.mjs`, `hooks/pilas.mjs`, `pilas.*`): un `PostToolUse` asíncrono guarda lo que lee (con hash), edita y corre cada subagente, en archivos atómicos por paso; cada `pilas.avanceCada` pasos la barrera le pide una línea de avance.
+- **Re-enfundar guiado** (`pilas.mjs reenfundar`): el reemplazo de un agente cortado recibe el contrato, lo hecho, qué no releer, qué cambió, lo que falta y el presupuesto restante; mismo worktree; una sola vez por tarea.
+- **Rebobinar con memoria** (`director.mjs decidir` / `rebobinar`, `director.rebobinar.*`): corregir encima lo puntual o volver a la foto original con un contrato que cuenta los intentos fallidos; cada muerte va a `.neurodanza/muertes.json` y a los constructos como evidencia.
+- **Figuras** (`lib/figuras.mjs`, `figuras.*`): ◯ leer △ editar □ verificar ◇ externo ✕ destructivo y una mano por tipo de agente; fuera de la mano, ◇ y ✕ se preguntan al usuario (`ask`) y lo demás se rechaza. La tabla y el registro de agentes no los escribe ningún agente; un subagente no lanza subagentes. Apagadas en configuraciones existentes, prendidas por `/neurodanza-init`.
+- **Cuarentena** (`figuras.cuarentena`): 3 rechazos dejan al subagente sin herramientas; queda en errores conocidos; `agentes.mjs reiniciar` al empezar el ciclo.
+- **Fantasmas en modo propuesta** (`lib/fantasmas.mjs`, `agents/fantasma.md`, `fantasmas.*`): hipótesis de recurso ajeno, escalada de rol, fuga entre clientes, acción oculta y entrada no validada, probadas contra la app local; nunca editan; un confirmado alto cuenta como hallazgo alto y trae una prueba de regresión propuesta. Casos de evals.
+- Banco: `retomar_tras_corte`, `reintento_fallido`, `bloqueos_seguridad`.
+
+### Cambiado
+- Mapa 0.4.0: reemplazos `↻`, muertes `✝`, cuarentena `⛔`, fantasmas `👻`.
+- La barrera revisa latidos como mucho cada 2 s.
+
+### Medido (5 corridas, mediana)
+Retomar tras un corte 16 pasos y 12 lecturas → 5 y 1 (68,8 %); reintento tras un fallo de diseño 65 → 30 líneas de diff (53,8 %), con un paso más (20 → 21); de 200 acciones de seguridad antes se permitían todas, ahora 98 se permiten, 12 se rechazan y 90 se preguntan. Latencia de la barrera, medida intercalada contra la Parte 1: +1,3 % (límite 25 %).
+
 ## 0.7.0 · 2026-11-19
 
 Velocidad: que el harness nunca se quede colgado. Ver `docs/15-velocidad.md` y `bench/`.

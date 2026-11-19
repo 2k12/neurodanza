@@ -1,5 +1,5 @@
 {
-  "description": "neurodanza: errores conocidos al iniciar, barreras antes de cada herramienta, lint al editar, ciclo de retroalimentación al terminar y cierre de la ronda del panel al terminar la sesión. Solo actúa en proyectos con neurodanza.config.json.",
+  "description": "neurodanza: errores conocidos al iniciar, barreras y figuras antes de cada herramienta, lint y pila del subagente después, ciclo de retroalimentación al terminar, fin de cada subagente y cierre de la ronda del panel al terminar la sesión. Solo actúa en proyectos con neurodanza.config.json.",
   "hooks": {
     "SessionStart": [
       {
