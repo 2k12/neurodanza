@@ -2,6 +2,11 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.2.2 · 2026-11-23
+
+### Cambiado
+- **En el modo automático de Claude Code, las figuras ya no preguntan** (`figuras.enAuto: "clasificador"`, por defecto). Un `ask` de un hook interrumpe y le quita la decisión al clasificador del modo automático; ahora decide él. Los `deny` siguen, revisores, personas y especialistas no salen de su mano, y guardar macros o aplicar ajustes se pregunta siempre. Es menos estricto que antes en ese modo: con `"preguntar"` vuelve lo anterior.
+
 ## 1.2.1 · 2026-11-23
 
 ### Corregido

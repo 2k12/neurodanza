@@ -434,6 +434,10 @@
           "type": "integer",
           "minimum": 1
         },
+        "enAuto": {
+          "enum": ["clasificador", "preguntar"],
+          "description": "En el modo automático de Claude Code: deja decidir a su clasificador, o pregunta igual."
+        },
         "sinClasificar": {
           "enum": ["preguntar", "permisos"],
           "description": "Lo que no se puede clasificar, del agente principal: preguntar, o dejarlo a los permisos de Claude Code."
