@@ -92,6 +92,7 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 22. [Autoajuste: el harness se mide y se ajusta solo](docs/22-autoajuste.md)
 23. [Regresión mecánica: primero sin modelo, la persona solo donde algo cambió](docs/23-regresion-mecanica.md)
 24. [Incidencias: consultar, registrar y comparar antes y después](docs/24-incidencias.md)
+25. [Barreras comprobadas y jueces independientes](docs/25-barreras-y-jueces.md)
 
 Hay un ejemplo completo en [`ejemplos/nest-next/`](ejemplos/nest-next/): la configuración de un proyecto real NestJS + Next con tres repos (`backend`, `frontend`, `docs`).
 

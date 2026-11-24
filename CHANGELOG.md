@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.3.1 · 2026-11-24
+
+### Corregido
+Comprobado con Claude Code 2.1.331 de verdad (`evals/barreras.mjs`): pasaban 3 de 9 vías; ahora, ninguna.
+- **Un subagente podía lanzar otros** con las figuras activas: la regla existía, pero el hook no estaba registrado para `Agent`.
+- **`Grep` podía leer un `.env`.**
+- **Un juez lanzado como fork** heredaba la conversación: ahora se rechaza.
+
+### Agregado
+- `evals/barreras.mjs`: repite la comprobación cuando Claude Code se actualice. `evals/sesgo.mjs`: mide a los revisores con un encargo neutro y uno sesgado. Ver docs/25.
+
+### Cambiado
+- `Grep` y `Agent` pasan por la barrera: cada uno suma su tiempo, y los `Grep` de un subagente cuentan como pasos para sus avisos.
+
 ## 1.3.0 · 2026-11-24
 
 ### Agregado
