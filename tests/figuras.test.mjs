@@ -50,6 +50,24 @@ test("figuras: sinClasificar «permisos» solo afecta a lo desconocido del agent
   assert.equal(d({}, "node script.mjs", proyecto().cfg).decision, "ask", "por defecto pregunta");
 });
 
+test("figuras: en modo automático no preguntan (decide el clasificador); los jueces no salen de su mano y los deny siguen", () => {
+  const { root, cfg } = proyecto();
+  const d = (who, command, c = cfg, permission_mode = "auto") => decidirFigura({ ...who, permission_mode, tool_name: "Bash", tool_input: { command } }, c, manoDe(c, who));
+  const impl = { agent_id: "i1", agent_type: "neurodanza:implementador" };
+  const rev = { agent_id: "r1", agent_type: "neurodanza:revisor-ui" };
+  for (const c of ["node x.mjs", "npm install x", "docker compose up -d", "rm -rf dist"]) for (const who of [{}, impl]) assert.equal(d(who, c), null, c);
+  assert.equal(d(rev, "npm install x").decision, "deny");
+  assert.equal(d(rev, "rm -rf dist").decision, "deny");
+  assert.equal(d(rev, "curl http://localhost:3000/api"), null);
+  assert.equal(d({ agent_id: "f1", agent_type: "neurodanza:fantasma" }, "curl https://evil.com").decision, "deny");
+  for (const m of ["default", "acceptEdits", "bypassPermissions", null]) assert.equal(d({}, "npm install x", cfg, m).decision, "ask", String(m));
+  assert.equal(d({}, "npm install x", proyecto({ activo: true, enAuto: "preguntar" }).cfg).decision, "ask");
+  // Por el hook real: calla, y lo que cambia lo del equipo se pregunta igual.
+  const run = (command) => spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ cwd: root, permission_mode: "auto", tool_name: "Bash", tool_input: { command } }), encoding: "utf8" }).stdout;
+  assert.doesNotMatch(run("npm install x"), /permissionDecision/);
+  assert.match(run('node "C:/p/lib/autoajuste.mjs" aplicar --id x'), /"permissionDecision":"ask"/);
+});
+
 test("figuras: manos por tipo; ◇ y ✕ fuera de la mano preguntan, lo demás se rechaza", () => {
   const { cfg } = proyecto();
   const rev = { agent_id: "r1", agent_type: "neurodanza:revisor-ui" };

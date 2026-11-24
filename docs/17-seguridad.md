@@ -41,6 +41,8 @@ Se cambian en `figuras.manos`; una tarea del modo director puede tener la suya (
 | es ◇ o ✕ y no está en la mano | **`ask`**: el usuario decide en la ventana de permisos de Claude Code (quién, qué y por qué). Es la **segunda llave** |
 | es otra y no está en la mano | **`deny`**, con el motivo y qué hacer en su lugar |
 
+**En el modo automático** la segunda llave es el clasificador de Claude Code: un `ask` de un hook interrumpe y le quita la decisión, así que la barrera calla y él revisa la acción. Los `deny` siguen todos, los jueces (revisor, persona, especialista) no salen de su mano, y guardar macros o aplicar ajustes se pregunta siempre. Se apaga con `figuras.enAuto: "preguntar"`.
+
 Si varias reglas aplican, gana la más estricta: `deny` > `ask` > seguir.
 
 **Clasificación conservadora.** Un comando se parte en sus segmentos (`;`, `&&`, `||`, `|`, `&`, paréntesis, saltos de línea), se miran por dentro `bash -c`, `powershell -Command`, `$(…)`, ``…`` y `eval`, y el código de `node -e`/`python -c` se lee para ver si escribe, borra o usa la red. El comando vale lo que su parte más peligrosa. **Lo que no se puede clasificar con seguridad cuenta como ◇** (por ejemplo `node scripts/seed.mjs`: no se sabe qué hace); con `figuras.sinClasificar: "permisos"`, para el agente principal eso lo deciden los permisos de Claude Code.
