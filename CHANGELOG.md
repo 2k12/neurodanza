@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.3.0 · 2026-11-24
+
+### Agregado
+- **Incidencias** (`/neurodanza-incidencias`, `lib/incidencias.mjs`): consulta la rama de desarrollo de cada repo y si se usa graphify (opcional), trae lo nuevo solo con avance rápido, registra fichas de frontend y backend con plantillas genéricas y mantiene el registro al día. Ver docs/24.
+- **Evidencia de antes y después:** `panel.mjs capturas` (tres resoluciones) e `incidencias.mjs evidencia` (petición y respuesta de la app local, con lo sensible oculto). El antes no se pisa y «Corregida» exige el después.
+- **«Verificada», «Cerrada» y «Descartada» las decide el responsable:** la barrera rechaza escribirlas a mano y por la CLI las pregunta, también en automático.
+- Configuración `incidencias`.
+
+### Cambiado
+- La barrera tarda 68,8 ms por comando (antes 67,4; +2 %).
+
 ## 1.2.2 · 2026-11-23
 
 ### Cambiado

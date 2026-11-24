@@ -27,6 +27,7 @@ Unos evals con respuesta conocida miden si los revisores y las personas evalúan
 | **CLI de la app** | Cuando el agente prueba la app o verifica | `app.mjs api … --como <persona>` entra con la sesión en caché y responde compacto; `verificar` corre lint, tipos y pruebas en paralelo. Los comandos largos que se repiten se proponen como macros del proyecto. La barrera de comentarios (modo estricto) rechaza al editar los comentarios nuevos que no van. Ver [docs/21](docs/21-cli-de-la-app.md). |
 | **Autoajuste** | Una vez al día, en segundo plano | Lee lo que pasó en las sesiones (transcripts, sin hooks nuevos): los rechazos repetidos se vuelven lecciones que se aprueban solo si bajan, los errores repetidos entran a los errores conocidos y los comandos largos a las macros; presupuestos y arreglos son propuestas que aplica el usuario y después se evalúan (mantener o revertir). Ver [docs/22](docs/22-autoajuste.md). |
 | **Regresión mecánica** | Antes del panel, si hay recorridos permanentes | El mapa de impacto (imports y layouts) dice qué recorridos permanentes puede tocar el diff, también fuera de sus pantallas; se repiten sin modelo y se comparan con la versión aprobada (métricas y firma de cada pantalla). Solo lo que cambió va a su persona, que lo juzga en la ventana en vivo. Ver [docs/23](docs/23-regresion-mecanica.md). |
+| **Incidencias** | `/neurodanza-incidencias` | Consulta la rama de desarrollo y graphify (opcional), registra incidencias de frontend y backend, compara la evidencia de antes y después, y deja «Verificada» solo al responsable. Ver [docs/24](docs/24-incidencias.md). |
 | **Mapa en vivo** | Siempre, con el plugin `neurodanza-mapa` | Panel al lado del chat con la fase del ciclo, cada subagente (pasos, última herramienta, tiempo, veredicto) y el plan. Avisa al subagente que se acerca a su presupuesto de pasos o repite la misma llamada. |
 | **Errores conocidos** | Al iniciar la sesión y en cada bloqueo | Cada problema de los hooks se guarda con una firma; si vuelve, el mensaje trae cómo se resolvió. |
 | **Evals** | `/neurodanza-evals` | Casos con errores sembrados y un control limpio para los revisores, y casos de calibración para el panel. |
@@ -90,6 +91,7 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 21. [La CLI de la app, macros y comentarios](docs/21-cli-de-la-app.md)
 22. [Autoajuste: el harness se mide y se ajusta solo](docs/22-autoajuste.md)
 23. [Regresión mecánica: primero sin modelo, la persona solo donde algo cambió](docs/23-regresion-mecanica.md)
+24. [Incidencias: consultar, registrar y comparar antes y después](docs/24-incidencias.md)
 
 Hay un ejemplo completo en [`ejemplos/nest-next/`](ejemplos/nest-next/): la configuración de un proyecto real NestJS + Next con tres repos (`backend`, `frontend`, `docs`).
 

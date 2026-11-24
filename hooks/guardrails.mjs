@@ -11,6 +11,7 @@ import { MENSAJE_CORTE, mensajeCuarentena, registrarPaso, registrarRechazo, revi
 import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
 import { recordar } from "../lib/operador.mjs";
 import { registrarEnProyecto } from "../lib/errores.mjs";
+import { estadoReservadoEn, MOTIVO_RESERVADO } from "../lib/incidencias.mjs";
 import { comentariosProhibidos, EXTENSIONES as EXT_CODIGO, textoRechazo } from "../lib/comentarios.mjs";
 
 const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
@@ -304,6 +305,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const why = check(evento, cfg);
   if (why) rechazar(why);
+  // Incidencias: «Verificada», «Cerrada» y «Descartada» las decide el responsable.
+  const reservado = estadoReservadoEn(cfg, evento);
+  if (reservado === "deny" || (reservado && event.agent_id)) rechazar(MOTIVO_RESERVADO);
+  if (reservado) pregunta = pregunta || "neurodanza: poner una incidencia como verificada, cerrada o descartada (solo lo decide el responsable). ¿Lo apruebas?";
   if (app) {
     const cmd = String(event.tool_input?.command ?? "");
     // Guardar o borrar una macro cambia lo que todo el equipo puede correr: lo decide el usuario.
