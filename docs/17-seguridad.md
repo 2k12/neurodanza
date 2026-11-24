@@ -43,7 +43,9 @@ Se cambian en `figuras.manos`; una tarea del modo director puede tener la suya (
 
 Si varias reglas aplican, gana la más estricta: `deny` > `ask` > seguir.
 
-**Clasificación conservadora.** Un comando se parte en sus segmentos (`;`, `&&`, `||`, `|`, `&`, paréntesis, saltos de línea), se miran por dentro `bash -c`, `powershell -Command`, `$(…)`, ``…`` y `eval`, y el código de `node -e`/`python -c` se lee para ver si escribe, borra o usa la red. El comando vale lo que su parte más peligrosa. **Lo que no se puede clasificar con seguridad cuenta como ◇** (por ejemplo `node scripts/seed.mjs`: no se sabe qué hace).
+**Clasificación conservadora.** Un comando se parte en sus segmentos (`;`, `&&`, `||`, `|`, `&`, paréntesis, saltos de línea), se miran por dentro `bash -c`, `powershell -Command`, `$(…)`, ``…`` y `eval`, y el código de `node -e`/`python -c` se lee para ver si escribe, borra o usa la red. El comando vale lo que su parte más peligrosa. **Lo que no se puede clasificar con seguridad cuenta como ◇** (por ejemplo `node scripts/seed.mjs`: no se sabe qué hace); con `figuras.sinClasificar: "permisos"`, para el agente principal eso lo deciden los permisos de Claude Code.
+
+No se pregunta por las variables de entorno (`export A=1`, `A=1 cmd`, `$env:A = 'x'`, `source .env`), las palabras de control, las redirecciones ni las banderas de git y npm (`git -C`, `npm run -s`): se clasifica el comando que de verdad corre. **Sí se pregunta** por las variables que deciden qué programa corre o le inyectan código (`PATH`, `NODE_OPTIONS`, `LD_PRELOAD`, `GIT_SSH_COMMAND`…).
 
 **La tabla vive donde ningún agente puede escribir:** `.neurodanza/figuras.json` (y el registro `.neurodanza/agentes/`). La barrera rechaza cualquier `Edit`/`Write` o comando que los toque (redirecciones, `cp`, `mv`, `node -e`…); leerlos sí se puede. La escriben solo `director.mjs preparar` (la mano de cada tarea) y la propia barrera (al asociar el `agent_id` del implementador con su tarea en cuanto aparece en su worktree).
 

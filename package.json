@@ -1,6 +1,6 @@
 {
   "name": "neurodanza",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Plugin de Claude Code: ciclo automático de calidad para proyectos JS/TS.",
   "type": "module",

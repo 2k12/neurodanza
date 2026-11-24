@@ -310,6 +310,7 @@ Qué puede hacer cada tipo de agente: ◯ leer · △ editar · □ verificar ·
 |---|---|---|
 | `activo` | `false` (**`true`** en los proyectos que crea `/neurodanza-init`) | Prende la clasificación por figuras, la segunda llave (`ask`) y la cuarentena. Apagado en configuraciones existentes para no cambiar flujos. |
 | `manos` | `{}` | Manos por tipo (`revisor`, `persona`, `implementador`, `fantasma`, `principal`, `otro`): lista de `leer`, `editar`, `verificar`, `externo`, `destructivo`, `red-app`. Lo que no se ponga usa los valores por defecto. |
+| `sinClasificar` | `"preguntar"` | Qué hacer cuando el **agente principal** corre algo que no se puede clasificar (`node script.mjs`, `npm run dev`…). Con `"permisos"`, la barrera no pregunta y deciden los permisos normales de Claude Code. Lo externo conocido (subir, instalar, base de datos, docker, red) y lo destructivo se preguntan igual; a los subagentes no les cambia nada. |
 | `cuarentena` | `3` | Rechazos de un subagente en el ciclo para dejarlo en cuarentena (mano vacía). |
 
 ## `fantasmas`

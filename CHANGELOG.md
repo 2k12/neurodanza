@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.2.1 · 2026-11-23
+
+### Corregido
+- **Las figuras preguntaban por comandos inofensivos.** En 3404 comandos reales del agente principal, la segunda llave preguntaba por el 60,2 %; ahora, por el 47,3 % (18,7 % con `figuras.sinClasificar: "permisos"`). Se preguntaba por `2>&1` (se partía por el `&` y quedaba un comando «1»), variables de entorno, `set -e`, `for`/`if`/`while`, `git -C`, banderas de npm, pnpm, yarn y npx, y comandos de solo lectura que faltaban.
+- **Huecos que pasaban sin preguntar:** un programa entre comillas (`"./x"`, `& "x.exe"`), `$(…)` anidado, `ForEach-Object { Remove-Item … }`, métodos de .NET, variables que inyectan código (`NODE_OPTIONS`, `PATH`, `GIT_SSH_COMMAND`…) y una petición a la app puesta antes de otra a internet.
+
+### Agregado
+- `figuras.sinClasificar` (`"preguntar"` por defecto, o `"permisos"`): lo que no se puede clasificar, del agente principal, lo deciden los permisos de Claude Code.
+
 ## 1.2.0 · 2026-11-19
 
 Autoajuste y regresión mecánica. Ver `docs/22-autoajuste.md`, `docs/23-regresion-mecanica.md` y `bench/`.
