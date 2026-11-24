@@ -93,3 +93,4 @@ No se pregunta por las variables de entorno (`export A=1`, `A=1 cmd`, `$env:A = 
 - **`ask` depende del modo de permisos:** en `dontAsk` (y en algunos casos de `plan`), Claude Code rechaza en vez de preguntar. Los subagentes en segundo plano muestran la pregunta en la sesión principal, indicando quién pide.
 - **Los fantasmas prueban hipótesis, no auditan:** encuentran lo que se les ocurre probar a partir del diff. Que no confirmen nada no prueba que el cambio sea seguro.
 - **El login de una persona por API** se deduce de `panel.usuarios.login` (o de `fantasmas.login`). Si la app entra de otra forma, configura `fantasmas.login`.
+- **Si tu API exige encabezados propios**, configura [`app.encabezados`](03-configuracion.md#appencabezados). Sin ellos, un rechazo por el encabezado faltante puede parecer un ataque bloqueado.

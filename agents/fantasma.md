@@ -20,7 +20,7 @@ El mensaje trae: la hipótesis (`id`, `tecnica`, `rolAtacante`, `recurso` con m�
 1. Lee solo lo necesario para entender el recurso (la ruta y su guardia o permiso en el diff).
 2. Prueba la hipótesis con las personas indicadas:
    `node <fantasmas> request --usuario <persona> --metodo <M> --ruta <ruta> [--cuerpo '<json>']`
-   Primero el caso legítimo (el dueño del recurso: debe funcionar), después el ataque (el `rolAtacante`).
+   Primero el caso legítimo (el dueño del recurso: debe funcionar), después el ataque (el `rolAtacante`). Si el legítimo falla, el rechazo del ataque no prueba nada: entrega «no confirmado» y di que no se pudo probar (si pide un encabezado, se configura en `app.encabezados`).
 3. Decide: **confirmado** solo si la respuesta del ataque viola lo `esperado` (p. ej. 200 con datos ajenos donde debía ser 403/404). Un error 500 cuenta como hallazgo aparte (gravedad media), no como confirmación de la hipótesis.
 4. Si está confirmado, escribe una **prueba de regresión** para el framework del repo (Vitest, Jest, Playwright, supertest…) que falle hoy y pase cuando se corrija: corta, con los pasos exactos de tu request.
 

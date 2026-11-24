@@ -182,6 +182,7 @@ Ver [09-adaptadores.md](09-adaptadores.md).
 | `login.clave` | `"Contraseña"` | Etiqueta exacta del campo de contraseña. |
 | `login.boton` | `"ingresar\|entrar\|iniciar\|login\|sign in"` | Expresión regular del nombre del botón. |
 | `login.espera` | `"/"` | Texto que debe aparecer en la URL tras ingresar. |
+| `encabezados` | — | Encabezados que tu API exige (empresa, versión, clave de API…). Se mandan en las peticiones por API (login, fantasmas, CLI de la app, evidencia de incidencias y usuarios del panel), **solo a hosts de la app**. Ver abajo. |
 | `idioma` | `"es-EC"` (no está en `DEFAULTS`; lo aplica `panel.mjs`) | Idioma del navegador de las personas. |
 | `ignorarConsola` | `["status of 401"]` (no está en `DEFAULTS`; lo aplica `panel.mjs`) | Expresiones regulares de errores de consola que no cuentan como problema. |
 
@@ -192,6 +193,17 @@ Ver [09-adaptadores.md](09-adaptadores.md).
   "login": { "ruta": "/login?empresa=demo", "usuario": "Correo", "clave": "Contraseña", "boton": "ingresar|entrar|iniciar", "espera": "/app" }
 }
 ```
+
+### `app.encabezados`
+
+```json
+"encabezados": { "X-Empresa": "demo-{id}", "X-Api-Key": "${MI_API_KEY}" }
+```
+
+- `{id}`, `{rol}` y `{email}` son los de la persona. Sin persona (anónimo o admin), ese encabezado no se manda.
+- `${VARIABLE}` sale del entorno (`${VARIABLE:-defecto}`): no escribas claves en el archivo. Si falta, la petición falla y lo dice, en vez de mandarlo vacío.
+- `Authorization`, `Content-Type` y los de la conexión no se pueden cambiar: la sesión es la de cada persona.
+- No se guardan en los resultados ni en la evidencia. El navegador del panel no los usa: allí los manda tu frontend.
 
 ## `roles`
 

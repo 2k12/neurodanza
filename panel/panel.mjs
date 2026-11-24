@@ -28,6 +28,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
+import { pedirApp } from "../lib/encabezados.mjs";
 import { avisosEvidencia, guardarMeta, prepararEvidencia } from "../lib/incidencias.mjs";
 import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
 import { aprobarVersion, compararEjecuciones, compararMemoria, ejecutarRecorrido, leerMemoria, leerRecorrido, notaConRegresiones, notaPorPasos, registrarMemoria, textoRegresion, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
@@ -258,12 +259,12 @@ function credentialsOf(ctx, p) {
   return { email: expand(u.email, { id: p.id, rol: p.rol }), clave: expand(u.clave) };
 }
 
-async function http(web, def, vars, token) {
-  const res = await fetch(`${web}${expand(def.url, vars)}`, {
+async function http(cfg, web, def, vars, token) {
+  const res = await pedirApp(cfg, `${web}${expand(def.url, vars)}`, {
     method: def.metodo ?? "POST",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: def.cuerpo ? JSON.stringify(expand(def.cuerpo, vars)) : undefined,
-  });
+  }, vars);
   const text = await res.text();
   let body = null;
   try {
@@ -288,7 +289,7 @@ async function usuarios(ctx) {
   const u = ctx.cfg.panel.usuarios;
   if (!u?.login || !u?.crear) throw new Error("panel.usuarios.login y panel.usuarios.crear son obligatorios para crear usuarios.");
   const web = await detectWeb(ctx.cfg);
-  const login = await http(web, u.login, {});
+  const login = await http(ctx.cfg, web, u.login, {});
   const token = login.body?.[u.login.token ?? "accessToken"];
   if (!token) throw new Error(`login del administrador: ${login.status} ${JSON.stringify(login.body).slice(0, 200)}`);
   for (const p of ctx.cast.personas) {
@@ -297,7 +298,7 @@ async function usuarios(ctx) {
       continue;
     }
     const vars = { id: p.id, nombre: p.nombre, rol: p.rol, email: expand(u.email, { id: p.id, rol: p.rol }), clave: expand(u.clave) };
-    const r = await http(web, u.crear, vars, token);
+    const r = await http(ctx.cfg, web, u.crear, vars, token);
     if (r.status >= 200 && r.status < 300) console.log(`+ ${p.nombre} (${p.rol}) creado`);
     else if (r.status === 409) console.log(`= ${p.nombre} (${p.rol}) ya existe`);
     else console.log(`! ${p.nombre}: ${r.status} ${JSON.stringify(r.body).slice(0, 160)}`);
