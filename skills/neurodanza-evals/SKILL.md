@@ -18,8 +18,11 @@ Requiere la app corriendo. `<evals> personas` lista los casos. Por cada uno, lan
 - `persona-consistencia` es una corrida independiente del mismo caso que `persona-buena`.
 - Guarda cada respuesta en `resultados.personas["<idCaso>"]`.
 
-## 3. Calificar
-1. Escribe `<evals.informes>/<AAAA-MM-DD>-v<versión>.json` con `{ "version": "<versión>", "revisores": {…}, "personas": {…} }`.
+## 3. Fantasmas
+`<evals> fantasmas` lista los casos con sus hipótesis y sus `corridas`. Por cada corrida lanza un agente `fantasma` **nuevo**, con el diff y las hipótesis del caso, sin `esperado` ni `descripcion` ni lo que dijeron las otras. Guarda **todas**, en orden, en `resultados.fantasmas["<idCaso>"]`: `[{ "confirmados": [...], "conclusion": "sin evidencia" si no pudo decidir }]`. No repitas ni quites una corrida porque salió mal.
+
+## 4. Calificar
+1. Escribe `<evals.informes>/<AAAA-MM-DD>-v<versión>.json` con `{ "version": "<versión>", "revisores": {…}, "personas": {…}, "fantasmas": {…} }`.
 2. `<evals> calificar --resultados <ese json>`: agrega el `informe` (detección, falsos positivos, calibración) y sale con 1 si no pasa los umbrales.
 3. Si no pasa: si el **caso** estaba mal planteado (el revisor o la persona tenía razón), corrígelo y déjalo anotado en el caso (`nota`); si el **agente** falló, ajusta sus instrucciones. Nunca ajustes un caso solo para que pase. Vuelve a correr solo lo que falló.
 4. Registra el resultado en la bitácora de la versión e informa al usuario en pocas líneas.

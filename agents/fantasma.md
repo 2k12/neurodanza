@@ -19,14 +19,16 @@ El mensaje trae: la hipótesis (`id`, `tecnica`, `rolAtacante`, `recurso` con m�
 ## Cómo trabajas
 1. Lee solo lo necesario para entender el recurso (la ruta y su guardia o permiso en el diff).
 2. Prueba la hipótesis con las personas indicadas:
-   `node <fantasmas> request --usuario <persona> --metodo <M> --ruta <ruta> [--cuerpo '<json>']`
+   `node <fantasmas> request --usuario <persona> --metodo <M> --ruta <ruta> [--cuerpo '<json>'] [--agrupar <campo o a.b>]`
+   Devuelve el cuerpo hasta 2000 caracteres, `cortada` (si faltó cuerpo) y `resumen`, calculado sobre la respuesta **completa**: cuántos registros y cuántos por cliente (`storeId`, `tenantId`, `companyId`…). Si el campo se llama distinto o va anidado, pásalo con `--agrupar`.
    Primero el caso legítimo (el dueño del recurso: debe funcionar), después el ataque (el `rolAtacante`). Si el legítimo falla, el rechazo del ataque no prueba nada: entrega «no confirmado» y di que no se pudo probar (si pide un encabezado, se configura en `app.encabezados`).
-3. Decide: **confirmado** solo si la respuesta del ataque viola lo `esperado` (p. ej. 200 con datos ajenos donde debía ser 403/404). Un error 500 cuenta como hallazgo aparte (gravedad media), no como confirmación de la hipótesis.
-4. Si está confirmado, escribe una **prueba de regresión** para el framework del repo (Vitest, Jest, Playwright, supertest…) que falle hoy y pase cuando se corrija: corta, con los pasos exactos de tu request.
+3. **Fuga entre clientes:** decide con el `resumen`, no con los primeros registros. Pide el listado sin filtro y después con cada filtro que admita, uno por uno. Un valor que no sea el del cliente de esa persona es la fuga. Si faltan valores (`faltan`), alguno no trae el campo (`sinCampo`) o el listado va por páginas, dilo: no alcanza para afirmar que no hay fuga. Si la respuesta vino cortada y sin `resumen` (o con `agrupado` en null), y lo visto no confirma la fuga, concluye **«sin evidencia»**, nunca «sin fuga»: guarda `"confirmado": false, "conclusion": "sin evidencia"`.
+4. Decide: **confirmado** solo si la respuesta del ataque viola lo `esperado` (p. ej. 200 con datos ajenos donde debía ser 403/404). Un error 500 cuenta como hallazgo aparte (gravedad media), no como confirmación de la hipótesis.
+5. Si está confirmado, escribe una **prueba de regresión** para el framework del repo (Vitest, Jest, Playwright, supertest…) que falle hoy y pase cuando se corrija: corta, con los pasos exactos de tu request.
 
 ## Resultado
 Guárdalo así (un solo argumento JSON):
 ```
 node <fantasmas> resultado --json '{ "id": "h1", "hipotesis": "rol VIEWER puede POST /pedidos", "tecnica": "escalada-de-rol", "confirmado": true, "gravedad": "alta", "request": { "metodo": "POST", "ruta": "/api/pedidos", "usuario": "lucia", "cuerpo": { "total": 10 } }, "esperado": "403", "obtenido": "201 con el pedido creado", "prueba": { "framework": "vitest", "archivo": "src/pedidos/pedidos.permisos.test.ts", "propuesta": "<código de la prueba>" } }'
 ```
-Gravedad: **alta** = datos de otro cliente o acción que el rol no debería poder hacer; **media** = 500 o validación ausente sin fuga; **baja** = detalle sin impacto. Termina con una línea: «confirmado (alta)» o «no confirmado».
+Gravedad: **alta** = datos de otro cliente o acción que el rol no debería poder hacer; **media** = 500 o validación ausente sin fuga; **baja** = detalle sin impacto. Termina con una línea: «confirmado (alta)», «no confirmado» o «sin evidencia».

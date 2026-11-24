@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.5.0 · 2026-11-24
+
+### Agregado
+- **Fantasmas:** `request` devuelve `cortada` y `resumen` (registros y cuántos por cliente), calculado sobre la respuesta completa; `--agrupar <campo o a.b>`.
+- **«Sin evidencia»:** si la respuesta vino cortada y sin resumen, el fantasma no concluye «sin fuga». `veredicto` lo muestra aparte, sin bloquear.
+- **Evals:** varias corridas por caso de fantasma (`corridas`) con regla fija: dos tercios confirman la fuga; en el limpio, ninguna falsa y todas concluyen.
+
+### Corregido
+- **Evals:** una nota nula o vacía valía 0 y aprobaba casos con `notaMax`; ahora es «sin nota» y no aprueba, tampoco como base de `repiteDe`.
+
+### Cambiado
+- Los casos base de fantasmas piden 3 corridas (el triple de tokens). Los proyectos ya configurados siguen con 1 hasta que agreguen `corridas`.
+
 ## 1.4.0 · 2026-11-24
 
 ### Agregado

@@ -79,6 +79,8 @@ No se pregunta por las variables de entorno (`export A=1`, `A=1 cmd`, `$env:A = 
 
 **Ataque:** cada fantasma (`agents/fantasma.md`) prueba una hipótesis contra la app local ya levantada, con los usuarios de prueba de las personas: `fantasmas.mjs request --usuario <persona> --metodo M --ruta R`. Solo métodos y rutas del diff; nunca borra datos que no haya creado.
 
+**Respuestas largas:** el cuerpo se corta (`cortada: true`), pero `resumen` se calcula sobre la respuesta completa: `registros` y, por cada campo de cliente (`storeId`, `tenantId`, `companyId`… o el de `--agrupar a.b`), los 20 valores más repetidos, cuántos `faltan` y cuántos registros no traen el campo (`sinCampo`). Lee listas directas o en `data`, `items` o `results`; si no es una lista JSON es `null`. Cortada y sin resumen, la conclusión es «sin evidencia», que `veredicto` muestra aparte y no bloquea. El resumen es de la página recibida, no de todas.
+
 **Límite duro:** la barrera rechaza cualquier petición de red de un fantasma a un host fuera de `fantasmas.hosts` (más los de `app.urls`), y `fantasmas.mjs request` lo vuelve a comprobar. Nunca producción.
 
 **Resultado (modo propuesta):** el fantasma **no edita ningún repo** (no tiene la figura △ ni herramientas de escritura). `fantasmas.mjs resultado` guarda en `.neurodanza/fantasmas/<ciclo>/<id>.json`: hipótesis, confirmado sí/no, la request exacta (método, ruta, usuario, cuerpo), respuesta esperada y obtenida, gravedad, y `prueba.propuesta` con una prueba de regresión para el framework del repo.

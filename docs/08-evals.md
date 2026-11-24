@@ -10,6 +10,7 @@ Los revisores y las personas son agentes: pueden dejar pasar errores, inventar p
 ```
 node <plugin>/evals/evals.mjs prompt --revisor revisor-ui
 node <plugin>/evals/evals.mjs personas
+node <plugin>/evals/evals.mjs fantasmas
 node <plugin>/evals/evals.mjs calificar --resultados <json>
 ```
 
@@ -57,6 +58,19 @@ Los casos base cubren: límite distinto en pantalla y servidor, consulta sin fil
 | `persona-rota` | Una persona a la que se le pide una tarea que su rol **no** puede hacer no infla la nota. | `notaMax: 5` |
 | `persona-consistencia` | Una segunda corrida independiente de `persona-buena` (`repiteDe`) da casi la misma nota. | `diferenciaMax: 1.5` |
 
+Una nota nula, vacía o que no es un número es «sin nota» y no aprueba, tampoco como base de `repiteDe`.
+
+### Fantasmas: varias corridas
+
+`corridas` (1 si no está; 3 en los casos base) dice cuántas veces se corre el caso, cada una con un fantasma nuevo. `resultados.fantasmas["<id>"]` es una lista, una entrada por corrida (un objeto suelto vale por una).
+
+| Caso | Aprueba si |
+|---|---|
+| `"esperado": "confirmar"` | Al menos **dos tercios** de las corridas confirman la fuga (2 de 3). Una sin resultado no confirma. |
+| `"esperado": "limpio"` | **Ninguna** confirma nada y todas concluyen («sin evidencia» no es limpio). |
+
+Si faltan corridas, reprueba. Las de más también cuentan. Tres corridas cuestan el triple de tokens que una.
+
 ## El proceso (`/neurodanza-evals`)
 
 1. **Revisores**, los 4 en paralelo y en un solo mensaje. Para cada uno:
@@ -80,6 +94,7 @@ Los casos base cubren: límite distinto en pantalla y servidor, consulta sin fil
 
 - `deteccion` (casos con error detectados / casos con error, contando cada revisor) ≥ `umbrales.deteccion` (0.85).
 - `falsosPositivos` (veces que se reprobó el control limpio) ≤ `umbrales.falsosPositivos` (0).
+- Todos los casos de fantasmas cumplen su regla.
 - Todos los casos de personas dentro de lo esperado (`notaMin`, `notaMax`, `diferenciaMax` de cada caso).
 
 El hook `Stop` avisa si cambiaste algo de `evals.vigilar` y no hay un informe aprobado (`informe.aprobado: true`) de la versión actual.

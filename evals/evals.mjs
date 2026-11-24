@@ -6,6 +6,7 @@
 // Uso:
 //   node evals.mjs prompt --revisor revisor-ui     (instrucciones para ese revisor: sus casos + el de control)
 //   node evals.mjs personas                         (casos de calibración del panel)
+//   node evals.mjs fantasmas                        (casos de fantasmas, sus hipótesis y cuántas corridas lleva cada uno)
 //   node evals.mjs calificar --resultados <json>    (puntúa, escribe el informe en el mismo json; exit 1 si no pasa)
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -37,9 +38,36 @@ export function promptRevisor(revisor, casos = CASOS) {
 
 const texto = (r) => JSON.stringify(r?.hallazgos ?? []).toLowerCase();
 
+/** Nota numérica, o NaN si falta: Number(null) y Number("") dan 0 y aprobarían los casos con notaMax. */
+const numero = (v) => (typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN);
+
+/** Corridas que pide un caso de fantasma (1 si no lo dice). */
+const corridasDe = (f) => (Number.isInteger(f.corridas) && f.corridas >= 1 ? f.corridas : 1);
+
+/**
+ * Califica un caso de fantasma con todas sus corridas (puro). Regla fija: la fuga se confirma en al menos dos
+ * tercios; el limpio, en ninguna, y todas deben concluir. Faltar corridas reprueba; las de más también cuentan.
+ */
+export function calificarFantasma(f, resultado) {
+  const pedidas = corridasDe(f);
+  const rs = Array.isArray(resultado) ? resultado : resultado ? [resultado] : [];
+  if (!rs.some(Boolean)) return { caso: f.id, ok: false, motivo: "sin resultado" };
+  if (rs.length < pedidas) return { caso: f.id, ok: false, motivo: `${rs.length} de ${pedidas} corridas` };
+  const n = rs.length;
+  const conf = rs.map((r) => (r?.confirmados ?? []).filter((x) => x.confirmado !== false));
+  if (f.esperado === "confirmar") {
+    const si = conf.filter((c) => c.some((x) => !f.tecnica || !x.tecnica || x.tecnica === f.tecnica)).length;
+    const ok = si >= Math.ceil((2 * n) / 3);
+    return { caso: f.id, ok, motivo: n === 1 ? (ok ? "confirmó la fuga" : "no la confirmó") : `la confirmó en ${si} de ${n} corridas` };
+  }
+  const falsos = conf.reduce((t, c) => t + c.length, 0);
+  const sinConcluir = rs.filter((r) => !r || r.conclusion === "sin evidencia").length;
+  return { caso: f.id, ok: !falsos && !sinConcluir, motivo: falsos ? `${falsos} falso(s) positivo(s)` : sinConcluir ? `${sinConcluir} corrida(s) sin concluir` : "sin falsos positivos" };
+}
+
 /**
  * Puntúa los resultados. `resultados.revisores` = { "<revisor>": [{ caso, aprobado, hallazgos }] };
- * `resultados.personas` = { "<idCaso>": { nota, ... } }.
+ * `resultados.personas` = { "<idCaso>": { nota, ... } }; `resultados.fantasmas` = { "<idCaso>": [una por corrida] }.
  */
 export function calificar(resultados, casos = CASOS) {
   const u = casos.umbrales;
@@ -69,7 +97,8 @@ export function calificar(resultados, casos = CASOS) {
   for (const p of casos.personas ?? []) {
     const r = resultados.personas?.[p.id];
     // Con recorrido, la nota pasa por la misma regla que en el panel (un paso crítico que no cumple la limita).
-    const nota = p.recorrido && r?.pasos ? notaPorPasos(r, 6, p.recorrido).nota : Number(r?.nota);
+    const propia = numero(r?.nota);
+    const nota = p.recorrido && r?.pasos && Number.isFinite(propia) ? notaPorPasos(r, 6, p.recorrido).nota : propia;
     let ok = Number.isFinite(nota);
     let motivo = ok ? `nota ${nota}` : "sin nota";
     if (ok && p.esperado.notaMin !== undefined) ok = nota >= p.esperado.notaMin;
@@ -81,22 +110,15 @@ export function calificar(resultados, casos = CASOS) {
       motivo = ok ? `nota ${nota}; detectó que el paso ${p.esperado.pasoNoCumple} no cumple` : `no marcó «no cumple» en el paso ${p.esperado.pasoNoCumple} (${paso?.resultado ?? "sin detalle por paso"})`;
     }
     if (ok && p.repiteDe) {
-      const base = Number(resultados.personas?.[p.repiteDe]?.nota);
+      const base = numero(resultados.personas?.[p.repiteDe]?.nota);
       const dif = Math.abs(nota - base);
       ok = Number.isFinite(base) && dif <= p.esperado.diferenciaMax;
-      motivo = `diferencia ${Math.round(dif * 100) / 100} con ${p.repiteDe}`;
+      motivo = Number.isFinite(base) ? `diferencia ${Math.round(dif * 100) / 100} con ${p.repiteDe}` : `sin nota en ${p.repiteDe}`;
     }
     personas.push({ caso: p.id, ok, motivo });
   }
 
-  // Fantasmas: el de la fuga sembrada debe confirmar algo; el limpio, nada (sin falsos positivos).
-  const fantasmas = [];
-  for (const f of casos.fantasmas ?? []) {
-    const r = resultados.fantasmas?.[f.id];
-    const conf = (r?.confirmados ?? []).filter((x) => x.confirmado !== false);
-    const ok = !!r && (f.esperado === "confirmar" ? conf.length > 0 && (!f.tecnica || conf.some((x) => !x.tecnica || x.tecnica === f.tecnica)) : conf.length === 0);
-    fantasmas.push({ caso: f.id, ok, motivo: !r ? "sin resultado" : f.esperado === "confirmar" ? (ok ? "confirmó la fuga" : "no la confirmó") : ok ? "sin falsos positivos" : `${conf.length} falso(s) positivo(s)` });
-  }
+  const fantasmas = (casos.fantasmas ?? []).map((f) => calificarFantasma(f, resultados.fantasmas?.[f.id]));
 
   const aprobado = deteccion >= u.deteccion && falsosPositivos <= u.falsosPositivos && personas.every((p) => p.ok) && fantasmas.every((f) => f.ok);
   return { aprobado, deteccion, falsosPositivos, personasOk: personas.filter((p) => p.ok).length, personasTotal: personas.length, detalle, personas, fantasmas };
@@ -127,7 +149,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   else if (cmd === "fantasmas") {
     // Casos de fantasmas con las hipótesis que genera neurodanza para cada diff (para lanzar a los fantasmas).
     const { hipotesisDeDiff } = await import("../lib/fantasmas.mjs");
-    console.log(JSON.stringify((CASOS.fantasmas ?? []).map((f) => ({ ...f, hipotesis: hipotesisDeDiff(f.diff, [{ rol: "ADMIN" }, { rol: "VIEWER", soloLectura: true }], 3) })), null, 2));
+    console.log(JSON.stringify((CASOS.fantasmas ?? []).map((f) => ({ ...f, corridas: corridasDe(f), hipotesis: hipotesisDeDiff(f.diff, [{ rol: "ADMIN" }, { rol: "VIEWER", soloLectura: true }], 3) })), null, 2));
   }
   else if (cmd === "calificar") {
     const file = resolve(a.resultados);
@@ -138,5 +160,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     console.log(JSON.stringify({ aprobado: informe.aprobado, deteccion: informe.deteccion, falsosPositivos: informe.falsosPositivos, personas: `${informe.personasOk}/${informe.personasTotal}` }));
     for (const d of [...informe.detalle, ...informe.personas, ...(informe.fantasmas ?? [])].filter((x) => !x.ok)) console.log(`✖ ${d.caso}${d.revisor ? ` · ${d.revisor}` : ""}: ${d.motivo}`);
     if (!informe.aprobado) process.exitCode = 1;
-  } else console.log("comandos: prompt --revisor <revisor> | personas | calificar --resultados <json>");
+  } else console.log("comandos: prompt --revisor <revisor> | personas | fantasmas | calificar --resultados <json>");
 }
