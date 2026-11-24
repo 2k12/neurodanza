@@ -2,6 +2,31 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.3.1 · 2026-11-24
+
+### Corregido
+Comprobado con Claude Code 2.1.331 de verdad (`evals/barreras.mjs`): pasaban 3 de 9 vías; ahora, ninguna.
+- **Un subagente podía lanzar otros** con las figuras activas: la regla existía, pero el hook no estaba registrado para `Agent`.
+- **`Grep` podía leer un `.env`.**
+- **Un juez lanzado como fork** heredaba la conversación: ahora se rechaza.
+
+### Agregado
+- `evals/barreras.mjs`: repite la comprobación cuando Claude Code se actualice. `evals/sesgo.mjs`: mide a los revisores con un encargo neutro y uno sesgado. Ver docs/25.
+
+### Cambiado
+- `Grep` y `Agent` pasan por la barrera: cada uno suma su tiempo, y los `Grep` de un subagente cuentan como pasos para sus avisos.
+
+## 1.3.0 · 2026-11-24
+
+### Agregado
+- **Incidencias** (`/neurodanza-incidencias`, `lib/incidencias.mjs`): consulta la rama de desarrollo de cada repo y si se usa graphify (opcional), trae lo nuevo solo con avance rápido, registra fichas de frontend y backend con plantillas genéricas y mantiene el registro al día. Ver docs/24.
+- **Evidencia de antes y después:** `panel.mjs capturas` (tres resoluciones) e `incidencias.mjs evidencia` (petición y respuesta de la app local, con lo sensible oculto). El antes no se pisa y «Corregida» exige el después.
+- **«Verificada», «Cerrada» y «Descartada» las decide el responsable:** la barrera rechaza escribirlas a mano y por la CLI las pregunta, también en automático.
+- Configuración `incidencias`.
+
+### Cambiado
+- La barrera tarda 68,8 ms por comando (antes 67,4; +2 %).
+
 ## 1.2.2 · 2026-11-23
 
 ### Cambiado

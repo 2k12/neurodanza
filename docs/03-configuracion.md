@@ -353,6 +353,18 @@ Autoajuste (`lib/autoajuste.mjs`): una pasada al día por la telemetría de las 
 
 `telemetria.transcripts` (por defecto `null`): carpeta de transcripts a leer en vez de `~/.claude/projects/<carpeta del proyecto y de cada repo>`. La variable `ND_TRANSCRIPTS` hace lo mismo.
 
+## `incidencias`
+
+Incidencias con evidencia de antes y después (`lib/incidencias.mjs`). Nada se crea sin que se pida. Ver [24-incidencias.md](24-incidencias.md).
+
+| Clave | Por defecto | Qué es |
+|---|---|---|
+| `activo` | `true` | Con `false`, ni comandos ni barrera. |
+| `carpeta` | `"incidencias"` | Carpeta en la raíz del proyecto. |
+| `graphify` | `"graphify"` | Carpeta aparte con los mapas (opcional). |
+| `resoluciones` | `["1366x768", "1920x1080", "390x844"]` | Capturas de cada momento. |
+| `areas` | `frontend` (`FE`, `capturas`) y `backend` (`BE`, `peticion`) | Por área: `prefijo`, `evidencia` y `repo` (por defecto, el nombre del área). |
+
 ## `indice`
 
 Índice pre-cocido por commit (`lib/indice.mjs`). Ver [19-menos-exploracion.md](19-menos-exploracion.md).

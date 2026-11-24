@@ -23,7 +23,7 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff, según su riesgo, y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
 | Agentes | `agents/*.md` | 4 revisores y la `persona-evaluadora`. |
-| Skills | `skills/*/SKILL.md` | `/neurodanza-init`, `/neurodanza-feature`, `/neurodanza-evals`. |
+| Skills | `skills/*/SKILL.md` | `/neurodanza-init`, `/neurodanza-feature`, `/neurodanza-incidencias`, `/neurodanza-evals`. |
 | Panel | `panel/panel.mjs` y `panel/*.ps1`, `panel/*.vbs` | Elegir personas, crear usuarios, navegar, calificar y las ventanas de Windows. |
 | Evals | `evals/evals.mjs` | Arma las instrucciones de evaluación y califica. |
 | ESLint | `eslint/no-junk-comments.mjs` | Regla contra comentarios basura y firmas de IA (y modo estricto, con el criterio de la barrera). |

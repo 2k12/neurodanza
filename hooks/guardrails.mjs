@@ -11,6 +11,7 @@ import { MENSAJE_CORTE, mensajeCuarentena, registrarPaso, registrarRechazo, revi
 import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
 import { recordar } from "../lib/operador.mjs";
 import { registrarEnProyecto } from "../lib/errores.mjs";
+import { estadoReservadoEn, MOTIVO_RESERVADO } from "../lib/incidencias.mjs";
 import { comentariosProhibidos, EXTENSIONES as EXT_CODIGO, textoRechazo } from "../lib/comentarios.mjs";
 
 const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
@@ -52,6 +53,21 @@ function baseShellRules(b) {
     rules.push([readsSecret, "Los archivos .env tienen secretos: no se leen. Usa el .env de ejemplo.", "raw"]);
   }
   return rules;
+}
+
+/** ¿La ruta o el glob de una búsqueda apunta a un .env con secretos? */
+export function secretoEnBusqueda(p, permitidos = []) {
+  return norm(p)
+    .split(/[/,{} ]+/)
+    .some((x) => /^[*!]*[.]env([.].+|[*]+)?$/.test(x) && !x.startsWith("!") && !permitidos.includes(x));
+}
+
+/** Un juez no nace de un fork: heredaría la conversación, con las conclusiones de quien hizo el cambio. */
+export function forkDeJuez(input) {
+  if (!/^fork$/i.test(String(input?.subagent_type ?? ""))) return null;
+  const t = `${input.description ?? ""} ${input.name ?? ""} ${input.prompt ?? ""}`;
+  if (!/(revisor|especialista)-(coherencia|permisos|ui|docs|a11y|datos|rendimiento)|persona-evaluadora/i.test(t) && !/^(revisor|fantasma|persona evaluadora)/i.test(t.trim())) return null;
+  return "neurodanza: un juez (revisor, persona, especialista o fantasma) no se lanza como fork, porque heredaría la conversación. Usa su propio tipo de agente (p. ej. subagent_type: neurodanza:revisor-permisos) y dale el pedido textual y el cambio.";
 }
 
 /** Comandos que modifican archivos o el repo (el director no los usa: delega). */
@@ -131,6 +147,9 @@ export function check(event, cfg, exists = existsSync, ctx = null) {
   const exempt = (p) => matchesAny(norm(p), b.exentos ?? []);
 
   if (b.secretos && tool === "Read" && file && isSecret(file)) return `${basename(norm(file))} tiene secretos: no se lee.`;
+
+  if (b.secretos && tool === "Grep" && [input.path, input.glob].some((p) => p && secretoEnBusqueda(p, b.secretosPermitidos))) return "Los archivos .env tienen secretos: no se buscan con Grep.";
+  if (tool === "Agent" || tool === "Task") return forkDeJuez(input);
 
   if (EDIT_TOOLS.has(tool) && file) {
     if (b.secretos && isSecret(file)) return `${basename(norm(file))} tiene secretos: no se edita desde Claude. Pídele el cambio al usuario.`;
@@ -292,7 +311,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   // Figuras: la acción debe estar en la mano del agente; si no, ◇ y ✕ se preguntan al usuario y lo demás se rechaza.
   let pregunta = "";
   if (conFiguras) {
-    if (event.agent_id && event.tool_name === "Agent") rechazar("neurodanza: solo el agente principal lanza subagentes (re-enfundar o reemplazar a un agente lo hace el director).");
+    if (event.agent_id && ["Agent", "Task"].includes(event.tool_name)) rechazar("neurodanza: solo el agente principal lanza subagentes (re-enfundar o reemplazar a un agente lo hace el director).");
     const file = event.tool_input?.file_path ?? event.tool_input?.notebook_path;
     if (event.agent_id && file) {
       const w = enWorktree(leerTareas(cfg), file);
@@ -304,6 +323,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const why = check(evento, cfg);
   if (why) rechazar(why);
+  // Incidencias: «Verificada», «Cerrada» y «Descartada» las decide el responsable.
+  const reservado = estadoReservadoEn(cfg, evento);
+  if (reservado === "deny" || (reservado && event.agent_id)) rechazar(MOTIVO_RESERVADO);
+  if (reservado) pregunta = pregunta || "neurodanza: poner una incidencia como verificada, cerrada o descartada (solo lo decide el responsable). ¿Lo apruebas?";
   if (app) {
     const cmd = String(event.tool_input?.command ?? "");
     // Guardar o borrar una macro cambia lo que todo el equipo puede correr: lo decide el usuario.

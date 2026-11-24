@@ -18,6 +18,7 @@
 //   node panel.mjs cerrar --ronda <carpeta> --resultado <json>
 //   node panel.mjs ventana --resultado <json>                   resumen final (sin ronda en vivo)
 //   node panel.mjs crear --rol <ROL> [--rolDoc x] [--cargo "…"]  persona nueva para un rol sin persona
+//   node panel.mjs capturas --id <ID> --momento antes|despues --ruta /x [--persona <id>]   evidencia de una incidencia en las resoluciones de la configuración
 //   node panel.mjs app                                          ¿la app responde? (si no, cuenta para el fusible; 3 = capa fundida)
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -27,6 +28,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../lib/config.mjs";
+import { avisosEvidencia, guardarMeta, prepararEvidencia } from "../lib/incidencias.mjs";
 import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
 import { aprobarVersion, compararEjecuciones, compararMemoria, ejecutarRecorrido, leerMemoria, leerRecorrido, notaConRegresiones, notaPorPasos, registrarMemoria, textoRegresion, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
 
@@ -614,6 +616,41 @@ async function repetirCmd(ctx, a) {
   console.log(JSON.stringify({ informe: join(out, "repeticion.json"), repetidos: informe.repetidos, iguales: informe.iguales, primeraVez: informe.primeraVez, conDiferencias: informe.conDiferencias, conRegresion: informe.conRegresion, noAfectados: informe.noAfectados, juzgar: informe.juzgar, pantallas: informe.pantallas.map((p) => `${p.repo}:${p.ruta}`) }, null, 2));
 }
 
+/** Evidencia de una incidencia: la misma vista en cada resolución, con sesión (--persona) o como visitante. */
+async function capturas(cfg, a) {
+  if (!String(a.ruta ?? "").startsWith("/") || String(a.ruta).startsWith("//")) throw new Error("capturas: --ruta debe empezar con una sola «/»");
+  const e = prepararEvidencia(cfg, a.id, a.momento, { reemplazar: process.argv.includes("--reemplazar") });
+  const ctx = a.persona ? context() : null;
+  const p = ctx?.cast.personas.find((x) => x.id === a.persona);
+  if (a.persona && !p) throw new Error(`persona desconocida: ${a.persona}`);
+  const web = await detectWeb(cfg);
+  const browser = await abrirNavegador(cfg);
+  const archivos = [];
+  const avisos = [];
+  const urls = new Set();
+  try {
+    for (const r of cfg.incidencias.resoluciones) {
+      const [width, height] = r.split("x").map(Number);
+      const contexto = await browser.newContext({ viewport: { width, height }, locale: cfg.app.idioma ?? "es-EC" });
+      const page = await contexto.newPage();
+      if (p) await entrar(ctx, page, p, web);
+      const res = await page.goto(`${web}${a.ruta}`, { waitUntil: "load" });
+      if (!(await esperarPantalla(page, cfg.panel.carga))) avisos.push(`${r}: no terminó de cargar en ${cfg.panel.carga.maxSeg} s`);
+      if ((res?.status() ?? 0) >= 400) avisos.push(`${r}: HTTP ${res.status()}`);
+      urls.add(new URL(page.url()).pathname);
+      const f = join(e.dir, `${a.id}-${a.momento}-${width}.png`);
+      await page.screenshot({ path: f });
+      archivos.push(f);
+      await contexto.close();
+    }
+  } finally {
+    await browser.close();
+  }
+  for (const u of urls) if (u !== a.ruta.split(/[?#]/)[0]) avisos.push(`la app llevó a ${u} en vez de ${a.ruta}`);
+  const meta = guardarMeta(cfg, e.area, e.dir, { momento: a.momento, ruta: a.ruta, persona: a.persona ?? null, resoluciones: cfg.incidencias.resoluciones });
+  console.log(JSON.stringify({ archivos, avisos: [...avisos, ...avisosEvidencia(meta, e.antes)] }, null, 2));
+}
+
 async function navegar(ctx, a) {
   const { cfg } = ctx;
   const p = ctx.cast.personas.find((x) => x.id === a.persona);
@@ -842,7 +879,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
     if (cmd === "decir") decir(a);
     else if (cmd === "oir") oir(a);
-    else if (cmd === "app") {
+    else if (cmd === "capturas") {
+      const cfg = loadConfig(process.cwd());
+      if (!cfg) throw new Error("No hay neurodanza.config.json en esta carpeta ni en las de arriba.");
+      await capturas(cfg, a);
+    } else if (cmd === "app") {
       // ¿La app responde? Antes de lanzar a las personas: si no, cuenta para el fusible (capa app).
       const cfg = loadConfig(process.cwd());
       if (!cfg) throw new Error("No hay neurodanza.config.json en esta carpeta ni en las de arriba.");
@@ -862,7 +903,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       else if (cmd === "cerrar") cerrar(ctx, a);
       else if (cmd === "ventana") ventana(ctx, a);
       else if (cmd === "crear") crear(ctx, a);
-      else console.log("comandos: elegir | usuarios | navegar | repetir | calificar | comparar | en-vivo | decir | oir | cerrar | ventana | crear");
+      else console.log("comandos: elegir | usuarios | navegar | repetir | calificar | comparar | en-vivo | decir | oir | cerrar | ventana | crear | capturas");
     }
   } catch (e) {
     console.error(String(e?.message ?? e));
