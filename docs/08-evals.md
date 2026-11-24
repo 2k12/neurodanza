@@ -79,16 +79,17 @@ Si faltan corridas, reprueba. Las de más también cuentan. Tres corridas cuesta
    ```
    El archivo trae sus casos más el control limpio, con la instrucción de revisar **solo** esos diffs. Se lanza el agente pidiéndole que lea ese archivo, **sin decirle qué casos tienen errores**. Su respuesta es un arreglo `[{ "caso", "aprobado", "hallazgos" }]`.
 2. **Panel** (requiere la app corriendo). `evals.mjs personas` lista los casos; por cada uno se lanza una `persona-evaluadora` sin ventana en vivo y **sin decirle qué nota se espera**.
-3. **Calificar.** Se escribe `<evals.informes>/<AAAA-MM-DD>-v<versión>.json`:
+3. **Fantasmas.** `evals.mjs fantasmas` lista los casos y sus corridas; cada corrida es un fantasma nuevo que no sabe qué se espera.
+4. **Calificar.** Se escribe `<evals.informes>/<AAAA-MM-DD>-v<versión>.json`:
    ```json
-   { "version": "1.4.0", "revisores": { "revisor-ui": [ … ] }, "personas": { "persona-buena": { "nota": 9 } } }
+   { "version": "1.4.0", "revisores": { "revisor-ui": [ … ] }, "personas": { "persona-buena": { "nota": 9 } }, "fantasmas": { "fantasma-fuga": [ … ] } }
    ```
    y se corre `calificar --resultados <ese json>`. Agrega al mismo archivo el `informe`, los `umbrales` y la `fecha`, imprime el resumen y los casos que fallaron, y sale con código 1 si no pasa:
    ```
    {"aprobado":false,"deteccion":0.88,"falsosPositivos":1,"personas":"3/3"}
    ✖ control-limpio · revisor-docs: falso positivo
    ```
-4. Se registra el resultado en la bitácora de la versión.
+5. Se registra el resultado en la bitácora de la versión.
 
 ## Cuándo pasa
 

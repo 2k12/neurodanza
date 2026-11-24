@@ -1,6 +1,6 @@
 # 1. Cómo funciona
 
-neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el marketplace es `.claude-plugin/marketplace.json`). Trae:
+neurodanza es un plugin de Claude Code (en la raíz del repo; el marketplace es `.claude-plugin/marketplace.json`), más `neurodanza-mapa`, opcional. Cada comando está en [26-comandos.md](26-comandos.md). Trae:
 
 | Pieza | Archivo | Qué es |
 |---|---|---|
@@ -20,9 +20,11 @@ neurodanza es **un solo plugin** de Claude Code (está en la raíz del repo; el 
 | Autoajuste | `lib/telemetria.mjs`, `lib/autoajuste.mjs` | Telemetría de las sesiones (de los transcripts, sin hooks nuevos) y una pasada al día que aprende lecciones, errores conocidos y macros con su freno, y propone presupuestos y arreglos que después evalúa. Ver [22-autoajuste.md](22-autoajuste.md). |
 | Regresión mecánica | `lib/impacto.mjs`, `lib/regresion.mjs`, `panel.mjs repetir` | Mapa de impacto (imports y layouts → pantallas → recorridos permanentes) y repetición sin modelo con la firma de cada pantalla; solo lo que cambió va a su persona. Ver [23-regresion-mecanica.md](23-regresion-mecanica.md). |
 | CLI de la app | `lib/app.mjs`, `lib/comentarios.mjs` | La app por comandos (sesiones en caché, peticiones, verificar), macros que nacen del uso y la barrera de comentarios. Ver [21-cli-de-la-app.md](21-cli-de-la-app.md). |
+| Incidencias | `lib/incidencias.mjs` | Fichas, evidencia de antes y después y registro. Ver [24-incidencias.md](24-incidencias.md). |
+| Encabezados | `lib/encabezados.mjs` | `app.encabezados` en las peticiones por API, solo a hosts de la app. |
 | Ciclo | `lib/ciclo.mjs` | Qué revisores aplican al diff, según su riesgo, y el presupuesto de pasos. |
 | Mapa en vivo | `mapa/` (plugin `neurodanza-mapa`) | Panel al lado del chat con la fase, cada subagente y el plan; avisa a los subagentes por presupuesto y bucles. |
-| Agentes | `agents/*.md` | 4 revisores y la `persona-evaluadora`. |
+| Agentes | `agents/*.md` | 4 revisores, 4 especialistas, `persona-evaluadora`, `fantasma` e `implementador`. |
 | Skills | `skills/*/SKILL.md` | `/neurodanza-init`, `/neurodanza-feature`, `/neurodanza-incidencias`, `/neurodanza-evals`. |
 | Panel | `panel/panel.mjs` y `panel/*.ps1`, `panel/*.vbs` | Elegir personas, crear usuarios, navegar, calificar y las ventanas de Windows. |
 | Evals | `evals/evals.mjs` | Arma las instrucciones de evaluación y califica. |
@@ -87,7 +89,7 @@ flowchart TD
 ## Qué es automático y qué no
 
 - **Automático (hooks):** barreras, lint al editar y la revisión al terminar. Corren solos en cada sesión de Claude Code dentro de un proyecto configurado.
-- **Guiado (skills):** revisores, panel y evals. Los orquesta Claude siguiendo `/neurodanza-feature` y `/neurodanza-evals`. El hook `Stop` sí exige el resultado: no deja terminar un cambio de pantallas sin una evaluación del panel aprobada para la versión actual (ver [05-retroalimentacion.md](05-retroalimentacion.md)).
+- **Guiado (skills):** revisores, panel, incidencias y evals. Los orquesta Claude siguiendo `/neurodanza-feature`, `/neurodanza-incidencias` y `/neurodanza-evals`. El hook `Stop` sí exige el resultado: no deja terminar un cambio de pantallas sin una evaluación del panel aprobada para la versión actual (ver [05-retroalimentacion.md](05-retroalimentacion.md)).
 
 ## Lo que nunca hace
 

@@ -2,9 +2,10 @@
 
 Plugin de Claude Code que le da a un proyecto JavaScript/TypeScript un ciclo automático de calidad.
 Bloquea acciones peligrosas antes de que pasen, corre lint, tipos y pruebas de lo que cambió y no deja terminar si falta algo.
-Cada cambio pasa por 4 agentes revisores que solo ven el diff.
-Después, de 3 a 5 personas simuladas prueban la app real en un navegador y le ponen nota de 1 a 10.
-Unos evals con respuesta conocida miden si los revisores y las personas evalúan bien.
+Según el riesgo del cambio, lo revisan hasta 4 agentes que solo ven el diff, y personas simuladas prueban la app real en un navegador y le ponen nota de 1 a 10.
+Unos evals con respuesta conocida miden si los revisores, las personas y los fantasmas evalúan bien.
+
+**Se compone de** 5 comandos, 11 agentes, 7 hooks y 22 CLI sin dependencias: [qué trae y qué hace cada comando](docs/26-comandos.md).
 
 > Por ahora solo para proyectos JS/TS. Todo se configura en un archivo, `neurodanza.config.json`, en la raíz del proyecto. En un proyecto sin ese archivo el plugin no hace nada.
 
@@ -12,15 +13,15 @@ Unos evals con respuesta conocida miden si los revisores y las personas evalúan
 
 | Capa | Cuándo corre | Qué hace |
 |---|---|---|
-| **Barreras** | Antes de cada `Read`, `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, `Bash` y `PowerShell` (hook `PreToolUse`) | Bloquea leer o editar `.env`, las firmas de IA en commits y en código, `rm -rf` sobre rutas raíz, editar migraciones ya creadas, las rutas protegidas y los comandos prohibidos del proyecto. |
+| **Barreras** | Antes de cada `Read`, `Grep`, `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, `Bash`, `PowerShell`, `Agent` y `Task` (hook `PreToolUse`) | Bloquea leer o editar `.env`, las firmas de IA en commits y en código, `rm -rf` sobre rutas raíz, editar migraciones ya creadas, las rutas protegidas y los comandos prohibidos del proyecto. |
 | **Retroalimentación** | Al editar (hook `PostToolUse`) y al terminar (hook `Stop`) | Lint del archivo recién editado. Al terminar: lint, tipos y pruebas relacionadas de lo cambiado, generadores, y la definición de terminado (versión, bitácora, migraciones, guías, panel aprobado, evals). |
-| **Revisores** | Paso 3 de `/neurodanza-feature` | 4 agentes en paralelo (`revisor-coherencia`, `revisor-permisos`, `revisor-ui`, `revisor-docs`) que revisan el diff sin ver el razonamiento de quien lo hizo. |
-| **Panel de personas** | Paso 4 de `/neurodanza-feature` | De 3 a 5 personas (una por rol afectado) entran a la app con su propio usuario, navegan con Playwright, conversan en una **ventana en vivo** (solo Windows) y califican. Se aprueba si el promedio supera el umbral (8.99 por defecto). |
+| **Revisores** | Paso 3 de `/neurodanza-feature` | Hasta 4 agentes en paralelo, según el riesgo (`revisor-coherencia`, `revisor-permisos`, `revisor-ui`, `revisor-docs`) que revisan el diff sin ver el razonamiento de quien lo hizo. |
+| **Panel de personas** | Paso 3 de `/neurodanza-feature`, en el mismo turno | Una persona (riesgo medio con pantallas) o de 3 a 5 (alto) entran a la app con su propio usuario, navegan con Playwright, conversan en una **ventana en vivo** (solo Windows) y califican. Se aprueba si el promedio supera el umbral (8.99 por defecto). |
 | **Modo director** | Cambios grandes, en `/neurodanza-feature` | El agente principal no edita: divide el trabajo en tareas con dueños de archivos y las delega a implementadores, cada uno en su propio worktree y con un contrato. Las barreras hacen cumplir el contrato; el director integra el diff. |
 | **Constructos** | Al cerrar cada ciclo | La reflexión anota los problemas que encontraron los jueces a cada agente. Sus lecciones pasan a prueba y solo se aprueban si el problema aparece menos (y, para revisores, si las evals no empeoran). |
 | **Velocidad** | Siempre | El hook `Stop` tiene tope (lo que no alcanza y la suite completa corren en segundo plano), los comandos que pueden no terminar exigen timeout, cada subagente tiene tope de tiempo y latido, y un fusible corta los reintentos contra la app o el navegador caídos. Ver [docs/15](docs/15-velocidad.md). |
 | **No perder trabajo** | Siempre (subagentes) | Los hooks guardan la pila de cada subagente (qué leyó, editó y corrió); si se corta, el reemplazo retoma sin releer todo, una sola vez. Una tarea que falla por diseño se rebobina a la foto original con memoria de por qué falló. Ver [docs/16](docs/16-no-perder-trabajo.md). |
-| **Seguridad práctica** | Con `figuras.activo` | Cada acción se clasifica (◯ leer △ editar □ verificar ◇ externo ✕ destructivo); fuera de la mano del agente, lo externo y destructivo se pregunta al usuario y lo demás se rechaza; tres rechazos dejan al agente en cuarentena. Fantasmas prueban fugas y escaladas contra la app local, sin editar nada. Ver [docs/17](docs/17-seguridad.md). |
+| **Seguridad práctica** | Con `figuras.activo` | Cada acción se clasifica (◯ leer △ editar □ verificar ◇ externo ✕ destructivo); fuera de la mano del agente, lo externo y destructivo se pregunta al usuario y lo demás se rechaza; tres rechazos dejan al agente en cuarentena. Fantasmas prueban fugas y escaladas contra la app local, sin editar código; deciden con un resumen de la respuesta completa. Ver [docs/17](docs/17-seguridad.md). |
 | **Panel con recorridos** | Con pantallas en el cambio | Antes de implementar, cada persona escribe qué espera poder hacer (pasos verificables) y el usuario lo aprueba con el plan; en el panel lo ejecuta primero y califica paso por paso. Los recorridos permanentes guardan sus métricas por versión y marcan regresiones de experiencia (más clics, más tiempo). Ver [docs/18](docs/18-panel-con-recorridos.md). |
 | **Menos exploración** | Siempre | Índice del repo por commit (rutas, pantallas, modelos, exportaciones) en cada contrato y mensaje; especialistas de solo lectura que el director consulta antes de delegar, con respuestas en caché; lecciones que se recuerdan al tocar sus archivos. Ver [docs/19](docs/19-menos-exploracion.md). |
 | **Proporcionalidad (ODD)** | Siempre | Cada cambio es de riesgo bajo, medio o alto (archivos sensibles, migraciones, repos y líneas): bajo corre lint, tipos y pruebas; medio, un revisor y una persona; alto, el ciclo completo. Los cambios grandes llevan un documento con el pedido textual del usuario y sus specs, y las pruebas se ven en rojo antes de implementar. Ver [docs/20](docs/20-odd-en-neurodanza.md). |
@@ -30,7 +31,7 @@ Unos evals con respuesta conocida miden si los revisores y las personas evalúan
 | **Incidencias** | `/neurodanza-incidencias` | Consulta la rama de desarrollo y graphify (opcional), registra incidencias de frontend y backend, compara la evidencia de antes y después, y deja «Verificada» solo al responsable. Ver [docs/24](docs/24-incidencias.md). |
 | **Mapa en vivo** | Siempre, con el plugin `neurodanza-mapa` | Panel al lado del chat con la fase del ciclo, cada subagente (pasos, última herramienta, tiempo, veredicto) y el plan. Avisa al subagente que se acerca a su presupuesto de pasos o repite la misma llamada. |
 | **Errores conocidos** | Al iniciar la sesión y en cada bloqueo | Cada problema de los hooks se guarda con una firma; si vuelve, el mensaje trae cómo se resolvió. |
-| **Evals** | `/neurodanza-evals` | Casos con errores sembrados y un control limpio para los revisores, y casos de calibración para el panel. |
+| **Evals** | `/neurodanza-evals` | Casos con errores sembrados y un control limpio para los revisores, y casos de calibración para el panel y casos de fantasmas con varias corridas. |
 
 ## Instalación
 
@@ -57,6 +58,7 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 ## Uso diario
 
 - **`/neurodanza-feature`**: para cada funcionalidad o corrección. Entender y planificar (y esperar tu visto bueno) → implementar → verificar → revisores que aplican → panel de personas con la app corriendo → cerrar.
+- **`/neurodanza-incidencias`**: registrar, priorizar y corregir incidencias, con evidencia de antes y después.
 - **`/neurodanza-mapa`**: abre el mapa en vivo (se abre solo al empezar un ciclo).
 - **`/neurodanza-evals`**: después de cambiar agentes, personas, umbrales o skills, y una vez por versión.
 
@@ -93,6 +95,7 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 23. [Regresión mecánica: primero sin modelo, la persona solo donde algo cambió](docs/23-regresion-mecanica.md)
 24. [Incidencias: consultar, registrar y comparar antes y después](docs/24-incidencias.md)
 25. [Barreras comprobadas y jueces independientes](docs/25-barreras-y-jueces.md)
+26. [Qué trae y qué hace cada comando](docs/26-comandos.md)
 
 Hay un ejemplo completo en [`ejemplos/nest-next/`](ejemplos/nest-next/): la configuración de un proyecto real NestJS + Next con tres repos (`backend`, `frontend`, `docs`).
 
