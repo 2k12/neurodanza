@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.4.0 · 2026-11-24
+
+### Agregado
+- **`app.encabezados`:** encabezados del proyecto en las peticiones por API de los fantasmas, el login, la CLI de la app, la evidencia de incidencias y los usuarios del panel. Con `{id}`, `{rol}`, `{email}` y `${ENTORNO}`. Solo viajan a hosts de la app, también al redirigir. Sin configurarlo no cambia nada.
+
+### Cambiado
+- El fantasma no toma por bloqueado un ataque si el caso legítimo también falla.
+
 ## 1.3.1 · 2026-11-24
 
 ### Corregido
