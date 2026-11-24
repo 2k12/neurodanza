@@ -434,6 +434,10 @@
           "type": "integer",
           "minimum": 1
         },
+        "sinClasificar": {
+          "enum": ["preguntar", "permisos"],
+          "description": "Lo que no se puede clasificar, del agente principal: preguntar, o dejarlo a los permisos de Claude Code."
+        },
         "manos": {
           "type": "object",
           "additionalProperties": {
