@@ -904,7 +904,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       else if (cmd === "cerrar") cerrar(ctx, a);
       else if (cmd === "ventana") ventana(ctx, a);
       else if (cmd === "crear") crear(ctx, a);
-      else console.log("comandos: elegir | usuarios | navegar | repetir | calificar | comparar | en-vivo | decir | oir | cerrar | ventana | crear | capturas");
+      else console.log("comandos: elegir | usuarios | navegar | repetir | calificar | comparar | en-vivo | decir | oir | cerrar | ventana | crear | capturas | app");
     }
   } catch (e) {
     console.error(String(e?.message ?? e));

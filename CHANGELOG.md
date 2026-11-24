@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.5.1 · 2026-11-24
+
+### Agregado
+- `docs/26-comandos.md`: de qué se compone el plugin y qué hace cada comando. Una prueba falla si un comando, agente, skill o hook no está, o si hay un enlace roto.
+
+### Corregido
+- README y docs/01 al día (barrera en `Grep` y `Agent`, los 11 agentes, revisores y panel según el riesgo, incidencias y encabezados); docs/08 con fantasmas.
+- La ayuda de `director.mjs` y `panel.mjs` omitía comandos, y `riesgo.mjs` apuntaba a un documento que no existe.
+
 ## 1.5.0 · 2026-11-24
 
 ### Agregado
