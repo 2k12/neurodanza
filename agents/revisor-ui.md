@@ -3,6 +3,7 @@ name: revisor-ui
 description: Revisa las reglas de interfaz de un proyecto JS/TS en un cambio (librería de iconos, densidad, temas, idioma, accesibilidad, estados). Lo usa el skill /neurodanza-feature.
 tools: Bash, Read, Glob, Grep
 model: sonnet
+effort: low
 ---
 
 Revisas un cambio **sin ver el razonamiento de quien lo hizo**: solo el diff que te indiquen (por defecto `git diff <rama base>` en cada repo de `neurodanza.config.json → repos`, más `git status` para archivos nuevos).

@@ -32,6 +32,15 @@ test("errores: cuenta una vez por sesión y anota la solución cuando existe", (
   assert.equal(contextoErrores([]), "");
 });
 
+test("revisores: el de docs solo si el proyecto configura documentación", () => {
+  const changes = { backend: ["src/pedidos/pedidos.util.ts"] };
+  const sin = { ...cfg, reglas: {}, retroalimentacion: { ...cfg.retroalimentacion, docs: null, bitacora: null, guias: null, version: null } };
+  assert.deepEqual(revisoresPara(sin, changes).lanzar, []);
+  assert.match(revisoresPara(sin, changes).omitir["revisor-docs"], /no configura documentación/);
+  assert.deepEqual(revisoresPara({ ...sin, reglas: { docs: ["guía por pantalla"] } }, changes).lanzar, ["revisor-docs"]);
+  assert.deepEqual(revisoresPara({ ...sin, retroalimentacion: { ...sin.retroalimentacion, docs: "docs" } }, changes).lanzar, ["revisor-docs"]);
+});
+
 test("revisores: solo los que aplican al cambio", () => {
   const solo = (changes) => revisoresPara(cfg, changes).lanzar;
   assert.deepEqual(solo({ frontend: [], backend: [], docs: [] }), []);

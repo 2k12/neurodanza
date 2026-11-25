@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.8.0 · 2026-11-24
+
+### Cambiado
+- `revisor-ui` y `revisor-docs` con esfuerzo bajo. Con los cuatro revisores así: −44 % de costo y 14 de 14 errores detectados (casos fáciles).
+- `revisor-docs` no corre si el proyecto no configura documentación.
+- Plantilla de `AGENTS.md` mínima.
+
+### Agregado
+- `evals/costo.mjs`: tarea `permisos`, que lanza revisores. `evals/sesgo.mjs --esfuerzo` y `--variantes`.
+- `ciclo.mjs preparar` y `ciclo.mjs cerrar`, disponibles pero fuera del skill: pedirlos desde él no bajó el costo (docs/27).
+
 ## 1.7.0 · 2026-11-24
 
 ### Agregado

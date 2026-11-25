@@ -144,6 +144,8 @@ Guías: [11](11-mapa-y-ciclo.md), [20](20-odd-en-neurodanza.md) y [23](23-regres
 
 | Comando | Qué hace |
 |---|---|
+| `ciclo.mjs preparar --archivos "repo:archivo" --lineas N [--buscar texto]` | Empieza: riesgo, qué leer, errores conocidos y dónde está lo que buscas. |
+| `ciclo.mjs cerrar [--sin-verificar]` | Verifica lo cambiado y dice qué falta. Sale con 1 si falta algo. |
 | `ciclo.mjs revisores [--base main]` | Qué revisores, personas y fantasmas lanzar, según el riesgo. |
 | `ciclo.mjs seguir` | Amplía el tope de gasto del ciclo; se te pregunta. |
 | `ciclo.mjs presupuesto` | Máximo de pasos por tipo de subagente. |

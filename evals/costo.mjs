@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // neurodanza · ¿cuánto cuesta el plugin? Las mismas tareas sin él y con él, con Claude Code de verdad, en un proyecto
 // temporal de dos repos. Mide USD, tokens, turnos, subagentes y si el resultado pasa pruebas que el agente no ve.
-// Gasta tokens. No mide el panel (el proyecto no tiene pantallas). Ver docs/27-costo.md.
+// `permisos` es de riesgo alto: lanza revisores. Gasta tokens. No mide el panel (el proyecto no tiene pantallas). Ver docs/27-costo.md.
 //
-// Uso: node costo.mjs [--plugin <carpeta>] [--modelo sonnet] [--tareas bajo,medio,alto] [--modos sin,con] [--veces 1] [--tope 2] [--conservar]
+// Uso: node costo.mjs [--plugin <carpeta>] [--modelo sonnet] [--tareas bajo,medio,alto,permisos] [--modos sin,con,ciclo] [--veces 1] [--tope 2] [--conservar]
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,6 +30,7 @@ const BASE = {
   "api/package.json": '{ "name": "api", "type": "module", "scripts": { "test": "node --test" } }\n',
   "api/src/pedidos.mjs": PEDIDOS,
   "api/src/formato.mjs": "export const dinero = (n) => `$${n.toFixed(2)}`;\n",
+  "api/src/auth/permisos.mjs": "export const ROLES = { ADMIN: [\"crear\", \"ver\"], VENDEDOR: [\"ver\"] };\nexport function puede(usuario, accion) {\n  return ROLES[usuario.rol].includes(accion);\n}\n",
   "api/test/pedidos.test.mjs": 'import assert from "node:assert/strict";\nimport { test } from "node:test";\nimport { listar } from "../src/pedidos.mjs";\ntest("solo los de su empresa", () => assert.equal(listar({ empresaId: 1 }).length, 2));\n',
   "web/package.json": '{ "name": "web", "type": "module", "scripts": { "test": "node --test" } }\n',
   "web/src/validar.mjs": 'export function validarPedido(d) {\n  const errores = {};\n  if (!d.cliente) errores.cliente = "El cliente es obligatorio";\n  return errores;\n}\n',
@@ -46,6 +47,10 @@ export const TAREAS = {
   medio: {
     pedido: "En api, listar() acepta un segundo parámetro opcional { estado, min, max, orden }: filtra por estado exacto, por total mínimo y máximo (incluidos) y ordena por total con orden «asc» o «desc». Un estado que no sea «pendiente» ni «pagado» lanza un Error «Estado inválido». Sin parámetro, todo sigue igual. Nunca debe devolver pedidos de otra empresa. Con sus pruebas.",
     oculta: 'assert.equal(api.listar(u1).length, 2);\nassert.deepEqual(api.listar(u1, { estado: "pagado" }).map((p) => p.id), [2]);\nassert.deepEqual(api.listar(u1, { orden: "desc" }).map((p) => p.id), [2, 1]);\nassert.deepEqual(api.listar(u1, { min: 10, max: 10 }).map((p) => p.id), [1]);\nassert.deepEqual(api.listar({ empresaId: 2 }, { estado: "pendiente" }).map((p) => p.id), [3]);\nassert.throws(() => api.listar(u1, { estado: "x" }), /Estado inválido/);\n',
+  },
+  permisos: {
+    pedido: "En api/src/auth/permisos.mjs, puede() falla si el rol no existe o no hay usuario: debe devolver false. Agrega el rol SUPERVISOR, que puede ver y anular; además de él, solo ADMIN puede anular. Con sus pruebas. Es un cambio de permisos: sigue el ciclo completo, con sus revisores.",
+    oculta: "const { puede } = await import(\"./api/src/auth/permisos.mjs\");\nassert.equal(puede({ rol: \"X\" }, \"ver\"), false);\nassert.equal(puede(undefined, \"ver\"), false);\nassert.equal(puede({ rol: \"constructor\" }, \"ver\"), false);\nassert.equal(puede({ rol: \"toString\" }, \"ver\"), false);\nassert.equal(puede({ rol: \"SUPERVISOR\" }, \"anular\"), true);\nassert.equal(puede({ rol: \"SUPERVISOR\" }, \"crear\"), false);\nassert.equal(puede({ rol: \"ADMIN\" }, \"anular\"), true);\nassert.equal(puede({ rol: \"VENDEDOR\" }, \"anular\"), false);\n",
   },
   alto: {
     pedido: "Los pedidos llevan ahora una nota opcional de hasta 200 caracteres. En api, crear() la guarda sin espacios al inicio ni al final y responde { status: 400, error: «La nota admite hasta 200 caracteres» } si se pasa después de recortarla. En web, validarPedido() da ese mismo mensaje en errores.nota con la misma regla. crear() nunca debe dejar que los datos cambien id ni empresaId. Con sus pruebas en los dos repos.",
