@@ -34,6 +34,26 @@ Todas las corridas pasaron las pruebas ocultas, **también sin plugin**: en tare
 - El agente ya no atiende los avisos por su cuenta: los ve el usuario. Para que la prueba en rojo se exija, `ciclo.pruebaPrimero: "exigir"`.
 - Un cambio chico en dos repos tiene un revisor (coherencia, o permisos si toca permisos) en vez de todos. `lineasDosRepos: 0` vuelve a lo anterior.
 
+## Ver qué gasta tu proyecto
+
+```
+node lib/telemetria.mjs gasto --dias 7
+```
+
+Una fila por tipo de agente y modelo, de mayor a menor. Lee los transcripts de tu máquina; no gasta tokens. El **peso** es entrada + 5 × salida + 2 × caché escrita + 0,1 × caché leída: sirve para comparar dentro de un modelo, no es dinero.
+
+## Tope por ciclo
+
+`"ciclo": { "maxTokens": N }`, en ese mismo peso (elige N a partir del reporte). Se mira solo al lanzar un subagente: si el ciclo ya llegó, la barrera lo rechaza y el agente te pregunta. `ciclo.mjs seguir` da otro tope igual; la ventana de permisos te lo pregunta también en automático, y un subagente no puede. Viene apagado: no hay datos para elegir un número por defecto.
+
+- El gasto se cuenta desde el último `fusible.mjs reiniciar`, solo de esa sesión y sus subagentes.
+- Es un freno, no un candado: un agente que corra `fusible.mjs reiniciar` empieza otro ciclo con el tope completo.
+- No corta a los que ya corren: varios lanzados a la vez pueden pasarlo.
+
+## Directo o con modo director
+
+El modo director y sus especialistas se usan con más de `director.minArchivos` (8) archivos, o si lo pides. Antes, siempre que el cambio alto tocara dos repos.
+
 ## Sin medir
 
 - **Panel, revisores y fantasmas:** ninguna corrida lanzó subagentes. En la grande correspondían revisores y el agente no los lanzó, ni antes ni ahora; el encargo le decía que el plan ya estaba aprobado.

@@ -271,6 +271,7 @@
     "director": {
       "type": "object",
       "properties": {
+        "minArchivos": { "type": "integer", "minimum": 0, "description": "Modo director con más de estos archivos." },
         "worktrees": {
           "type": "string",
           "description": "\"auto\" (por defecto) o carpeta de los worktrees; admite {proyecto}."
@@ -353,6 +354,7 @@
           "type": "number",
           "description": "Segundos sin un paso para marcar a un subagente sin latido."
         },
+        "maxTokens": { "type": "integer", "minimum": 0, "description": "Tope de gasto por ciclo (peso aproximado en tokens). 0 = sin tope." },
         "pruebaPrimero": {
           "enum": [false, "avisar", "exigir"],
           "description": "Si una prueba nueva o cambiada no se vio en rojo antes de implementar: el Stop avisa o bloquea."
