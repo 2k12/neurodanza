@@ -51,6 +51,7 @@ test("pruebas: el Stop avisa (o bloquea con exigir) si cambió código y una pru
   const ok = { version: "", baseVersion: "", panelApproved: () => true, evalsApproved: () => true, docsInBranch: true, registroPruebas: {} };
   const avisar = doneProblems(cfg, changes, ok);
   assert.ok(avisar.soft.some((s) => /no se vio la prueba en rojo/.test(s)));
+  assert.ok(avisar.soft.some((s) => /node "[^"]+[/]lib[/]pruebas[.]mjs" rojo/.test(s)), "con la ruta completa");
   assert.ok(!avisar.hard.some((s) => /rojo/.test(s)));
   const exigir = doneProblems(merge(cfg, { ciclo: { pruebaPrimero: "exigir" } }), changes, ok);
   assert.ok(exigir.hard.some((s) => /no se vio la prueba en rojo/.test(s)));

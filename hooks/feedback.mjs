@@ -59,6 +59,11 @@ export function changedMatching(changes, specs = []) {
   return [...new Set(out)];
 }
 
+// Con ruta completa: un comando sin ella hace que el agente busque el plugin en todo el disco.
+const enLib = (f) => fileURLToPath(new URL(`../lib/${f}`, import.meta.url)).replaceAll("\\", "/");
+const PRUEBAS = enLib("pruebas.mjs");
+const FONDO = enLib("fondo.mjs");
+
 const quote = (files) => files.map((f) => `"${f}"`).join(" ");
 const minor = (v) => String(v).split(".").slice(0, 2).join(".");
 const versionOf = (json) => {
@@ -137,7 +142,7 @@ export function doneProblems(cfg, changes, ctx) {
   if (modoPrueba && ctx.registroPruebas) {
     const faltan = sinRojo(cfg, changes, ctx.registroPruebas);
     if (faltan.length) {
-      const texto = `no se vio la prueba en rojo antes de implementar: ${faltan.slice(0, 3).join(", ")}${faltan.length > 3 ? "…" : ""}. Corre \`pruebas.mjs rojo --repo <repo> --archivo <prueba>\` con el código anterior (sin tu cambio) para ver que falla, y \`pruebas.mjs verde\` con el cambio.`;
+      const texto = `no se vio la prueba en rojo antes de implementar: ${faltan.slice(0, 3).join(", ")}${faltan.length > 3 ? "…" : ""}. Corre \`node "${PRUEBAS}" rojo --repo <repo> --archivo <prueba>\` con el código anterior (sin tu cambio) para ver que falla, y \`verde\` en vez de \`rojo\` con el cambio.`;
       (modoPrueba === "exigir" ? hard : soft).push(texto);
     }
   }
@@ -260,13 +265,27 @@ async function regenerate(cfg, changes, hasta = Infinity) {
 
 function counter(session) {
   const file = join(tmpdir(), `neurodanza-feedback-${String(session || "x").replace(/[^\w-]/g, "")}.json`);
-  let state = { n: 0, sig: "" };
+  let state = { n: 0, sig: "", vistos: [] };
   try {
-    state = { n: 0, sig: "", ...JSON.parse(readFileSync(file, "utf8")) };
+    state = { n: 0, sig: "", vistos: [], ...JSON.parse(readFileSync(file, "utf8")) };
   } catch {
-    state = { n: 0, sig: "" };
+    state = { n: 0, sig: "", vistos: [] };
   }
-  return { n: state.n, sig: state.sig, set: (v, sig = "") => writeFileSync(file, JSON.stringify({ n: v, sig })) };
+  const guardar = () => writeFileSync(file, JSON.stringify(state));
+  return {
+    n: state.n,
+    sig: state.sig,
+    set: (v, sig = "") => {
+      Object.assign(state, { n: v, sig });
+      guardar();
+    },
+    /** Los avisos que esta sesión todavía no mostró. */
+    nuevos: (avisos) => {
+      const out = avisos.filter((x) => !state.vistos.includes(x));
+      state.vistos = [...state.vistos, ...out].slice(-50);
+      return out;
+    },
+  };
 }
 
 function versionContext(cfg) {
@@ -350,7 +369,7 @@ async function stop(cfg, event) {
   }
   const ahora = resumenFondo(fondo, firma, vivo(fondo?.pid));
   if (cortadas.length) notas.push(`no alcanzó a correr dentro del tope de ${Math.round(tope / 1000)} s: ${cortadas.map((t) => `${t.repo} · ${nombrePaso(t.paso)}`).join(", ")}. Sigue en segundo plano; si falla, bloquea el próximo Stop.`);
-  if (!antes.fallas.length && ahora.pendientes.length) notas.push(`en segundo plano (no bloquea): ${ahora.pendientes.map((t) => `${t.repo} · ${nombrePaso(t.paso)}`).join(", ")}. Antes de cerrar el ciclo: \`node <plugin>/lib/fondo.mjs esperar\`.`);
+  if (!antes.fallas.length && ahora.pendientes.length) notas.push(`en segundo plano (no bloquea): ${ahora.pendientes.map((t) => `${t.repo} · ${nombrePaso(t.paso)}`).join(", ")}. Antes de cerrar el ciclo: \`node "${FONDO}" esperar\`.`);
 
   const { version, baseVersion } = versionContext(cfg);
   const umbral = cfg.panel.umbral;
@@ -371,9 +390,11 @@ async function stop(cfg, event) {
   writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, cortadas: cortadas.length, fondo: { firma, estado: ahora.estado, pendientes: ahora.pendientes.length }, ms: Date.now() - t0 });
 
   const max = cfg.retroalimentacion.maxBloqueos;
-  const soft = event.stop_hook_active ? [] : done.soft;
-  const info = notas.length ? `neurodanza: ${notas.join(" · ")}` : "";
-  if (hard.length === 0 && soft.length === 0) {
+  // Los avisos son para el usuario: van en systemMessage, una vez por sesión. Con decision "block" obligaban al
+  // agente a dar otra vuelta en cada turno (ver docs/27-costo.md).
+  const avisos = c.nuevos(done.soft);
+  const info = notas.length || avisos.length ? `neurodanza: ${[...notas, ...avisos].join(" · ")}` : "";
+  if (hard.length === 0) {
     if (info) process.stdout.write(JSON.stringify({ systemMessage: info }));
     return c.set(0);
   }
@@ -388,8 +409,8 @@ async function stop(cfg, event) {
     return;
   }
   c.set(hard.length > 0 ? n + 1 : n, sig);
-  const reason = ["Antes de terminar, corrige esto (neurodanza):", ...registrarEnProyecto(cfg, hard, event.session_id).map((h) => `✖ ${h}`), ...soft.map((x) => `• ${x}`), ...notas.map((x) => `ℹ ${x}`)].join("\n\n");
-  process.stdout.write(JSON.stringify({ decision: "block", reason }));
+  const reason = ["Antes de terminar, corrige esto (neurodanza):", ...registrarEnProyecto(cfg, hard, event.session_id).map((h) => `✖ ${h}`), ...notas.map((x) => `ℹ ${x}`)].join("\n\n");
+  process.stdout.write(JSON.stringify({ decision: "block", reason, ...(avisos.length ? { systemMessage: `neurodanza: ${avisos.join(" · ")}` } : {}) }));
 }
 
 async function post(cfg, event) {

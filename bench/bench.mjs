@@ -240,7 +240,7 @@ async function subagenteCongelado(root) {
 /** ¿El skill lanza revisores y panel en el mismo turno? (lo lee del skill del plugin medido) */
 function skillParalelo() {
   try {
-    return /revisores[^\n]{0,200}panel[^\n]{0,200}en el mismo turno|en el mismo turno[^\n]{0,200}revisores[^\n]{0,200}panel/i.test(readFileSync(join(PLUGIN, "skills", "neurodanza-feature", "SKILL.md"), "utf8"));
+    return /revisores[^\n]{0,200}panel[^\n]{0,200}en el mismo turno|en el mismo turno[^\n]{0,200}revisores[^\n]{0,200}panel/i.test(["SKILL.md", "referencias/revision.md"].map((f) => join(PLUGIN, "skills", "neurodanza-feature", f)).filter(existsSync).map((f) => readFileSync(f, "utf8")).join("\n"));
   } catch {
     return false;
   }

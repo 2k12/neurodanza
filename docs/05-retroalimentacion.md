@@ -50,7 +50,7 @@ Antes de terminar, corrige esto (neurodanza):
 
 Cada `✖` se registra en el catálogo de errores conocidos: si ya pasó en otra sesión, el mensaje trae `↳ se repite [firma]` o, si alguien anotó la solución, `↳ error conocido [firma]… Se resolvió así: …`.
 
-`✖` son problemas **graves** (bloquean siempre); `•` son **avisos** (se muestran una sola vez: si el agente ya está continuando por un bloqueo anterior, los avisos no vuelven a bloquear).
+`✖` son problemas **graves** (bloquean siempre); los **avisos** (`•`) no bloquean: los ve el usuario, una vez por sesión, y no obligan al agente a seguir. Ver [27-costo.md](27-costo.md).
 
 ### Tope de bloqueos
 

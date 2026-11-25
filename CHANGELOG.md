@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.6.0 · 2026-11-24
+
+Menos tokens, medido con Claude Code real (docs/27): el plugin baja entre 28 y 53 % por tarea y `/neurodanza-feature` entre 39 y 51 %. Sigue costando más que no usarlo.
+
+### Corregido
+- **Los avisos del `Stop` bloqueaban:** obligaban al agente a otra vuelta en cada turno. Ahora los ve el usuario, una vez por sesión.
+- **Mensajes con la ruta completa** del comando: sin ella, el agente buscaba el plugin en todo el disco.
+- **Riesgo previsto:** sin diff, un cambio de código nunca era bajo. `riesgo.mjs --lineas N`.
+
+### Cambiado
+- El skill `/neurodanza-feature` pasa de 29,2 a 5,8 KB; el resto se lee por paso en `referencias/`.
+- Código en 2 repos es medio hasta `ciclo.riesgo.lineasDosRepos` (150) líneas, con el revisor de coherencia; lo sensible sigue siendo alto.
+- Las personas del panel corren en Sonnet (antes, el modelo de la sesión). Sin medir si califican igual.
+
+### Agregado
+- `evals/costo.mjs`: mide el costo con y sin el plugin.
+
 ## 1.5.1 · 2026-11-24
 
 ### Agregado
