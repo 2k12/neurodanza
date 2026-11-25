@@ -34,6 +34,23 @@ Todas las corridas pasaron las pruebas ocultas, **también sin plugin**: en tare
 - El agente ya no atiende los avisos por su cuenta: los ve el usuario. Para que la prueba en rojo se exija, `ciclo.pruebaPrimero: "exigir"`.
 - Un cambio chico en dos repos tiene un revisor (coherencia, o permisos si toca permisos) en vez de todos. `lineasDosRepos: 0` vuelve a lo anterior.
 
+## 1.8.0: lo que se probó
+
+Se probó que el skill pidiera dos comandos (`ciclo.mjs preparar` y `cerrar`) en vez de muchos pasos. Ciclo, Sonnet, mediana de 5 corridas (mínimo–máximo); `permisos` es de riesgo alto y lanza revisores. Todas pasaron las pruebas ocultas.
+
+| Tarea | 1.7.0 | Con los dos comandos |
+|---|---|---|
+| Chica | 0,084 (0,082–0,090) | 0,082 (0,081–0,088) |
+| Media | 0,114 (0,107–0,125) | 0,101 (0,084–0,117) |
+| Grande | 0,102 (0,092–0,110) | 0,100 (0,096–0,144) |
+| Permisos | 0,145 (0,128–0,152) | **0,190** (0,132–0,213) |
+
+**No cumplió la meta de bajar 20 % y se quitó del skill.** El agente corrió `preparar` en 2 de 20 corridas y `cerrar` en 3 de 20: un paso que depende de que lea y siga el skill casi no se usa. En permisos subió porque 3 de 5 lanzaron los dos revisores que correspondían; en la 1.7.0, solo uno. Los dos comandos quedan disponibles para dispararlos desde un hook o un script.
+
+Se quedó:
+- **`revisor-ui` y `revisor-docs` con esfuerzo bajo:** los cuatro revisores juntos costaron 0,104 → 0,058 USD (−44 %) y detectaron 14 de 14 en ambos casos, con 0 falsos. Los casos son fáciles; permisos y coherencia siguen igual.
+- **`revisor-docs` solo si el proyecto configura documentación.** Sin medir en el ciclo.
+
 ## Ver qué gasta tu proyecto
 
 ```
