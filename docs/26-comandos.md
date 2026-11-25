@@ -7,7 +7,7 @@
 | Comandos `/` | 5 | Lo que escribes tú: 4 de `neurodanza` y 1 de `neurodanza-mapa` (plugin opcional). |
 | Agentes | 11 | 4 revisores, 4 especialistas, 1 persona, 1 fantasma y 1 implementador. Los lanza el ciclo. |
 | Hooks | 7, en 6 eventos | Corren solos en cada proyecto con `neurodanza.config.json`. |
-| CLI | 22 de uso diario y 5 de mantenimiento | Scripts de Node sin dependencias. Los usa Claude; también puedes correrlos tú. |
+| CLI | 22 de uso diario y 6 de mantenimiento | Scripts de Node sin dependencias. Los usa Claude; también puedes correrlos tú. |
 
 Todo corre en tu máquina. Sin `neurodanza.config.json` no pasa nada.
 
@@ -146,7 +146,7 @@ Guías: [11](11-mapa-y-ciclo.md), [20](20-odd-en-neurodanza.md) y [23](23-regres
 |---|---|
 | `ciclo.mjs revisores [--base main]` | Qué revisores, personas y fantasmas lanzar, según el riesgo. |
 | `ciclo.mjs presupuesto` | Máximo de pasos por tipo de subagente. |
-| `riesgo.mjs [--base main] [--archivos "repo:glob"]` | Riesgo del cambio, hecho o previsto. |
+| `riesgo.mjs [--base main] [--archivos "repo:glob"] [--lineas N]` | Riesgo del cambio, hecho o previsto. |
 | `impacto.mjs [--base main] [--archivos "repo:ruta"]` | Pantallas y recorridos que el cambio puede tocar. |
 
 ### Documento de la funcionalidad: `lib/funcionalidad.mjs`
@@ -269,6 +269,7 @@ Guía: [08](08-evals.md).
 | Script | Qué hace | ¿Gasta tokens? |
 |---|---|---|
 | `evals/barreras.mjs` | Comprueba las barreras con Claude Code real. Ver [25](25-barreras-y-jueces.md). | Sí |
+| `evals/costo.mjs` | Compara costo y resultado sin plugin, con él y con el ciclo. Ver [27](27-costo.md). | Sí |
 | `evals/sesgo.mjs` | Compara revisores con un encargo neutro y uno sesgado. | Sí |
 | `bench/bench.mjs` | Banco de pruebas. Ver [bench](../bench/README.md). | No |
 | `panel/avatares.mjs` | Dibuja los avatares de respaldo. | No |

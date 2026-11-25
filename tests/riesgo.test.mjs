@@ -25,10 +25,18 @@ test("riesgo: medio con contratos, más de lineasBajo o sin diff todavía", () =
   assert.equal(nivelDe(cfg, { backend: ["src/pedidos/pedidos.service.ts"] }, null).nivel, "medio");
 });
 
-test("riesgo: alto con archivos sensibles, migraciones, dos repos o más de lineasAlto", () => {
+test("riesgo: alto con archivos sensibles, migraciones, dos repos grandes o más de lineasAlto", () => {
   assert.equal(nivelDe(cfg, { backend: ["src/auth/jwt.guard.ts"] }, { backend: 3 }).nivel, "alto");
   assert.equal(nivelDe(cfg, { backend: ["prisma/migrations/20260101_x/migration.sql"] }, { backend: 3 }).nivel, "alto");
-  assert.equal(nivelDe(cfg, { backend: ["src/pedidos/pedidos.service.ts"], frontend: ["app/pedidos/page.tsx"] }, { backend: 5, frontend: 5 }).nivel, "alto");
+  const dos = { backend: ["src/pedidos/pedidos.service.ts"], frontend: ["app/pedidos/page.tsx"] };
+  assert.equal(nivelDe(cfg, dos, { backend: 100, frontend: 51 }).nivel, "alto");
+  assert.equal(nivelDe(cfg, dos, { backend: 100, frontend: 50 }).nivel, "medio", "dos repos con un cambio chico");
+  assert.equal(nivelDe(cfg, dos, null).nivel, "medio", "sin diff todavía: se confirma después");
+  assert.equal(nivelDe(cfg, { ...dos, backend: ["src/auth/jwt.guard.ts"] }, { backend: 2, frontend: 2 }).nivel, "alto", "lo sensible sigue siendo alto");
+  assert.equal(nivelDe(merge(cfg, { ciclo: { riesgo: { lineasDosRepos: 0 } } }), dos, { backend: 5, frontend: 5 }).nivel, "alto", "0 = como antes");
+  const rev = { revisores: ["revisor-ui", "revisor-permisos", "revisor-coherencia"] };
+  assert.deepEqual(riesgoDe(cfg, dos, { backend: 5, frontend: 5 }, rev).plan.lanzar, ["revisor-coherencia"]);
+  assert.deepEqual(riesgoDe(cfg, dos, { backend: 5, frontend: 5 }, { ...rev, permisos: { backend: dos.backend } }).plan.lanzar, ["revisor-permisos"]);
   assert.equal(nivelDe(cfg, { backend: ["src/pedidos/pedidos.service.ts"] }, { backend: 401 }).nivel, "alto");
 });
 

@@ -79,6 +79,20 @@ test("Stop: respeta el tope, corta lo colgado y lo pasa al fondo sin darlo por b
   }
 });
 
+test("Stop: los avisos van al usuario una vez y no obligan al agente a seguir", () => {
+  const p = proyecto();
+  const f = join(p.root, "neurodanza.config.json");
+  const cfg = JSON.parse(readFileSync(f, "utf8"));
+  writeFileSync(f, JSON.stringify({ ...cfg, retroalimentacion: { ...cfg.retroalimentacion, docs: "docs" } }));
+  p.cambiar(9);
+  const s = `avisos-${Date.now()}`;
+  const r1 = stop(p.root, s);
+  assert.equal(r1.json.decision, undefined, "un aviso no bloquea");
+  assert.match(r1.json.systemMessage, /ninguno en docs/);
+  assert.equal(stop(p.root, s).json.systemMessage, undefined, "una sola vez por sesión");
+  assert.match(stop(p.root, `${s}-b`).json.systemMessage, /ninguno en docs/);
+});
+
 test("Stop: la suite completa corre en el fondo y su falla bloquea el Stop siguiente", async () => {
   const p = proyecto({ suite: "node ../dormir.mjs 300 rota" });
   p.cambiar(3);

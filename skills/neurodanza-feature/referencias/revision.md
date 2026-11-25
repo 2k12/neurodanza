@@ -1,0 +1,15 @@
+# Revisores y fantasmas
+
+Con el diff verificado, lanza **en el mismo turno** los revisores que aplican y el panel de personas: corren **a la vez**, sobre **una única app levantada** antes de lanzar. Si hay panel, lee también `panel.md` **antes de lanzar**.
+
+1. Revisores: `<ciclo> revisores` responde cuáles lanzar y por qué (`lanzar`, `motivos`, `omitir`) **según el riesgo del diff** (`riesgo.nivel`, `riesgo.texto`, `riesgo.plan`): de los que aplican (`docs` siempre; `ui` y `permisos` si hay pantallas, interfaz, rutas o accesos; `coherencia` si cambió código en 2 repos o un contrato), con riesgo bajo no corre ninguno, con medio el de más prioridad (permisos, coherencia, ui, docs) y con alto todos. Lanza exactamente `lanzar`. Con `ciclo.revisores: "todos"` van siempre los 4. Si `riesgo.plan.personas` es 0, no hay panel en este ciclo (el hook `Stop` no lo exige) y `fantasmas.lanzar` dice si van fantasmas (`fantasmas.cantidad`).
+
+**Fantasmas** (si `<ciclo> revisores` dice `fantasmas.lanzar: true`: el diff toca endpoints, permisos, roles, consultas o pantallas que escriben): `<fantasmas> hipotesis` genera hasta `fantasmas.max` hipótesis concretas (rol atacante, recurso, técnica). Requieren la app levantada.
+
+**Lanzar, en UN SOLO mensaje:** los revisores de `lanzar`, un agente `persona-evaluadora` por persona, un `persona-evaluadora` **en modo juzgar** por cada recorrido de `juzgar` cuya dueña no esté ya en el panel (si está, súmale el juicio a su mensaje) y un `fantasma` por hipótesis (si hay).
+- A cada fantasma: su hipótesis (el JSON), el comando `<fantasmas>` con ruta absoluta, qué personas usar (dueño del recurso y `rolAtacante`) y el framework de pruebas del repo. No edita nada: deja su resultado con `<fantasmas> resultado`.
+- A cada revisor: **solo** qué se pidió (una línea), los repos tocados, la rama, contra qué rama comparar, su presupuesto de pasos y de tiempo, el resumen del índice enfocado en los archivos del diff (`<indice> resumen --repo <r> --foco <archivos del diff>`) y sus lecciones (`<constructos> playbook --constructo <revisor>`, si tiene). **No** le pases tu razonamiento ni tus conclusiones.
+
+**Juntar:**
+0. Fantasmas: `<fantasmas> veredicto` lista los confirmados. **Un confirmado de gravedad alta cuenta como un hallazgo alto de revisor** (aplica la regla siguiente): crea una tarea para que el implementador corrija **e integre la prueba propuesta** (`prueba.propuesta` del resultado). Los no confirmados se descartan sin más. Los de `sinEvidencia` no bloquean, pero se informan al usuario: no se pudo decidir.
+1. Revisores: si alguno devuelve `aprobado: false` con un hallazgo **alto**, el panel termina su ronda, pero **esa ronda no puede aprobar el cambio**: anótalo en el JSON del panel (`"revisores": "reprobados"`; si todos aprobaron, `"revisores": "aprobados"`). Corrige los hallazgos altos y medios, vuelve al paso 2 y relanza solo los revisores que reprobaron (máximo 2 vueltas; si sigue reprobando, informa al usuario) y una ronda nueva del panel.
