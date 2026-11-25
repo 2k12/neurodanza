@@ -57,7 +57,7 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 
 ## Uso diario
 
-- **`/neurodanza-feature`**: para cada funcionalidad o corrección. Entender y planificar (y esperar tu visto bueno) → implementar → verificar → revisores que aplican → panel de personas con la app corriendo → cerrar.
+- **`/neurodanza-feature`**: para cambios medianos o grandes (los chicos se hacen directo; los hooks verifican). Entender y planificar (y esperar tu visto bueno) → implementar → verificar → revisores que aplican → panel de personas con la app corriendo → cerrar.
 - **`/neurodanza-incidencias`**: registrar, priorizar y corregir incidencias, con evidencia de antes y después.
 - **`/neurodanza-mapa`**: abre el mapa en vivo (se abre solo al empezar un ciclo).
 - **`/neurodanza-evals`**: después de cambiar agentes, personas, umbrales o skills, y una vez por versión.

@@ -16,7 +16,7 @@ Todo corre en tu máquina. Sin `neurodanza.config.json` no pasa nada.
 | Comando | Qué hace | Cuándo | Qué crea o cambia |
 |---|---|---|---|
 | `/neurodanza-init` | Detecta repos, lint, tipos, pruebas, app y roles; pregunta lo que falta. | Una vez por proyecto, o para revisar la configuración. | `neurodanza.config.json`, elenco, casos de evals, regla ESLint y sección de `AGENTS.md`. |
-| `/neurodanza-feature` | Ciclo completo: entender y planificar, implementar, verificar, revisores y panel según el riesgo, y cerrar. | En cada funcionalidad o corrección. | El código del cambio, su plan y sus evaluaciones. Commit y PR solo si los pides. |
+| `/neurodanza-feature` | Ciclo completo: entender y planificar, implementar, verificar, revisores y panel según el riesgo, y cerrar. | En cambios medianos o grandes; los chicos se hacen directo. | El código del cambio, su plan y sus evaluaciones. Commit y PR solo si los pides. |
 | `/neurodanza-incidencias` | Consulta la rama de desarrollo y graphify (opcional), registra fichas, guarda el antes y el después y corrige lo que pidas. | Para registrar, priorizar o corregir incidencias. | `incidencias/`. Nunca hace commit. |
 | `/neurodanza-evals` | Mide a revisores, personas y fantasmas con casos de respuesta conocida. | Al cambiar agentes, personas, umbrales o skills, y una vez por versión. | Un informe en `evals.informes`. Gasta tokens. |
 | `/neurodanza-mapa` | Abre el panel con la fase, los subagentes y el plan. | Cuando quieras; se abre solo al empezar un ciclo. | Nada. |
@@ -145,6 +145,7 @@ Guías: [11](11-mapa-y-ciclo.md), [20](20-odd-en-neurodanza.md) y [23](23-regres
 | Comando | Qué hace |
 |---|---|
 | `ciclo.mjs revisores [--base main]` | Qué revisores, personas y fantasmas lanzar, según el riesgo. |
+| `ciclo.mjs seguir` | Amplía el tope de gasto del ciclo; se te pregunta. |
 | `ciclo.mjs presupuesto` | Máximo de pasos por tipo de subagente. |
 | `riesgo.mjs [--base main] [--archivos "repo:glob"] [--lineas N]` | Riesgo del cambio, hecho o previsto. |
 | `impacto.mjs [--base main] [--archivos "repo:ruta"]` | Pantallas y recorridos que el cambio puede tocar. |
@@ -251,6 +252,7 @@ Guías: [12](12-errores-conocidos.md), [14](14-constructos.md) y [22](22-autoaju
 | `autoajuste.mjs aplicar`, `descartar` o `revertir` (`--id <id>`) | Decide sobre una propuesta. |
 | `autoajuste.mjs informe` | Qué aprendió, con números. |
 | `telemetria.mjs recolectar [--transcripts <carpeta>]` | Actualiza el resumen de las sesiones. |
+| `telemetria.mjs gasto [--dias N]` | Qué gasta cada tipo de agente y modelo. |
 | `telemetria.mjs semanas` | Tokens y sesiones por semana. |
 
 ### Evals: `evals/evals.mjs`

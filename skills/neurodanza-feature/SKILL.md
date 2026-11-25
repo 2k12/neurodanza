@@ -1,6 +1,6 @@
 ---
 name: neurodanza-feature
-description: Ciclo automático para cada funcionalidad o corrección en un proyecto con neurodanza - entender, implementar, verificar, revisores según el riesgo del cambio, panel de personas simuladas con la app corriendo y ventana en vivo (aprueba si el promedio supera el umbral) y cerrar. Úsalo siempre que se agregue o corrija algo en un proyecto con neurodanza.config.json.
+description: Ciclo automático para cada funcionalidad o corrección en un proyecto con neurodanza - entender, implementar, verificar, revisores según el riesgo del cambio, panel de personas simuladas con la app corriendo y ventana en vivo (aprueba si el promedio supera el umbral) y cerrar. Úsalo en un proyecto con neurodanza.config.json cuando el cambio toca varios archivos o repos, contratos, permisos o migraciones, o cuando el usuario lo pida. Un cambio chico (un repo, hasta unas 40 líneas, nada sensible) se hace directo, sin este skill - los hooks ya verifican.
 ---
 
 # /neurodanza-feature: ciclo automático de una funcionalidad
@@ -18,11 +18,12 @@ Prevé el nivel con los archivos que vas a tocar: `<riesgo> --archivos "<repo:ar
 |---|---|
 | **Bajo** | Di en una línea qué vas a hacer y hazlo: pasos 1 y 2, y cierra. Sin plan en archivo, subagentes ni más referencias. |
 | **Medio** | `planificar` (plan corto; recorridos solo si hay pantallas) → 1 → 2 → `revision` (un revisor) y, si `plan.personas` > 0, `panel` → `cerrar`. |
-| **Alto** | `planificar` completo → 1 → 2 → `revision` y, si `plan.personas` > 0, `panel` → `cerrar`. Con 2 áreas independientes o más de ~8 archivos, `director`. |
+| **Alto** | `planificar` completo → 1 → 2 → `revision` y, si `plan.personas` > 0, `panel` → `cerrar`. `director` solo si `plan.director` es true o el usuario lo pide. |
 
 Con riesgo medio o alto, espera el visto bueno del usuario antes de tocar código. Pregunta solo lo que cambia el resultado.
 - Para ubicarte sin leer el repo: `<indice> resumen --repo <r> --foco <tema, ruta o glob>` y `<indice> buscar --que <texto>`. Si ya sabes qué archivo es, ve directo.
 - Si un subagente se corta, queda sin latido o en cuarentena: `reenfundar`.
+- Si la barrera dice que el ciclo llegó a su tope de gasto, no insistas: di qué falta y pregúntale al usuario.
 - Lanza subagentes solo si `plan` lo dice: cada uno cuesta tokens.
 
 ## 1. Implementar

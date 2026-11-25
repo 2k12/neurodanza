@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.7.0 · 2026-11-24
+
+### Agregado
+- **`telemetria.mjs gasto`:** qué gasta cada tipo de agente y modelo.
+- **Tope de gasto por ciclo** (`ciclo.maxTokens`, apagado por defecto): al llegar no se lanzan más subagentes y solo el usuario lo amplía (`ciclo.mjs seguir`).
+
+### Cambiado
+- **Los cambios chicos se hacen sin `/neurodanza-feature`:** los hooks verifican. Los proyectos ya preparados conservan su línea de `AGENTS.md`: cámbiala a mano.
+- **Modo director y especialistas** solo con más de `director.minArchivos` (8) archivos o si el usuario lo pide.
+
+### Corregido
+- La telemetría tomaba el conteo parcial del primer fragmento de cada mensaje; ahora, el mayor.
+
 ## 1.6.0 · 2026-11-24
 
 Menos tokens, medido con Claude Code real (docs/27): el plugin baja entre 28 y 53 % por tarea y `/neurodanza-feature` entre 39 y 51 %. Sigue costando más que no usarlo.

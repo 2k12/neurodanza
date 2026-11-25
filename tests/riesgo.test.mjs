@@ -73,7 +73,11 @@ test("riesgo: el plan de cada nivel (y ciclo.revisores todos o riesgo apagado = 
   assert.deepEqual(medio.lanzar, ["revisor-permisos"]);
   assert.equal(medio.personas, 1);
   assert.equal(medio.fantasmas, 1);
-  const alto = planDe(cfg, "alto", { revisores: rev, pantallas: true, repos: 2 });
+  const alto = planDe(cfg, "alto", { revisores: rev, pantallas: true, repos: 2, archivos: 9 });
+  assert.equal(alto.director, true);
+  const pocos = planDe(cfg, "alto", { revisores: rev, repos: 2, archivos: 8 });
+  assert.equal(pocos.director, false, "hasta 8 archivos, directo");
+  assert.equal(pocos.especialistas, 0, "los especialistas son del modo director");
   assert.deepEqual(alto.lanzar, ["revisor-permisos", "revisor-ui", "revisor-docs"]);
   assert.equal(alto.personas, cfg.panel.min);
   assert.equal(alto.especialistas, 2);

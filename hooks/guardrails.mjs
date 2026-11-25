@@ -11,10 +11,13 @@ import { MENSAJE_CORTE, mensajeCuarentena, registrarPaso, registrarRechazo, revi
 import { asociarAgente, decidirFigura, manoDe, tocaProtegido } from "../lib/figuras.mjs";
 import { recordar } from "../lib/operador.mjs";
 import { registrarEnProyecto } from "../lib/errores.mjs";
+import { ampliaTope, topeAlcanzado } from "../lib/gasto.mjs";
 import { estadoReservadoEn, MOTIVO_RESERVADO } from "../lib/incidencias.mjs";
 import { comentariosProhibidos, EXTENSIONES as EXT_CODIGO, textoRechazo } from "../lib/comentarios.mjs";
 
 const PILAS_CLI = fileURLToPath(new URL("../lib/pilas.mjs", import.meta.url)).replace(/\\/g, "/");
+
+const CICLO_CLI = fileURLToPath(new URL("../lib/ciclo.mjs", import.meta.url)).replace(/\\/g, "/");
 
 const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
@@ -294,7 +297,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     /* idem */
   }
   // La tabla de figuras y el registro de agentes no los escribe ningún agente.
-  if (tocaProtegido(cfg, event)) rechazar("neurodanza: .neurodanza/figuras.json y .neurodanza/agentes/ los escriben solo el director y las barreras; ningún agente puede modificarlos.");
+  if (tocaProtegido(cfg, event)) rechazar("neurodanza: .neurodanza/figuras.json, .neurodanza/gasto.json y .neurodanza/agentes/ los escriben solo el director y las barreras; ningún agente puede modificarlos.");
   // CLI de la app: una macro se juzga por el comando que de verdad corre (barreras y figuras).
   let evento = event;
   let app = null;
@@ -323,6 +326,21 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const why = check(evento, cfg);
   if (why) rechazar(why);
+  // Tope de gasto del ciclo: no se lanza otro subagente sin que el usuario lo amplíe.
+  let tope = null;
+  try {
+    tope = topeAlcanzado(cfg, event, CICLO_CLI);
+  } catch {
+    /* sin medida no hay tope */
+  }
+  if (tope) {
+    process.stderr.write(`${tope}\n`);
+    process.exit(2);
+  }
+  if (ampliaTope(evento)) {
+    if (event.agent_id) rechazar("neurodanza: el tope de gasto del ciclo lo amplía el usuario, no un subagente.");
+    pregunta = pregunta || `neurodanza: seguir gastando en este ciclo, con otro tope de ${cfg.ciclo?.maxTokens ?? 0} (ciclo.maxTokens). ¿Lo apruebas?`;
+  }
   // Incidencias: «Verificada», «Cerrada» y «Descartada» las decide el responsable.
   const reservado = estadoReservadoEn(cfg, evento);
   if (reservado === "deny" || (reservado && event.agent_id)) rechazar(MOTIVO_RESERVADO);
