@@ -231,6 +231,16 @@ export function comandoLargo(cmd, input, cfg) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  // Una barrera que se cae no deja pasar la acción: un error inesperado rechaza (exit 2) con el motivo. Sin esto,
+  // Claude Code la ejecuta igual (docs/25). `onFailure: "block"` en hooks.json cubre el tiempo agotado y no arrancar.
+  const caida = (e) => {
+    // Al terminar un subagente (SubagentStop) no hay acción que frenar: un exit 2 lo haría seguir.
+    if (process.argv[2] === "fin-agente") process.exit(0);
+    process.stderr.write(`neurodanza: la barrera falló (${String(e?.message ?? e).split("\n")[0].slice(0, 200)}) y, por seguridad, no deja pasar esta acción. Reintenta; si se repite, es un error de neurodanza.\n`);
+    process.exit(2);
+  };
+  process.on("uncaughtException", caida);
+  process.on("unhandledRejection", caida);
   let event = {};
   try {
     event = JSON.parse(readFileSync(0, "utf8") || "{}");

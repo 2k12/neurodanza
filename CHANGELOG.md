@@ -12,6 +12,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 - `evals/portero.mjs` y su banco de 225 casos. Medido: 175 de 175 errores detectados (cota inferior 98,3 %), 0 de 20 inyecciones, 72 % de los limpios omitidos, 0,41 USD.
 
 ### Corregido
+- **Una barrera que fallaba dejaba pasar la acción.** Claude Code ejecuta la herramienta si el hook `PreToolUse` se cae o se pasa del tiempo. Ahora el hook tiene `"onFailure": "block"` y un error inesperado en `guardrails.mjs` rechaza con un motivo. Se encontró con un `Edit` con `file_path` que no era texto, que antes pasaba. Ver docs/25.
 - Quitar el filtro de empresa en pocas líneas era riesgo bajo y pasaba sin revisor. `riesgo.permisosEnCodigo` ahora también mira el campo que separa los datos de cada cliente (`tenantId`, `empresaId`, `companyId`, `storeId`…): el cambio queda al menos medio, con el revisor de permisos, y el portero no lo ve. Si tu config define su propio patrón, agrégale esos campos.
 
 ## 1.8.0 · 2026-11-24

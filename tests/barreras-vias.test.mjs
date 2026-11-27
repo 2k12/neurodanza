@@ -29,3 +29,28 @@ test("la comprobación distingue bloqueada, pasó y sin intento", () => {
   assert.deepEqual([de("bash"), de("grep-secreto"), de("sub-bash"), de("monitor")], ["bloqueada", "PASÓ", "PASÓ", "sin intento"]);
   assert.equal(r.length, VIAS.length);
 });
+
+test("barrera: si se cae, rechaza (exit 2) en vez de dejar pasar; al terminar un subagente, no frena", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const { mkdtempSync, writeFileSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const GUARD = fileURLToPath(new URL("../hooks/guardrails.mjs", import.meta.url));
+  const root = mkdtempSync(join(tmpdir(), "nd-caida-"));
+  try {
+    writeFileSync(join(root, "neurodanza.config.json"), JSON.stringify({ repos: [{ nombre: "api", ruta: "api", codigo: ["src/**"] }] }));
+    const correr = (ev, args = []) => spawnSync(process.execPath, [GUARD, ...args], { cwd: root, input: JSON.stringify({ cwd: root, session_id: "s", ...ev }), encoding: "utf8" });
+    // Entrada que hace fallar el código de la barrera: un file_path que no es texto.
+    const r = correr({ tool_name: "Edit", tool_input: { file_path: 123 } });
+    assert.equal(r.status, 2, r.stderr);
+    assert.match(r.stderr, /la barrera falló .*no deja pasar/);
+    assert.equal(correr({ tool_name: "Bash", tool_input: { command: "ls" } }).status, 0);
+    assert.equal(correr({ agent_id: "a1" }, ["fin-agente"]).status, 0);
+    // El hook de barreras tiene onFailure: block (tiempo agotado o no arrancar también rechazan).
+    const { hooks } = JSON.parse(readFileSync(new URL("../hooks/hooks.json", import.meta.url), "utf8"));
+    assert.equal(hooks.PreToolUse[0].hooks[0].onFailure, "block");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

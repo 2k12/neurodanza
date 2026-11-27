@@ -5,7 +5,7 @@
 Las pruebas usan eventos simulados: demuestran que la regla funciona, no que Claude Code la consulte. `evals/barreras.mjs` abre una sesión real en un proyecto temporal e intenta acciones prohibidas e inofensivas por cada vía. Gasta tokens (≈ 0,01 USD con Haiku). Conviene repetirla cuando Claude Code se actualice.
 
 ```bash
-node evals/barreras.mjs [--modo auto|bypassPermissions] [--detalle]   # sale con 1 si algo pasa
+node evals/barreras.mjs [--modo auto|bypassPermissions] [--detalle] [--code-mode]   # sale con 1 si algo pasa
 ```
 
 Claude Code 2.1.331, mismo resultado en los modos `bypassPermissions` y `auto`:
@@ -22,6 +22,17 @@ Claude Code 2.1.331, mismo resultado en los modos `bypassPermissions` y `auto`:
 
 Los eventos de los subagentes **traen el modo de la sesión** (`auto`): las figuras tampoco preguntan por ellos en automático.
 
+### Si la barrera falla
+
+Sin `onFailure`, Claude Code **ejecuta igual** la acción cuando el hook `PreToolUse` falla: se cae, no arranca, devuelve algo inválido o se pasa del tiempo (docs de hooks, «Block the action when a hook fails»). En Code Mode, desde la 2.1.329, pasa lo mismo salvo con tiempo agotado. Por eso, desde la 1.9.0:
+
+- El hook de barreras tiene `"onFailure": "block"` (requiere Claude Code 2.1.295 o posterior): si no arranca o se pasa de los 10 s, la acción no corre.
+- Un error inesperado dentro de `guardrails.mjs` **rechaza** (exit 2) con «la barrera falló … no deja pasar esta acción». Antes salía con 1 y pasaba. Se encontró con un `Edit` cuyo `file_path` no era texto.
+- Al terminar un subagente (`fin-agente`) un error no frena nada: sale con 0.
+- Una config inválida o ausente sigue sin bloquear (exit 0): el proyecto no usa neurodanza.
+
+Claude Code 2.1.332, con `onFailure: "block"`: 8 de 9 vías bloqueadas; en `grep-secreto` el agente no lo intentó.
+
 ## Jueces independientes
 
 Un juez (revisor, persona, especialista o fantasma) lanzado como `fork` hereda la conversación, con las conclusiones de quien hizo el cambio. La barrera lo rechaza. Los jueces del plugin arrancan sin ella.
@@ -37,7 +48,7 @@ Sin diferencia, así que **no se agregó** una barrera que detecte frases. Los c
 
 ## Límites
 
-- Code Mode no apareció entre las herramientas de esa sesión: no se probó.
+- **Code Mode no se pudo probar.** `--code-mode` pone `CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1`, pero en `claude -p` (2.1.332) no arrancó: el inicio no trae `REPL`, ni con `--model claude-haiku-5-5`. La documentación pide una sesión interactiva y confirmarlo la primera vez. Según ella, las herramientas que llama el código llegan al hook con su nombre de siempre (`Bash`, `Read`…), así que el matcher las cubre; falta verlo en una sesión interactiva. El informe dice `codeMode: "activo"` solo si apareció `REPL`.
 - `Grep` sin ruta en una carpeta con un `.env` fuera de `.gitignore` puede mostrarlo: se juzga la ruta y el glob, no lo que encuentra.
 - El fork se reconoce como juez por su nombre en el encargo; uno que no se nombre no se detecta.
 - La regla de no lanzar otros subagentes exige `figuras.activo`.
