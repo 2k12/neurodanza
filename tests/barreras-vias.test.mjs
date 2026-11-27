@@ -18,6 +18,11 @@ test("Grep sobre un .env se rechaza; los permitidos y lo demás, no", () => {
 test("un juez no nace de un fork; los demás forks y los jueces normales, sí", () => {
   for (const i of [{ prompt: "Eres revisor-permisos: revisa" }, { description: "revisor de UI", prompt: "x" }, { prompt: "persona-evaluadora Ana" }]) assert.match(forkDeJuez({ subagent_type: "fork", ...i }), /no se lanza como fork/);
   assert.equal(forkDeJuez({ subagent_type: "fork", prompt: "investiga por qué falla la prueba" }), null);
+  // Sin nombrar a ningún juez: juzgar un cambio, un plan o un pedido también es ser juez.
+  for (const prompt of ["Revisa el diff y dime si el cambio está bien", "Evalúa si la implementación cumple el pedido", "Dame tu veredicto sobre esto", "Actúa como crítico del pedido", "Haz de abogado del diablo con el plan", "review the changes in this PR", "Audita el trabajo hecho"])
+    assert.match(forkDeJuez({ subagent_type: "fork", prompt }) ?? "", /no se lanza como fork/, prompt);
+  for (const prompt of ["Revisa los logs y encuentra el error", "Busca dónde se define validarPagina", "Corre las pruebas y resume qué falla", "Evalúa el rendimiento de la consulta con EXPLAIN"])
+    assert.equal(forkDeJuez({ subagent_type: "fork", prompt }), null, prompt);
   assert.equal(forkDeJuez({ subagent_type: "neurodanza:revisor-permisos", prompt: "revisor-permisos" }), null);
   assert.equal(clasificar({ tool_name: "Agent", tool_input: {} }).figura, "leer");
 });

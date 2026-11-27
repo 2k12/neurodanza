@@ -50,5 +50,5 @@ Sin diferencia, así que **no se agregó** una barrera que detecte frases. Los c
 
 - **Code Mode no se pudo probar.** `--code-mode` pone `CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1`, pero en `claude -p` (2.1.332) no arrancó: el inicio no trae `REPL`, ni con `--model claude-haiku-5-5`. La documentación pide una sesión interactiva y confirmarlo la primera vez. Según ella, las herramientas que llama el código llegan al hook con su nombre de siempre (`Bash`, `Read`…), así que el matcher las cubre; falta verlo en una sesión interactiva. El informe dice `codeMode: "activo"` solo si apareció `REPL`.
 - `Grep` sin ruta en una carpeta con un `.env` fuera de `.gitignore` puede mostrarlo: se juzga la ruta y el glob, no lo que encuentra.
-- El fork se reconoce como juez por su nombre en el encargo; uno que no se nombre no se detecta.
+- El fork se reconoce como juez por su nombre en el encargo (revisor, persona, especialista, fantasma, crítico) **o por lo que se le pide**: juzgar un cambio, un plan o un pedido («revisa el diff», «evalúa si la implementación cumple», «dame tu veredicto», «haz de abogado del diablo»). Un encargo que juzga con otras palabras puede pasar; uno que investiga («revisa los logs», «por qué falla la prueba») pasa a propósito.
 - La regla de no lanzar otros subagentes exige `figuras.activo`.

@@ -69,8 +69,12 @@ export function secretoEnBusqueda(p, permitidos = []) {
 export function forkDeJuez(input) {
   if (!/^fork$/i.test(String(input?.subagent_type ?? ""))) return null;
   const t = `${input.description ?? ""} ${input.name ?? ""} ${input.prompt ?? ""}`;
-  if (!/(revisor|especialista)-(coherencia|permisos|ui|docs|a11y|datos|rendimiento)|persona-evaluadora/i.test(t) && !/^(revisor|fantasma|persona evaluadora)/i.test(t.trim())) return null;
-  return "neurodanza: un juez (revisor, persona, especialista o fantasma) no se lanza como fork, porque heredaría la conversación. Usa su propio tipo de agente (p. ej. subagent_type: neurodanza:revisor-permisos) y dale el pedido textual y el cambio.";
+  const porNombre = /(revisor|especialista)-(coherencia|permisos|ui|docs|a11y|datos|rendimiento)|persona-evaluadora|\bcr[ií]tico del pedido\b/i.test(t) || /^(revisor|fantasma|persona evaluadora|cr[ií]tico|juez)/i.test(t.trim());
+  // También sin nombre: juzgar un cambio, un plan o un pedido («revisa el diff», «evalúa si el cambio está bien»,
+  // «dame tu veredicto»). Investigar («revisa los logs», «por qué falla la prueba») no es juzgar.
+  const juzga = /(?<![\p{L}])(revis[aeá]\p{L}*|review\p{L}*|eval[uú]\p{L}*|califica\p{L}*|juzga\p{L}*|audita\p{L}*|critica\p{L}*|objeta\p{L}*|aprueba\p{L}*|reprueba\p{L}*)[^.\n]{0,60}?(?<![\p{L}])(cambios?|diff|implementaci[oó]n|pull request|PR|commit|plan|pedido|propuesta|soluci[oó]n|trabajo hecho)(?![\p{L}])/iu.test(t) || /(?<![\p{L}])(veredicto|segunda opini[oó]n|como juez|como cr[ií]tico|abogado del diablo)(?![\p{L}])/iu.test(t);
+  if (!porNombre && !juzga) return null;
+  return "neurodanza: un juez (revisor, persona, especialista, fantasma o crítico) no se lanza como fork, porque heredaría la conversación con las conclusiones de quien hizo el cambio. Usa su propio tipo de agente (p. ej. subagent_type: neurodanza:revisor-permisos) y dale el pedido textual y el cambio. Si el fork no juzga, sino que investiga, dilo así en el encargo.";
 }
 
 /** Comandos que modifican archivos o el repo (el director no los usa: delega). */
