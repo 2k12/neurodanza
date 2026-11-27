@@ -3,7 +3,9 @@
 // temporal de dos repos. Mide USD, tokens, turnos, subagentes y si el resultado pasa pruebas que el agente no ve.
 // `permisos` es de riesgo alto: lanza revisores. Gasta tokens. No mide el panel (el proyecto no tiene pantallas). Ver docs/27-costo.md.
 //
-// Uso: node costo.mjs [--plugin <carpeta>] [--modelo sonnet] [--tareas bajo,medio,alto,permisos] [--modos sin,con,ciclo] [--veces 1] [--tope 2] [--conservar]
+// Uso: node costo.mjs [--plugin <carpeta>] [--modelo sonnet] [--tareas bajo,medio,alto,permisos] [--modos sin,con,ciclo] [--veces 1] [--tope 2] [--config '{"ciclo":{…}}'] [--conservar]
+//   --config se mezcla con la config del proyecto (un nivel: `ciclo` se mezcla clave a clave). `fondoUSD` suma lo que
+//   gastaron el portero y la revisión en el Stop, que corren fuera de la sesión; `usdTotal` = usd + fondoUSD.
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -58,7 +60,7 @@ export const TAREAS = {
   },
 };
 
-function armar(modo) {
+function armar(modo, extra = {}) {
   const root = mkdtempSync(join(tmpdir(), "nd-costo-"));
   for (const [f, t] of Object.entries(BASE)) {
     mkdirSync(dirname(join(root, f)), { recursive: true });
@@ -66,7 +68,8 @@ function armar(modo) {
   }
   if (modo !== "sin") {
     const repo = (nombre) => ({ nombre, ruta: nombre, codigo: ["src/**"], relacionadas: "node --test {archivos}" });
-    writeFileSync(join(root, "neurodanza.config.json"), JSON.stringify({ repos: [repo("api"), repo("web")], panel: { ventana: "ninguna" }, figuras: { activo: false }, autoajuste: { activo: false }, autoconfigurar: false }));
+    const base = { repos: [repo("api"), repo("web")], panel: { ventana: "ninguna" }, figuras: { activo: false }, autoajuste: { activo: false }, autoconfigurar: false };
+    writeFileSync(join(root, "neurodanza.config.json"), JSON.stringify({ ...base, ...extra, ...(extra.ciclo ? { ciclo: { ...base.ciclo, ...extra.ciclo } } : {}) }));
   }
   for (const r of ["api", "web"]) {
     const g = (...a) => execFileSync("git", a, { cwd: join(root, r), stdio: "ignore" });
@@ -84,6 +87,21 @@ export function resumir(msgs) {
   const usos = msgs.filter((m) => m.type === "assistant").flatMap((m) => (Array.isArray(m.message?.content) ? m.message.content : [])).filter((c) => c.type === "tool_use");
   const t = Object.values(fin?.modelUsage ?? {}).reduce((s, u) => ({ salida: s.salida + (u.outputTokens ?? 0), entrada: s.entrada + (u.inputTokens ?? 0) + (u.cacheCreationInputTokens ?? 0), cacheLeida: s.cacheLeida + (u.cacheReadInputTokens ?? 0) }), { salida: 0, entrada: 0, cacheLeida: 0 });
   return { usd: fin?.total_cost_usd ?? null, ...t, turnos: fin?.num_turns ?? null, herramientas: usos.length, subagentes: usos.filter((c) => c.name === "Agent" || c.name === "Task").map((c) => String(c.input?.subagent_type ?? "general").replace(/^neurodanza:/, "")), fin: fin?.subtype ?? "sin resultado" };
+}
+
+/** Lo que gastaron el portero y la revisión en el Stop (procesos aparte, fuera del costo de la sesión). */
+export function gastoFondo(root) {
+  const leer = (f) => {
+    try {
+      return JSON.parse(readFileSync(join(root, ".neurodanza", f), "utf8"));
+    } catch {
+      return {};
+    }
+  };
+  const rev = leer("revision.json").revisiones ?? [];
+  const por = Object.values(leer("portero.json").decisiones ?? {});
+  const usd = [...rev, ...por].reduce((s, x) => s + (x.costo ?? 0), 0);
+  return { fondoUSD: Math.round(usd * 10000) / 10000, revisiones: rev.map((x) => `${x.revisor.replace(/^revisor-/, "")}:${x.estado ?? "pendiente"}`), portero: por.map((x) => x.decision) };
 }
 
 function correr(root, tarea, modo, { plugin, modelo, tope }) {
@@ -117,7 +135,8 @@ function correr(root, tarea, modo, { plugin, modelo, tope }) {
       const p = spawnSync(process.execPath, [join(root, "oculta.mjs")], { encoding: "utf8", cwd: root });
       if (process.argv.includes("--conservar")) writeFileSync(join(root, "traza.jsonl"), out);
       const r = resumir(msgs);
-      ok({ tarea, modo, ...r, seg: Math.round((Date.now() - t0) / 1000), pasa: p.status === 0, ...(p.status ? { fallo: p.stderr.match(/(AssertionError|Error)[^\n]*/)?.[0]?.slice(0, 200) } : {}), ...(r.usd === null ? { error: (err || out).slice(-300) } : {}), root });
+      const fondo = gastoFondo(root);
+      ok({ tarea, modo, ...r, ...fondo, usdTotal: r.usd === null ? null : Math.round((r.usd + fondo.fondoUSD) * 10000) / 10000, seg: Math.round((Date.now() - t0) / 1000), pasa: p.status === 0, ...(p.status ? { fallo: p.stderr.match(/(AssertionError|Error)[^\n]*/)?.[0]?.slice(0, 200) } : {}), ...(r.usd === null ? { error: (err || out).slice(-300) } : {}), root });
     });
     h.stdin.end(`${modo === "ciclo" ? "/neurodanza:neurodanza-feature " : ""}${TAREAS[tarea].pedido}\n\nEl plan ya está aprobado: no preguntes nada ni esperes confirmación. No hagas commit.`);
   });
@@ -133,7 +152,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   for (let v = 0; v < Number(arg("veces", "1")); v++)
     for (const tarea of arg("tareas", "bajo,medio,alto").split(","))
       for (const modo of arg("modos", "sin,con").split(",")) {
-        const root = armar(modo);
+        const root = armar(modo, JSON.parse(arg("config", "{}")));
         const { root: r, ...f } = await correr(root, tarea, modo, op);
         filas.push(f);
         console.error(JSON.stringify(f), process.argv.includes("--conservar") ? r : "");
