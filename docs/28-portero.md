@@ -69,7 +69,7 @@ Un proyecto temporal de un repo, con el portero prendido y Haiku de verdad:
 | Quitar el filtro de empresa en 15 consultas y subir su límite (60 líneas) | Revisar: «las consultas devuelven datos de todas las empresas» |
 | Otro renombre, por el hook `Stop` | Un `systemMessage` dice que no lleva revisor y que se audita |
 
-**Hueco encontrado, anterior al portero:** quitar solo el filtro de empresa (30 líneas) es riesgo **bajo** (hasta `lineasBajo`, 40) y pasa sin revisor desde antes. El portero no lo ve porque no es medio.
+**Hueco encontrado, anterior al portero:** quitar solo el filtro de empresa (30 líneas) era riesgo **bajo** (hasta `lineasBajo`, 40) y pasaba sin revisor. **Cerrado:** `riesgo.permisosEnCodigo` también mira el campo de cada cliente (`tenantId`, `empresaId`…), así que ese cambio queda medio, con el revisor de permisos, y no pasa por el portero.
 
 ## Lo que el número no dice
 

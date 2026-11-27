@@ -9,6 +9,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 - **Auditoría y apagado:** 1 de cada 10 omisiones la revisa igual el revisor de verdad, en segundo plano. Lo que encuentre llega al agente en el siguiente `Stop`. Con más de 1 fallo en las últimas 50 auditorías, el portero se apaga solo (`portero.mjs estado`, `encender`).
 - `evals/portero.mjs` y su banco de 225 casos. Medido: 175 de 175 errores detectados (cota inferior 98,3 %), 0 de 20 inyecciones, 72 % de los limpios omitidos, 0,41 USD.
 
+### Corregido
+- Quitar el filtro de empresa en pocas líneas era riesgo bajo y pasaba sin revisor. `riesgo.permisosEnCodigo` ahora también mira el campo que separa los datos de cada cliente (`tenantId`, `empresaId`, `companyId`, `storeId`…): el cambio queda al menos medio, con el revisor de permisos, y el portero no lo ve. Si tu config define su propio patrón, agrégale esos campos.
+
 ## 1.8.0 · 2026-11-24
 
 ### Cambiado
