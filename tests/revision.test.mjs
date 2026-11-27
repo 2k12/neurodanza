@@ -91,3 +91,22 @@ test("revisión: un diff más largo que maxLineas no se revisa en el Stop", asyn
     rmSync(cfg.root, { recursive: true, force: true });
   }
 });
+
+test("revisión: con lectura, el revisor recibe dónde está cada repo y herramientas de solo lectura en el proyecto", async () => {
+  assert.match(pedidoRevision("revisor-coherencia", DIFF, { api: "backend", web: "frontend" }), /Puedes leer el proyecto .*api → backend, web → frontend/);
+  assert.match(pedidoRevision("revisor-coherencia", DIFF), /Solo tienes el diff/);
+  for (const lectura of [false, true]) {
+    const cfg = proyecto({ lectura });
+    cfg.repos = [{ nombre: "api", ruta: "backend" }];
+    try {
+      const [id] = lanzarRevisiones(cfg, { diff: DIFF, revisores: ["revisor-coherencia"], lanzar: () => {} });
+      let visto = null;
+      const { llamarClaude } = await import("../lib/portero.mjs");
+      assert.equal(typeof llamarClaude, "function");
+      await revisar(cfg, id, { llamar: async (t) => ((visto = t), { texto: '{"aprobado":true,"hallazgos":[]}', costo: 0 }) });
+      assert.equal(/api → backend/.test(visto), lectura);
+    } finally {
+      rmSync(cfg.root, { recursive: true, force: true });
+    }
+  }
+});

@@ -312,6 +312,7 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | `portero.auditoria` | `10` | 1 de cada N omisiones se revisa igual en segundo plano con el revisor de verdad. `0` = nunca. |
 | `portero.ventana` / `portero.maxFallos` | `50` / `1` | Con más de `maxFallos` fallos en las últimas `ventana` auditorías, se apaga solo y avisa. `portero.mjs encender` lo vuelve a prender. |
 | `revisionEnStop.activo` | `false` | Revisión en el Stop (`lib/revision.mjs`): el hook corre él mismo los revisores que pide el riesgo, cada uno con solo el diff, y bloquea con lo que encuentren. `ciclo.mjs revisores` los saca de `lanzar` (van en `enStop`) y `cerrar` cuenta los que aprobaron. Ver [29](29-revision-en-stop.md). |
+| `revisionEnStop.lectura` | `true` | El revisor puede leer el proyecto (`Read`, `Grep`, `Glob`, sin `.env`) para ver el contexto: el otro lado del contrato, la función que se llama, la guardia. Medido: 24 de 24 errores contra 21 de 24 con solo el diff, por unas 4 veces más por revisión (docs/29). `false` = solo el diff. |
 | `revisionEnStop.maxLineas` | `1500` | Con un diff de más líneas cambiadas, los revisores los lanza el agente, como antes. |
 | `revisionEnStop.timeoutSeg` | `300` | Tope de cada revisor en segundo plano. Lo que no terminó dentro del Stop llega en el siguiente. |
 

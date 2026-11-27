@@ -280,6 +280,7 @@ Guía: [08](08-evals.md).
 | `evals/barreras.mjs` | Comprueba las barreras con Claude Code real. Ver [25](25-barreras-y-jueces.md). | Sí |
 | `evals/costo.mjs` | Compara costo y resultado sin plugin, con él y con el ciclo. `--config` cambia la config del proyecto; suma lo que gastan el portero y la revisión en el Stop. Ver [27](27-costo.md). | Sí |
 | `evals/portero.mjs` | Mide si el portero detecta los cambios con error (meta: 98 %) y cuánto omite de los limpios. Ver [28](28-portero.md). | Sí |
+| `evals/revision.mjs` | Compara el revisor del Stop con solo el diff y con lectura del proyecto, en errores que solo se ven fuera del diff. Ver [29](29-revision-en-stop.md). | Sí |
 | `evals/sesgo.mjs` | Compara revisores con un encargo neutro y uno sesgado. | Sí |
 | `bench/bench.mjs` | Banco de pruebas. Ver [bench](../bench/README.md). | No |
 | `panel/avatares.mjs` | Dibuja los avatares de respaldo. | No |
