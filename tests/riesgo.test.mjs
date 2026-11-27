@@ -62,6 +62,9 @@ test("riesgo: los topes de líneas cuentan solo código (no el repo de docs, doc
   const re = patronPermisos(cfg);
   for (const l of ['const canRead = useCan("dispatch.read");', '<NoAccess permission="invoices.read" />', "if (!ability.can('read', x)) throw new ForbiddenException();", "if (can('update', pedido))"]) assert.ok(re.test(l), l);
   for (const l of ['<button role="tab" onClick={() => setOpen(true)}>', "const canvas = useRef(null);", "const role = 'dialog';"]) assert.ok(!re.test(l), l);
+  // También el campo que separa los datos de cada cliente: quitar el filtro de empresa nunca es bajo.
+  for (const l of ["where: { empresaId: user.empresaId, estado },", "  .andWhere('f.tenant_id = :t', { t })", "const ids = companyIds.map(String);", "if (row.storeId !== storeId) continue;"]) assert.ok(re.test(l), l);
+  for (const l of ["const companyIdentifier = x;", "const orden = pedido.id;", "<Empresa nombre={empresa.nombre} />"]) assert.ok(!re.test(l), l);
   // El código sí cuenta: 401 líneas de código siguen siendo alto.
   assert.equal(nivelDe(cfg, { backend: ["src/pedidos/pedidos.service.ts", "src/x.spec.ts"] }, { backend: { "src/pedidos/pedidos.service.ts": 401, "src/x.spec.ts": 900 } }).nivel, "alto");
 });

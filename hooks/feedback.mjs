@@ -21,6 +21,10 @@ import { enWorktree, leerTareas } from "../lib/director.mjs";
 import { cerrarRondaActiva } from "../panel/panel.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
 import { riesgoEnRama } from "../lib/riesgo.mjs";
+import { changesInBranch } from "../lib/cambios.mjs";
+import { revisoresPara } from "../lib/ciclo.mjs";
+import { aplicar, diffEnRama, porteroPara, recogerAuditorias } from "../lib/portero.mjs";
+import { revisionEnStop } from "../lib/revision.mjs";
 import { leerRegistro as leerRegistroPruebas, sinRojo } from "../lib/pruebas.mjs";
 import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
 import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
@@ -387,6 +391,32 @@ async function stop(cfg, event) {
     registroPruebas: leerRegistroPruebas(cfg),
   });
   hard.push(...done.hard);
+  // Portero (ciclo.portero.activo): lo que encontraron sus auditorías se corrige; si el cambio pasa todo, decide si
+  // el revisor de un cambio medio hace falta. Revisión en el Stop (ciclo.revisionEnStop.activo): después corre los
+  // revisores que quedaron y los espera mientras haya tiempo. Si no hay tiempo de sobra, no decide ni revisa.
+  const conPortero = !!cfg.ciclo?.portero?.activo;
+  const conRevision = !!cfg.ciclo?.revisionEnStop?.activo;
+  if (conPortero) {
+    const aud = recogerAuditorias(cfg);
+    hard.push(...aud.problemas);
+    if (aud.aviso) notas.push(aud.aviso);
+  }
+  if ((conPortero || conRevision) && !hard.length && hasta - Date.now() > 15_000) {
+    try {
+      const base = cfg.retroalimentacion.version?.ramaBase ?? "main";
+      const r0 = riesgoEnRama(cfg, base, { revisores: revisoresPara(cfg, changesInBranch(cfg, base)).lanzar });
+      const diff = diffEnRama(cfg, base);
+      const p = conPortero ? await porteroPara(cfg, r0, { base, diff, timeoutMs: Math.min(60_000, hasta - Date.now() - 5000) }) : null;
+      if (p?.decision === "omitir" && !p.guardada) notas.push(`portero: este cambio medio no lleva revisor (${String(p.motivo).replace(/\.$/, "")})${p.auditoria ? "; se audita en segundo plano" : ""}.`);
+      if (conRevision) {
+        const rv = await revisionEnStop(cfg, aplicar(r0, p), { diff, hasta: hasta - 2000 });
+        hard.push(...rv.problemas);
+        notas.push(...rv.notas);
+      }
+    } catch {
+      /* sin portero ni revisión en el Stop, el agente lanza los revisores */
+    }
+  }
   writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, cortadas: cortadas.length, fondo: { firma, estado: ahora.estado, pendientes: ahora.pendientes.length }, ms: Date.now() - t0 });
 
   const max = cfg.retroalimentacion.maxBloqueos;

@@ -29,7 +29,7 @@ Todo corre en tu máquina. Sin `neurodanza.config.json` no pasa nada.
 | `PreToolUse` | Barreras, figuras, contrato del director, tiempo por subagente y lecciones. Cubre `Read`, `Grep`, `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, `Bash`, `PowerShell`, `Agent` y `Task`. | Sí, o pregunta |
 | `PostToolUse` (editar) | Lint del archivo editado. | Devuelve el error al agente |
 | `PostToolUse` (leer, editar, terminal) | Guarda la pila del subagente. | No |
-| `Stop` | Lint, tipos, pruebas relacionadas y definición de terminado. | Sí |
+| `Stop` | Lint, tipos, pruebas relacionadas y definición de terminado. Con `ciclo.portero.activo`, el portero decide si un cambio medio lleva revisor y recoge sus auditorías. Con `ciclo.revisionEnStop.activo`, corre los revisores del riesgo con el diff y bloquea con lo que encuentren. | Sí |
 | `SubagentStop` | Marca el fin de cada subagente. | No |
 | `SessionEnd` | Cierra la ronda del panel que quedó abierta. | No |
 
@@ -151,6 +151,11 @@ Guías: [11](11-mapa-y-ciclo.md), [20](20-odd-en-neurodanza.md) y [23](23-regres
 | `ciclo.mjs presupuesto` | Máximo de pasos por tipo de subagente. |
 | `riesgo.mjs [--base main] [--archivos "repo:glob"] [--lineas N]` | Riesgo del cambio, hecho o previsto. |
 | `impacto.mjs [--base main] [--archivos "repo:ruta"]` | Pantallas y recorridos que el cambio puede tocar. |
+| `portero.mjs estado` | Con `ciclo.portero.activo`: decisiones del portero, auditorías y si se apagó. Ver [28](28-portero.md). |
+| `portero.mjs encender` | Vuelve a prender el portero apagado y olvida las auditorías anteriores. |
+| `portero.mjs auditar <id>` | Lo lanza el portero en segundo plano: el revisor revisa una omisión. |
+| `revision.mjs estado` | Con `ciclo.revisionEnStop.activo`: revisiones del Stop, su resultado y su costo. Ver [29](29-revision-en-stop.md). |
+| `revision.mjs revisar <id>` | Lo lanza el Stop en segundo plano: un revisor revisa el diff. |
 
 ### Documento de la funcionalidad: `lib/funcionalidad.mjs`
 
@@ -273,7 +278,8 @@ Guía: [08](08-evals.md).
 | Script | Qué hace | ¿Gasta tokens? |
 |---|---|---|
 | `evals/barreras.mjs` | Comprueba las barreras con Claude Code real. Ver [25](25-barreras-y-jueces.md). | Sí |
-| `evals/costo.mjs` | Compara costo y resultado sin plugin, con él y con el ciclo. Ver [27](27-costo.md). | Sí |
+| `evals/costo.mjs` | Compara costo y resultado sin plugin, con él y con el ciclo. `--config` cambia la config del proyecto; suma lo que gastan el portero y la revisión en el Stop. Ver [27](27-costo.md). | Sí |
+| `evals/portero.mjs` | Mide si el portero detecta los cambios con error (meta: 98 %) y cuánto omite de los limpios. Ver [28](28-portero.md). | Sí |
 | `evals/sesgo.mjs` | Compara revisores con un encargo neutro y uno sesgado. | Sí |
 | `bench/bench.mjs` | Banco de pruebas. Ver [bench](../bench/README.md). | No |
 | `panel/avatares.mjs` | Dibuja los avatares de respaldo. | No |

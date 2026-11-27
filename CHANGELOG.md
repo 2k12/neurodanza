@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.9.0 · 2026-11-27
+
+### Agregado
+- **Portero** (`ciclo.portero`, apagado por defecto): Haiku decide si un cambio medio por líneas (sin contratos ni permisos en el código) necesita su revisor. Solo puede quitar el revisor; ante cualquier duda, revisa. Lo consultan el `Stop`, `ciclo.mjs revisores` y `cerrar`, y la decisión se guarda por diff. Ver docs/28.
+- **Auditoría y apagado:** 1 de cada 10 omisiones la revisa igual el revisor de verdad, en segundo plano. Lo que encuentre llega al agente en el siguiente `Stop`. Con más de 1 fallo en las últimas 50 auditorías, el portero se apaga solo (`portero.mjs estado`, `encender`).
+- **Revisión en el Stop** (`ciclo.revisionEnStop`, apagada por defecto): el hook corre él mismo los revisores que pide el riesgo, cada uno con solo el diff, y bloquea con lo que encuentren. `ciclo.mjs revisores` ya no le pide al agente lanzarlos (van en `enStop`) y `cerrar` cuenta los que aprobaron. `revision.mjs estado`. Medido (5 corridas): permisos 0,205 → 0,176 USD (−14 %); media se revisa en 5 de 5 en vez de 2 de 5, por +12 %. Ver docs/29.
+- `evals/costo.mjs --config` y el gasto del portero y la revisión en el Stop (`fondoUSD`, `usdTotal`).
+- `evals/portero.mjs` y su banco de 225 casos. Medido: 175 de 175 errores detectados (cota inferior 98,3 %), 0 de 20 inyecciones, 72 % de los limpios omitidos, 0,41 USD.
+
+### Corregido
+- Quitar el filtro de empresa en pocas líneas era riesgo bajo y pasaba sin revisor. `riesgo.permisosEnCodigo` ahora también mira el campo que separa los datos de cada cliente (`tenantId`, `empresaId`, `companyId`, `storeId`…): el cambio queda al menos medio, con el revisor de permisos, y el portero no lo ve. Si tu config define su propio patrón, agrégale esos campos.
+
 ## 1.8.0 · 2026-11-24
 
 ### Cambiado
