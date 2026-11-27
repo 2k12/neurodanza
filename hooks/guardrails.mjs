@@ -69,8 +69,12 @@ export function secretoEnBusqueda(p, permitidos = []) {
 export function forkDeJuez(input) {
   if (!/^fork$/i.test(String(input?.subagent_type ?? ""))) return null;
   const t = `${input.description ?? ""} ${input.name ?? ""} ${input.prompt ?? ""}`;
-  if (!/(revisor|especialista)-(coherencia|permisos|ui|docs|a11y|datos|rendimiento)|persona-evaluadora/i.test(t) && !/^(revisor|fantasma|persona evaluadora)/i.test(t.trim())) return null;
-  return "neurodanza: un juez (revisor, persona, especialista o fantasma) no se lanza como fork, porque heredaría la conversación. Usa su propio tipo de agente (p. ej. subagent_type: neurodanza:revisor-permisos) y dale el pedido textual y el cambio.";
+  const porNombre = /(revisor|especialista)-(coherencia|permisos|ui|docs|a11y|datos|rendimiento)|persona-evaluadora|\bcr[ií]tico del pedido\b/i.test(t) || /^(revisor|fantasma|persona evaluadora|cr[ií]tico|juez)/i.test(t.trim());
+  // También sin nombre: juzgar un cambio, un plan o un pedido («revisa el diff», «evalúa si el cambio está bien»,
+  // «dame tu veredicto»). Investigar («revisa los logs», «por qué falla la prueba») no es juzgar.
+  const juzga = /(?<![\p{L}])(revis[aeá]\p{L}*|review\p{L}*|eval[uú]\p{L}*|califica\p{L}*|juzga\p{L}*|audita\p{L}*|critica\p{L}*|objeta\p{L}*|aprueba\p{L}*|reprueba\p{L}*)[^.\n]{0,60}?(?<![\p{L}])(cambios?|diff|implementaci[oó]n|pull request|PR|commit|plan|pedido|propuesta|soluci[oó]n|trabajo hecho)(?![\p{L}])/iu.test(t) || /(?<![\p{L}])(veredicto|segunda opini[oó]n|como juez|como cr[ií]tico|abogado del diablo)(?![\p{L}])/iu.test(t);
+  if (!porNombre && !juzga) return null;
+  return "neurodanza: un juez (revisor, persona, especialista, fantasma o crítico) no se lanza como fork, porque heredaría la conversación con las conclusiones de quien hizo el cambio. Usa su propio tipo de agente (p. ej. subagent_type: neurodanza:revisor-permisos) y dale el pedido textual y el cambio. Si el fork no juzga, sino que investiga, dilo así en el encargo.";
 }
 
 /** Comandos que modifican archivos o el repo (el director no los usa: delega). */
@@ -231,6 +235,16 @@ export function comandoLargo(cmd, input, cfg) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  // Una barrera que se cae no deja pasar la acción: un error inesperado rechaza (exit 2) con el motivo. Sin esto,
+  // Claude Code la ejecuta igual (docs/25). `onFailure: "block"` en hooks.json cubre el tiempo agotado y no arrancar.
+  const caida = (e) => {
+    // Al terminar un subagente (SubagentStop) no hay acción que frenar: un exit 2 lo haría seguir.
+    if (process.argv[2] === "fin-agente") process.exit(0);
+    process.stderr.write(`neurodanza: la barrera falló (${String(e?.message ?? e).split("\n")[0].slice(0, 200)}) y, por seguridad, no deja pasar esta acción. Reintenta; si se repite, es un error de neurodanza.\n`);
+    process.exit(2);
+  };
+  process.on("uncaughtException", caida);
+  process.on("unhandledRejection", caida);
   let event = {};
   try {
     event = JSON.parse(readFileSync(0, "utf8") || "{}");

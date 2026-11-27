@@ -25,6 +25,7 @@ import { changesInBranch } from "../lib/cambios.mjs";
 import { revisoresPara } from "../lib/ciclo.mjs";
 import { aplicar, diffEnRama, porteroPara, recogerAuditorias } from "../lib/portero.mjs";
 import { revisionEnStop } from "../lib/revision.mjs";
+import { avisoInicio as avisoNoche } from "../lib/noche.mjs";
 import { leerRegistro as leerRegistroPruebas, sinRojo } from "../lib/pruebas.mjs";
 import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
 import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
@@ -522,7 +523,14 @@ function inicio(cfg, event) {
   } catch {
     /* el autoajuste es una ayuda */
   }
-  const contexto = [auto.contexto, informeFondoInicio(cfg), errores, leccionesPrincipal(cfg), ajuste].filter(Boolean).join("\n\n");
+  // Turno de noche: el resumen de la última noche, una sola vez.
+  let noche = "";
+  try {
+    noche = avisoNoche(cfg);
+  } catch {
+    /* el turno de noche es una ayuda */
+  }
+  const contexto = [auto.contexto, informeFondoInicio(cfg), errores, leccionesPrincipal(cfg), ajuste, noche].filter(Boolean).join("\n\n");
   const out = {};
   if (auto.mensaje) out.systemMessage = auto.mensaje;
   if (contexto) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: contexto };

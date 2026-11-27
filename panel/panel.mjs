@@ -31,7 +31,7 @@ import { loadConfig } from "../lib/config.mjs";
 import { pedirApp } from "../lib/encabezados.mjs";
 import { avisosEvidencia, guardarMeta, prepararEvidencia } from "../lib/incidencias.mjs";
 import { falla as fallaFusible, fundida, fundidas, textoCapa } from "../lib/fusible.mjs";
-import { aprobarVersion, compararEjecuciones, compararMemoria, ejecutarRecorrido, leerMemoria, leerRecorrido, notaConRegresiones, notaPorPasos, registrarMemoria, textoRegresion, validarRecorrido, verificarCongelado } from "../lib/recorridos.mjs";
+import { aprobarVersion, compararEjecuciones, compararMemoria, ejecutarRecorrido, leerMemoria, leerRecorrido, notaConRegresiones, notaPorPasos, registrarMemoria, textoRegresion, validarRecorrido, verificarCongelado, notaDe } from "../lib/recorridos.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -96,7 +96,7 @@ export const ESTADOS_FINALES = [
 
 /** Estado final que corresponde a una nota (el estado nunca contradice la nota). */
 export function estadoFinal(nota) {
-  const n = Number(nota);
+  const n = notaDe(nota);
   if (!Number.isFinite(n)) return "";
   return ESTADOS_FINALES.find(([min]) => n >= min)[1];
 }
@@ -115,7 +115,7 @@ export function veredictoRonda(data, umbral, capasFundidas = []) {
 }
 
 export function score(evaluaciones, umbral) {
-  const notas = evaluaciones.map((e) => Number(e.nota)).filter((x) => Number.isFinite(x));
+  const notas = evaluaciones.map((e) => notaDe(e.nota)).filter((x) => Number.isFinite(x));
   if (notas.length === 0 || notas.length !== evaluaciones.length) return { promedio: 0, aprobado: false, motivo: "faltan notas" };
   const promedio = Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 100) / 100;
   return { promedio, aprobado: promedio > umbral, motivo: promedio > umbral ? "aprobado" : `promedio ${promedio} ≤ ${umbral}` };
@@ -448,7 +448,9 @@ export function ajustarEvaluaciones(data, { notaMax = 6, leer = () => null, regr
     if (e.reutilizada) continue; // ya se ajustó en su ronda
     const rec = e.recorrido?.archivo ? leer(e.recorrido.archivo) : null;
     const ej = e.recorrido?.informe ? leer(e.recorrido.informe) : null;
-    const notaPersona = Number(e.notaPersona ?? e.nota);
+    const notaPersona = notaDe(e.notaPersona ?? e.nota);
+    // Sin nota no hay nada que ajustar: ni las regresiones ni los pasos críticos inventan una.
+    if (!Number.isFinite(notaPersona)) continue;
     // Westworld: las regresiones de experiencia frente a la última versión aprobada bajan la nota (regla documentada).
     const regs = ej ? regresionesDe(e, rec, ej.recorrido ?? ej) : [];
     let nota = notaPersona;

@@ -11,6 +11,55 @@ Con eso quedan registrados los hooks de `hooks/hooks.json`, los agentes de `agen
 
 Requisitos: Node 22+, git. Para el panel, `@playwright/test` en el proyecto y Chromium (`npx playwright install chromium`). Para la ventana en vivo, Windows.
 
+## Actualizar un proyecto que ya tiene neurodanza
+
+La config se combina con los valores por defecto, así que **no hace falta tocar `neurodanza.config.json`** para recibir lo nuevo. Tampoco hace falta correr `/neurodanza-init` otra vez.
+
+1. Actualiza el plugin: `/plugin marketplace update neurodanza` y después actualiza `neurodanza` desde `/plugin`. Si no aparece la opción, desinstálalo y vuelve a instalarlo.
+2. Abre una sesión nueva: los hooks se cargan al empezar.
+3. Revisa la versión de Claude Code (`claude --version`): la barrera que no deja pasar una acción cuando el hook falla requiere 2.1.295 o posterior.
+
+### Qué llega solo con la 1.9.0
+
+| Qué | Qué cambia para ti |
+|---|---|
+| Campo de cliente en el código | Un cambio que toca `tenantId`, `empresaId`, `companyId`, `storeId`, `tenant_id`… ya no es riesgo bajo: entra el revisor de permisos. |
+| Barrera que falla | Si el hook de barreras se cae o se pasa del tiempo, la acción **no** corre (antes corría). |
+| Forks como jueces | Un fork al que se le pide juzgar un cambio, un plan o un pedido se bloquea aunque no se llame «revisor». Investigar con un fork sigue permitido. |
+| Crítico del pedido | En un cambio medio o alto, `/neurodanza-feature` corre el crítico antes de planificar y pone sus objeciones en el plan. Unos 0,02 USD por pedido. |
+| Panel | Una persona sin nota cuenta como nota que falta, no como 0. |
+
+### Qué se prende a mano
+
+Solo si lo quieres. Agrega a `neurodanza.config.json` lo que uses:
+
+```json
+{
+  "ciclo": {
+    "revisionEnStop": { "activo": true },
+    "portero": { "activo": true },
+    "critico": { "activo": false }
+  },
+  "noche": { "activo": true, "lote": 3, "topeTurnoUSD": 10 }
+}
+```
+
+| Clave | Para qué | Guía |
+|---|---|---|
+| `ciclo.revisionEnStop.activo` | El `Stop` corre él mismo los revisores que pide el riesgo y bloquea con lo que encuentren, sin depender de que el agente los lance. | [29](29-revision-en-stop.md) |
+| `ciclo.portero.activo` | Un modelo barato decide si un cambio medio lleva revisor. | [28](28-portero.md) |
+| `ciclo.critico.activo: false` | Apaga el crítico (viene prendido). | [30](30-critico-y-turno-de-noche.md) |
+| `noche.activo` | Turno de noche: corrige incidencias en ramas locales mientras no estás. Necesita fichas en `incidencias/` (`/neurodanza-incidencias`). | [30](30-critico-y-turno-de-noche.md) |
+
+Para el turno de noche, después de prenderlo:
+
+```
+node <plugin>/lib/noche.mjs planear                   # qué incidencias tomaría
+node <plugin>/lib/noche.mjs correr --lote 1           # una prueba con una sola, mirando
+node <plugin>/lib/noche.mjs resumen                   # qué quedó
+node <plugin>/lib/noche.mjs programar --hora 02:00    # muestra la tarea; con --crear la crea (Windows)
+```
+
 ## Preparar un proyecto: `/neurodanza-init`
 
 Se corre **una vez por proyecto** (o para revisar la configuración). Usa las plantillas de `plantillas/` y toma como modelo el ejemplo real de `ejemplos/nest-next/` (un proyecto NestJS + Next con tres repos: backend, frontend, docs).

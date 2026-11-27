@@ -20,7 +20,7 @@ Prevé el nivel con los archivos que vas a tocar: `<riesgo> --archivos "<repo:ar
 | **Medio** | `planificar` (plan corto; recorridos solo si hay pantallas) → 1 → 2 → `revision` (un revisor) y, si `plan.personas` > 0, `panel` → `cerrar`. |
 | **Alto** | `planificar` completo → 1 → 2 → `revision` y, si `plan.personas` > 0, `panel` → `cerrar`. `director` solo si `plan.director` es true o el usuario lo pide. |
 
-Con riesgo medio o alto, espera el visto bueno del usuario antes de tocar código. Pregunta solo lo que cambia el resultado.
+Con riesgo medio o alto, antes del plan corre el **crítico del pedido**, con el pedido textual del usuario tal cual: `<critico> --pedido "<pedido>" --tema <tema>` (si `ciclo.critico.activo` no es false). No ve la conversación. Pon sus objeciones en el plan **tal cual, sin suavizar ni discutirlas**: las decide el usuario. Después espera el visto bueno del usuario antes de tocar código. Pregunta solo lo que cambia el resultado.
 - Para ubicarte sin leer el repo: `<indice> resumen --repo <r> --foco <tema, ruta o glob>` y `<indice> buscar --que <texto>`. Si ya sabes qué archivo es, ve directo.
 - Si un subagente se corta, queda sin latido o en cuarentena: `reenfundar`.
 - Si la barrera dice que el ciclo llegó a su tope de gasto, no insistas: di qué falta y pregúntale al usuario.

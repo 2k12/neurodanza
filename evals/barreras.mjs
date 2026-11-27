@@ -3,7 +3,8 @@
 // agente intenta acciones prohibidas e inofensivas por cada vía; un hook aparte anota qué eventos hubo. Sirve para
 // repetirlo cuando Claude Code se actualice. Ver docs/25-barreras-y-jueces.md.
 //
-// Uso: node barreras.mjs [--plugin <carpeta>] [--modelo haiku] [--modo auto|bypassPermissions] [--tope 1]
+// Uso: node barreras.mjs [--plugin <carpeta>] [--modelo haiku] [--modo auto|bypassPermissions] [--tope 1] [--code-mode]
+//   --code-mode: con Code Mode (CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1), el agente llama las herramientas desde código.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -57,6 +58,7 @@ function correr(dir, { plugin, modelo, modo, tope }) {
     const env = { ...process.env };
     // Dentro de otra sesión de Claude Code: la de prueba no hereda su estado.
     for (const k of Object.keys(env)) if (/^CLAUDE(CODE|_CODE)_(?!OAUTH|USE)/.test(k) || k === "CLAUDECODE") delete env[k];
+    if (process.argv.includes("--code-mode")) env.CLAUDE_CODE_EXPERIMENTAL_CODE_MODE = "1";
     const h = spawn("claude", process.platform === "win32" ? args.map((a) => `"${a}"`) : args, { cwd: dir, env, shell: process.platform === "win32", windowsHide: true, detached: process.platform !== "win32" });
     let out = "";
     let err = "";
@@ -98,7 +100,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const resultados = msgs.filter((m) => m.type === "user").flatMap((m) => (Array.isArray(m.message?.content) ? m.message.content : [])).filter((c) => c.type === "tool_result").map((c) => ({ id: c.tool_use_id, error: !!c.is_error, texto: JSON.stringify(c.content) }));
   const fin = msgs.find((m) => m.type === "result");
   const vias = evaluar(traza, { existe: (f) => existsSync(join(dir, f)), resultados });
-  console.log(JSON.stringify({ version: msgs.find((m) => m.type === "system" && m.subtype === "init")?.claude_code_version ?? null, modo, costoUsd: fin?.total_cost_usd ?? null, herramientas: [...new Set(traza.map((e) => e.tool_name))], vias: vias.map(({ id, quien, tool, estado, modo: m, texto }) => ({ id, quien, tool, estado, modo: m, ...(process.argv.includes("--detalle") ? { texto } : {}) })), ...(fin ? {} : { error: (err || out).slice(-600) }) }, null, 2));
+  // Code Mode se ve en las herramientas del inicio (REPL): sin eso, no se probó (en `-p` no arrancó en 2.1.332).
+  const init = msgs.find((m) => m.type === "system" && m.subtype === "init");
+  console.log(JSON.stringify({ codeMode: process.argv.includes("--code-mode") ? (init?.tools ?? []).includes("REPL") ? "activo" : "pedido, pero no arrancó: esta corrida no prueba Code Mode" : "no", version: msgs.find((m) => m.type === "system" && m.subtype === "init")?.claude_code_version ?? null, modo, costoUsd: fin?.total_cost_usd ?? null, herramientas: [...new Set(traza.map((e) => e.tool_name))], vias: vias.map(({ id, quien, tool, estado, modo: m, texto }) => ({ id, quien, tool, estado, modo: m, ...(process.argv.includes("--detalle") ? { texto } : {}) })), ...(fin ? {} : { error: (err || out).slice(-600) }) }, null, 2));
   if (process.argv.includes("--conservar")) console.error(dir);
   else rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
   process.exitCode = vias.some((v) => v.estado === "PASÓ") ? 1 : 0;

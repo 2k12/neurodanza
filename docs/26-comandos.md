@@ -156,6 +156,53 @@ Guías: [11](11-mapa-y-ciclo.md), [20](20-odd-en-neurodanza.md) y [23](23-regres
 | `portero.mjs auditar <id>` | Lo lanza el portero en segundo plano: el revisor revisa una omisión. |
 | `revision.mjs estado` | Con `ciclo.revisionEnStop.activo`: revisiones del Stop, su resultado y su costo. Ver [29](29-revision-en-stop.md). |
 | `revision.mjs revisar <id>` | Lo lanza el Stop en segundo plano: un revisor revisa el diff. |
+| `critico.mjs --pedido "<texto o archivo>" [--tema t]` | Crítico del pedido a ciegas: objeciones con evidencia. Ver [30](30-critico-y-turno-de-noche.md). |
+| `noche.mjs planear` | Qué incidencias tomaría el turno de noche. Ver [30](30-critico-y-turno-de-noche.md). |
+| `noche.mjs correr [--lote N] [--ids A,B]` | Corre el turno de noche: worktree y rama local por incidencia, sin push. |
+| `noche.mjs resumen [--fecha F]` | El resumen de la mañana: primero las excepciones. |
+| `noche.mjs limpiar --fecha F` | Quita los worktrees de esa noche; las ramas quedan. |
+| `noche.mjs programar --hora HH:MM [--crear]` | La tarea programada del sistema (sin `--crear`, solo la muestra). |
+
+#### Ejemplos: portero, revisión en el Stop, crítico y turno de noche
+
+```
+# ¿Qué decidió el portero y qué revisó en segundo plano?
+node <plugin>/lib/portero.mjs estado
+node <plugin>/lib/portero.mjs encender          # si se apagó solo por fallar una auditoría
+
+# Revisiones que lanzó el Stop: revisor, resultado, hallazgos y costo
+node <plugin>/lib/revision.mjs estado
+
+# Crítico a ciegas antes de planificar (texto o archivo con el pedido)
+node <plugin>/lib/critico.mjs --pedido "Agrega un botón para borrar los pedidos de la base"
+node <plugin>/lib/critico.mjs --pedido pedido.md --tema borrar-pedidos   # deja la objeción en el documento del tema
+
+# Turno de noche
+node <plugin>/lib/noche.mjs planear                         # qué tomaría, por prioridad
+node <plugin>/lib/noche.mjs correr --ids BE-CAR-001         # solo esa incidencia
+node <plugin>/lib/noche.mjs correr --lote 2                 # las 2 primeras del plan
+node <plugin>/lib/noche.mjs resumen                         # el de la última noche
+node <plugin>/lib/noche.mjs resumen --fecha 2026-11-27
+node <plugin>/lib/noche.mjs limpiar --fecha 2026-11-27      # quita los worktrees; las ramas quedan
+node <plugin>/lib/noche.mjs programar --hora 02:00          # muestra la tarea del sistema
+node <plugin>/lib/noche.mjs programar --hora 02:00 --crear  # la crea (Windows)
+```
+
+Qué responde el crítico cuando objeta:
+
+```
+Crítico del pedido: 1 objeción con evidencia. Van al plan tal cual; las decide el usuario.
+1. rompe una regla: Los pedidos no se borran: se marcan como "cancelado".
+   AGENTS.md: «Los pedidos no se borran: se marcan con estado "cancelado"»
+```
+
+Revisar una rama de la noche y decidir:
+
+```
+git -C <repo> log -1 noche/2026-11-27-BE-CAR-001     # el commit, sin firmas de IA
+git -C <repo> diff main...noche/2026-11-27-BE-CAR-001
+git -C <repo> push -u origin noche/2026-11-27-BE-CAR-001   # solo si la quieres subir: lo haces tú
+```
 
 ### Documento de la funcionalidad: `lib/funcionalidad.mjs`
 
@@ -280,6 +327,8 @@ Guía: [08](08-evals.md).
 | `evals/barreras.mjs` | Comprueba las barreras con Claude Code real. Ver [25](25-barreras-y-jueces.md). | Sí |
 | `evals/costo.mjs` | Compara costo y resultado sin plugin, con él y con el ciclo. `--config` cambia la config del proyecto; suma lo que gastan el portero y la revisión en el Stop. Ver [27](27-costo.md). | Sí |
 | `evals/portero.mjs` | Mide si el portero detecta los cambios con error (meta: 98 %) y cuánto omite de los limpios. Ver [28](28-portero.md). | Sí |
+| `evals/critico.mjs` | Mide si el crítico objeta 20 pedidos malos y deja pasar 20 buenos. Ver [30](30-critico-y-turno-de-noche.md). | Sí |
+| `evals/revision.mjs` | Compara el revisor del Stop con solo el diff y con lectura del proyecto, en errores que solo se ven fuera del diff. Ver [29](29-revision-en-stop.md). | Sí |
 | `evals/sesgo.mjs` | Compara revisores con un encargo neutro y uno sesgado. | Sí |
 | `bench/bench.mjs` | Banco de pruebas. Ver [bench](../bench/README.md). | No |
 | `panel/avatares.mjs` | Dibuja los avatares de respaldo. | No |
