@@ -210,3 +210,22 @@ test("evals: la persona debe detectar el paso del recorrido que no cumple", () =
   assert.equal(mal.aprobado, false);
   assert.match(mal.personas[0].motivo, /no marcó «no cumple» en el paso 2/);
 });
+
+test("panel: una nota vacía (null, «», ausente) es una nota que falta, no un 0", async () => {
+  const { score, veredictoRonda, estadoFinal } = await import("../panel/panel.mjs");
+  for (const vacia of [null, "", undefined, "sin nota"]) {
+    const evs = [{ persona: "ana", nota: 9 }, { persona: "luis", nota: vacia }];
+    assert.equal(score(evs, 7).motivo, "faltan notas", String(vacia));
+    // Con la app fundida, la ronda queda pendiente (no reprobada por un 0 inventado).
+    assert.equal(veredictoRonda({ evaluaciones: evs }, 7, [{ capa: "app", motivo: "no levanta" }]).pendiente, true, String(vacia));
+    assert.equal(estadoFinal(vacia), "", String(vacia));
+  }
+  assert.equal(score([{ nota: 0 }, { nota: "8" }], 7).promedio, 4, "un 0 de verdad sí cuenta");
+  // Sin nota, las regresiones y los pasos críticos no le inventan una.
+  const data = ajustarEvaluaciones(
+    { evaluaciones: [{ persona: "ana", nota: null, recorrido: { id: "x", informe: "i" }, pasos: [{ n: 1, resultado: "no cumple", critico: true }] }] },
+    { leer: () => ({ recorrido: { pasos: [{ cumple: false, critico: true }] } }), regresionesDe: () => [{ tipo: "clics", texto: "t" }] },
+  );
+  assert.equal(data.evaluaciones[0].nota, null);
+  assert.equal(data.evaluaciones[0].notaPersona, undefined);
+});
