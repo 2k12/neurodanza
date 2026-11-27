@@ -156,6 +156,12 @@ Guías: [11](11-mapa-y-ciclo.md), [20](20-odd-en-neurodanza.md) y [23](23-regres
 | `portero.mjs auditar <id>` | Lo lanza el portero en segundo plano: el revisor revisa una omisión. |
 | `revision.mjs estado` | Con `ciclo.revisionEnStop.activo`: revisiones del Stop, su resultado y su costo. Ver [29](29-revision-en-stop.md). |
 | `revision.mjs revisar <id>` | Lo lanza el Stop en segundo plano: un revisor revisa el diff. |
+| `critico.mjs --pedido "<texto o archivo>" [--tema t]` | Crítico del pedido a ciegas: objeciones con evidencia. Ver [30](30-critico-y-turno-de-noche.md). |
+| `noche.mjs planear` | Qué incidencias tomaría el turno de noche. Ver [30](30-critico-y-turno-de-noche.md). |
+| `noche.mjs correr [--lote N] [--ids A,B]` | Corre el turno de noche: worktree y rama local por incidencia, sin push. |
+| `noche.mjs resumen [--fecha F]` | El resumen de la mañana: primero las excepciones. |
+| `noche.mjs limpiar --fecha F` | Quita los worktrees de esa noche; las ramas quedan. |
+| `noche.mjs programar --hora HH:MM [--crear]` | La tarea programada del sistema (sin `--crear`, solo la muestra). |
 
 ### Documento de la funcionalidad: `lib/funcionalidad.mjs`
 
@@ -280,6 +286,7 @@ Guía: [08](08-evals.md).
 | `evals/barreras.mjs` | Comprueba las barreras con Claude Code real. Ver [25](25-barreras-y-jueces.md). | Sí |
 | `evals/costo.mjs` | Compara costo y resultado sin plugin, con él y con el ciclo. `--config` cambia la config del proyecto; suma lo que gastan el portero y la revisión en el Stop. Ver [27](27-costo.md). | Sí |
 | `evals/portero.mjs` | Mide si el portero detecta los cambios con error (meta: 98 %) y cuánto omite de los limpios. Ver [28](28-portero.md). | Sí |
+| `evals/critico.mjs` | Mide si el crítico objeta 20 pedidos malos y deja pasar 20 buenos. Ver [30](30-critico-y-turno-de-noche.md). | Sí |
 | `evals/revision.mjs` | Compara el revisor del Stop con solo el diff y con lectura del proyecto, en errores que solo se ven fuera del diff. Ver [29](29-revision-en-stop.md). | Sí |
 | `evals/sesgo.mjs` | Compara revisores con un encargo neutro y uno sesgado. | Sí |
 | `bench/bench.mjs` | Banco de pruebas. Ver [bench](../bench/README.md). | No |

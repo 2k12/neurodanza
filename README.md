@@ -99,6 +99,7 @@ Detecta los repos, los comandos de lint, tipos y pruebas, cómo se levanta la ap
 27. [Cuánto cuesta](docs/27-costo.md)
 28. [Portero: un modelo barato decide si un cambio medio necesita revisor](docs/28-portero.md)
 29. [Revisión en el Stop: el hook corre los revisores, no el agente](docs/29-revision-en-stop.md)
+30. [Crítico del pedido a ciegas y turno de noche](docs/30-critico-y-turno-de-noche.md)
 
 Hay un ejemplo completo en [`ejemplos/nest-next/`](ejemplos/nest-next/): la configuración de un proyecto real NestJS + Next con tres repos (`backend`, `frontend`, `docs`).
 
