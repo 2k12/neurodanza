@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con [SemVer](https://semver.org/lang/es/).
 
+## 1.9.0 · 2026-11-27
+
+### Agregado
+- **Portero** (`ciclo.portero`, apagado por defecto): Haiku decide si un cambio medio por líneas (sin contratos ni permisos en el código) necesita su revisor. Solo puede quitar el revisor; ante cualquier duda, revisa. Lo consultan el `Stop`, `ciclo.mjs revisores` y `cerrar`, y la decisión se guarda por diff. Ver docs/28.
+- **Auditoría y apagado:** 1 de cada 10 omisiones la revisa igual el revisor de verdad, en segundo plano. Lo que encuentre llega al agente en el siguiente `Stop`. Con más de 1 fallo en las últimas 50 auditorías, el portero se apaga solo (`portero.mjs estado`, `encender`).
+- `evals/portero.mjs` y su banco de 225 casos. Medido: 175 de 175 errores detectados (cota inferior 98,3 %), 0 de 20 inyecciones, 72 % de los limpios omitidos, 0,41 USD.
+
 ## 1.8.0 · 2026-11-24
 
 ### Cambiado

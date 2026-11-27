@@ -21,6 +21,9 @@ import { enWorktree, leerTareas } from "../lib/director.mjs";
 import { cerrarRondaActiva } from "../panel/panel.mjs";
 import { archivoDe, load as loadErrores, registrarEnProyecto, top } from "../lib/errores.mjs";
 import { riesgoEnRama } from "../lib/riesgo.mjs";
+import { changesInBranch } from "../lib/cambios.mjs";
+import { revisoresPara } from "../lib/ciclo.mjs";
+import { porteroPara, recogerAuditorias } from "../lib/portero.mjs";
 import { leerRegistro as leerRegistroPruebas, sinRojo } from "../lib/pruebas.mjs";
 import { changesOf, firmaActual, firmaCambio, fingerprint, parseStatus, repoFingerprintAsync } from "../lib/firma.mjs";
 import { asegurarFondo, idTarea, leerFondo, resumen as resumenFondo, vivo } from "../lib/fondo.mjs";
@@ -387,6 +390,24 @@ async function stop(cfg, event) {
     registroPruebas: leerRegistroPruebas(cfg),
   });
   hard.push(...done.hard);
+  // Portero (ciclo.portero.activo): lo que encontraron sus auditorías se corrige; si el cambio pasa todo, decide si
+  // el revisor de un cambio medio hace falta. Solo con tiempo de sobra: si no, no decide y el revisor sigue.
+  if (cfg.ciclo?.portero?.activo) {
+    const aud = recogerAuditorias(cfg);
+    hard.push(...aud.problemas);
+    if (aud.aviso) notas.push(aud.aviso);
+    const resta = hasta - Date.now();
+    if (!hard.length && resta > 15_000) {
+      try {
+        const base = cfg.retroalimentacion.version?.ramaBase ?? "main";
+        const r = riesgoEnRama(cfg, base, { revisores: revisoresPara(cfg, changesInBranch(cfg, base)).lanzar });
+        const p = await porteroPara(cfg, r, { base, timeoutMs: Math.min(60_000, resta - 5000) });
+        if (p?.decision === "omitir" && !p.guardada) notas.push(`portero: este cambio medio no lleva revisor (${String(p.motivo).replace(/\.$/, "")})${p.auditoria ? "; se audita en segundo plano" : ""}.`);
+      } catch {
+        /* sin portero, el revisor sigue */
+      }
+    }
+  }
   writeEstado(cfg, { fase: "verificar", pasos, problemas: hard.length, avisos: done.soft.length, cortadas: cortadas.length, fondo: { firma, estado: ahora.estado, pendientes: ahora.pendientes.length }, ms: Date.now() - t0 });
 
   const max = cfg.retroalimentacion.maxBloqueos;

@@ -306,6 +306,11 @@ Planificador + ejecutor de `/neurodanza-feature`. Ver [11-mapa-y-ciclo.md](11-ma
 | `riesgo.lineasAlto` | `400` | Más de estas líneas de código: alto. |
 | `riesgo.altos` | migraciones, `*.sql`, `*auth*`, `*guard*`, `*polic*`, `*permis*`, `*acl*`, `*casl*`, `middleware*` | Globs de archivos sensibles: tocar uno es riesgo alto (no aplican al repo de docs, a la documentación ni a las pruebas). También lo son las migraciones de `retroalimentacion.migraciones` y el código en 2 repos. |
 | `riesgo.permisosEnCodigo` | `useCan`, `permission…`, `permis…`, `hasRole`, `NoAccess`, `can(`… | Expresión regular sobre las **líneas cambiadas** del código: si coincide, el cambio es al menos medio y entra el revisor de permisos, aunque ningún nombre de archivo lo diga. `false` = no mirar el contenido. |
+| `portero.activo` | `false` | Portero (`lib/portero.mjs`): en un cambio medio por líneas (sin contratos ni permisos en el código), un modelo barato decide si hace falta su revisor. Lo consultan el `Stop`, `ciclo.mjs revisores` y `cerrar`. Ver [28](28-portero.md). |
+| `portero.modelo` / `portero.votos` | `"haiku"` / `2` | Modelo y votos: quita el revisor solo si todos los votos lo dicen. |
+| `portero.maxLineas` | `120` | Con más líneas cambiadas no decide: el revisor sigue. |
+| `portero.auditoria` | `10` | 1 de cada N omisiones se revisa igual en segundo plano con el revisor de verdad. `0` = nunca. |
+| `portero.ventana` / `portero.maxFallos` | `50` / `1` | Con más de `maxFallos` fallos en las últimas `ventana` auditorías, se apaga solo y avisa. `portero.mjs encender` lo vuelve a prender. |
 
 ## `pilas`
 
